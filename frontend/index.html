@@ -54,7 +54,23 @@ button{ font:inherit; }
 .modeswitch{ display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:2px; gap:2px; }
 .modeswitch button{ font-size:.75rem; font-weight:600; border:0; background:none; color:var(--muted); padding:.3rem .8rem; border-radius:99px; cursor:pointer; }
 .modeswitch button.active{ background:var(--surface); color:var(--accent); box-shadow:var(--shadow); }
-.topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.9rem; }
+.topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.9rem; align-items:center; }
+.om-knapp{ border:1px solid var(--border); background:var(--surface); color:var(--muted); border-radius:99px; padding:.25rem .7rem; font-size:.75rem; cursor:pointer; }
+.om-knapp:hover{ color:var(--accent); border-color:var(--accent-muted); }
+.om-overlay[hidden]{ display:none; }
+.om-overlay{ position:fixed; inset:0; background:rgba(20,20,18,.45); display:flex;
+  align-items:flex-start; justify-content:center; padding:4vh 1rem; z-index:50; overflow-y:auto; }
+.om-panel{ background:var(--surface); border-radius:12px; box-shadow:var(--shadow);
+  max-width:640px; width:100%; padding:1.4rem 1.6rem 1.6rem; margin-bottom:4vh; }
+.om-panel h2{ margin:0 0 .2rem; font-size:1.05rem; }
+.om-panel h3{ margin:1.1rem 0 .3rem; font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+.om-panel p, .om-panel li{ font-size:.8125rem; line-height:1.55; }
+.om-panel ul{ margin:.2rem 0; padding-left:1.1rem; }
+.om-panel .om-lukk{ float:right; border:0; background:none; color:var(--muted); font-size:1.1rem; cursor:pointer; line-height:1; }
+.om-kilde-rad{ display:flex; align-items:center; gap:.5rem; font-size:.8125rem; padding:.15rem 0; }
+.om-prikk{ width:.55rem; height:.55rem; border-radius:99px; flex:none; background:var(--muted); }
+.om-prikk.opp{ background:var(--accent); }
+.om-prikk.nede{ background:var(--warn); }
 
 .shell{ flex:1; min-height:0; display:grid; grid-template-columns:320px 1fr 340px; }
 .shell[hidden]{ display:none; }
@@ -199,6 +215,45 @@ svg text{ font-family:system-ui,sans-serif; }
   </div>
   <div class="topbar-meta">
     <span id="cache-meta">bank.db · —</span>
+    <button class="om-knapp" id="om-knapp" title="Kilder, hva verktøyet ikke gjør, og hvor dataen din lever">ℹ️ Om</button>
+  </div>
+</div>
+
+<div class="om-overlay" id="om-overlay" hidden>
+  <div class="om-panel" role="dialog" aria-labelledby="om-tittel">
+    <button class="om-lukk" id="om-lukk" aria-label="Lukk">✕</button>
+    <h2 id="om-tittel">Om dette verktøyet</h2>
+    <p>Litteratursøk bygget for norsk oppdrettslaks-patologi (nyre/lever/ultralyd-
+      validering) — ikke et generelt forskningsverktøy ennå, se §Domeneprofil under.</p>
+
+    <h3>Kilder søkt akkurat nå</h3>
+    <div id="om-kilder"><div class="om-kilde-rad"><span class="om-prikk"></span>sjekker …</div></div>
+
+    <h3>Hva verktøyet aldri gjør</h3>
+    <ul>
+      <li>Ingen AI-generert sammendrag eller syntese — du ser alltid rå tittel/abstract
+        fra kilden selv, aldri en omskrivning.</li>
+      <li>Ingen fulltekst-mining — kun abstract, med mindre papiret er open access.</li>
+      <li>Rangeringen FLAGGER og OMORDNER etter fagfelt-/art-nærhet (★ og ⚠-merker) —
+        den fjerner aldri et treff. Et treff uten stjerne kan fortsatt være riktig,
+        avgjørelsen er alltid din.</li>
+      <li>«Evidensnivå»-merket er mønstergjenkjenning på ord forfatterne selv bruker
+        («systematic review», «case report» …), ikke en faglig vurdering — brukes aldri
+        til å rangere eller filtrere.</li>
+      <li>Et tomt resultat betyr «ikke søkt/cachet ennå», aldri «forskningen mangler».</li>
+    </ul>
+
+    <h3>Domeneprofil</h3>
+    <p>Denne instansen er scopet til norsk lakseoppdrett — fagmiljøer (Havforsknings-
+      instituttet, Veterinærinstituttet, NMBU, Nofima, Pharmaq), fagtidsskrifter, og
+      artstermer er alle hardkodet for DETTE fagfeltet. Et ★ betyr «norsk fagmiljø/
+      fagtidsskrift», et ⚠ betyr «nevner ikke laks/oppdrettsfisk i tittel/abstract» —
+      begge er signaler for DEG å vurdere, ikke en dom verktøyet feller.</p>
+
+    <h3>Hvor dataen din lever</h3>
+    <p>Alt (cachede papirer, sitater, utkast) ligger i én lokal sqlite-fil på denne
+      maskinen — ingenting sendes videre til tredjepart utover selve søketeksten til
+      kildene over. Ingen deling mellom brukere ennå.</p>
   </div>
 </div>
 
@@ -816,6 +871,26 @@ async function oppdaterRelevansOgOmfang(tekst) {
     status.innerHTML = `<i></i><span>Feil: ${escapeHtml(err.message)}</span>`;
   }
 }
+
+// ---------- Om-panel (metodikk/transparens) ----------
+const KILDENAVN = {europe_pmc: 'Europe PMC', openalex: 'OpenAlex', core: 'CORE'};
+
+function apneOmPanel() {
+  $('#om-overlay').hidden = false;
+  $('#om-kilder').innerHTML = '<div class="om-kilde-rad"><span class="om-prikk"></span>sjekker …</div>';
+  api('/api/status').then(s => {
+    $('#om-kilder').innerHTML = Object.entries(s.kilder).map(([id, oppe]) => `
+      <div class="om-kilde-rad"><span class="om-prikk ${oppe ? 'opp' : 'nede'}"></span>${KILDENAVN[id] || id} — ${oppe ? 'nåbar nå' : 'utilgjengelig akkurat nå'}</div>`).join('');
+  }).catch(() => {
+    $('#om-kilder').innerHTML = '<div class="om-kilde-rad">Kunne ikke sjekke kilde-status akkurat nå.</div>';
+  });
+}
+function lukkOmPanel() { $('#om-overlay').hidden = true; }
+
+$('#om-knapp').addEventListener('click', apneOmPanel);
+$('#om-lukk').addEventListener('click', lukkOmPanel);
+$('#om-overlay').addEventListener('click', e => { if (e.target.id === 'om-overlay') lukkOmPanel(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#om-overlay').hidden) lukkOmPanel(); });
 
 // ---------- Første last ----------
 api('/api/status').then(s => $('#cache-meta').textContent = `bank.db · ${s.papirer_cachet} papirer cachet`).catch(()=>{});

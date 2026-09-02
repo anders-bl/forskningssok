@@ -35,6 +35,7 @@ def test_status_teller_papirer_og_sitater(tmp_path, monkeypatch):
     assert data["papirer_cachet"] == 1
     assert data["sitater_lagret"] == 1
     assert data["kilder"]["europe_pmc"] is True
+    assert data["kilder"]["core"] is True  # CORE er tredje kilde i søket, hørte ikke hjemme i status
 
 
 def test_status_nede_kilde_gir_false_ikke_500(tmp_path, monkeypatch):
@@ -48,4 +49,5 @@ def test_status_nede_kilde_gir_false_ikke_500(tmp_path, monkeypatch):
         r = client.get("/api/status")
     assert r.status_code == 200
     assert r.json()["kilder"]["europe_pmc"] is False
+    assert r.json()["kilder"]["core"] is False
     assert r.json()["siste_sok"] is None

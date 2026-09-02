@@ -92,6 +92,7 @@ def api_status():
         "kilder": {
             "europe_pmc": _kilde_naabar("https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=test&pageSize=1"),
             "openalex": _kilde_naabar("https://api.openalex.org/works/W2151543183"),
+            "core": _kilde_naabar("https://api.core.ac.uk/v3/search/works"),
         },
     }
 

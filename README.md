@@ -161,6 +161,25 @@ utgivernavn, og oa_status. **Ingen prisdata finnes noe sted i OpenAlex** — `/a
 returnerer ærlig fravær (aldri en gjettet pris), med en `doi.org`-lenke til utgiveren når
 ingen åpen kopi er funnet.
 
+## «Om»-panelet — metodikk/transparens i selve UI-et (lagt til 2026-09-04)
+
+Gul/svart hatt-gjennomgang med Ulven som bruker fant ett konkret gap: alt over (kilder,
+hva verktøyet aldri gjør, domeneprofilen) sto kun i denne README-en — en bruker som
+eksplisitt krever «hard empiri» møter et black-box-inntrykk i UI-et selv om rangeringen
+faktisk er lesbar Python. `frontend/index.html` fikk en «ℹ️ Om»-knapp i toppbaren som
+åpner et modalvindu med samme innhold destillert: kilde-nåbarhet (live, via `/api/status`
+— nå med CORE lagt til der, ikke bare Europe PMC/OpenAlex), hva som ALDRI gjøres (ingen
+syntese, ingen fulltekst-mining, flagger/omordner men filtrerer aldri), domeneprofilen
+eksplisitt, og hvor dataen faktisk lever (lokal sqlite, ingen deling ennå).
+
+**Ekte rendrings-bug fanget og fikset under bygging** (chrome-devtools, ikke antatt
+riktig): modalens `hidden`-attributt ble overstyrt av `.om-overlay{ display:flex }` —
+klasse-selektoren og UA-stilarkets `[hidden]`-regel har lik spesifisitet, og siden
+forfatterstilen kommer sist i kaskaden vant `display:flex` uansett attributt. Fikset med
+en eksplisitt `.om-overlay[hidden]{ display:none }`-regel (høyere spesifisitet).
+Live-verifisert: skjult ved last, åpner med kilde-status synlig, lukkes med
+Escape/bakgrunnsklikk/×-knapp.
+
 ## Tips for domeneavgrensning
 
 Et bart `nephrocalcinosis`-søk treffer mest human-medisin (nyrestein hos mennesker
