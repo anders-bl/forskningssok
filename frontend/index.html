@@ -574,10 +574,10 @@ async function loadLignende(id) {
     $('#c-lignende').textContent = data.naboer.length;
     if (!data.naboer.length) { el.innerHTML = '<div class="hint">Ingen andre papirer i cachen ennå — søk opp flere for å bygge relasjoner.</div>'; state.lastNaboer=[]; return; }
     state.lastNaboer = data.naboer;
-    el.innerHTML = '<div class="hint" style="margin-bottom:.6rem">Semantiske naboer i cachen (bge-m3-avstand) — ikke hele Europe PMC.</div>' +
+    el.innerHTML = '<div class="hint" style="margin-bottom:.6rem">Semantiske naboer i cachen (bge-m3-avstand), rangert med fagmiljø/art FØR ren avstand — ikke hele Europe PMC.</div>' +
       data.naboer.map(n => `
         <div class="neighbor" data-id="${escapeHtml(n.id)}">
-          <div class="neighbor-row1"><span class="dist">${n.avstand.toFixed(3)}</span><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+          <div class="neighbor-row1">${n.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span class="dist">${n.avstand.toFixed(3)}</span><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
           <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
         </div>`).join('');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
@@ -598,7 +598,7 @@ async function loadGap(id) {
       <div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv${kildeMerknad}. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
       (data.gap.length ? data.gap.map(g => `
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
-          <div class="neighbor-row1"><span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${g.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+          <div class="neighbor-row1">${g.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${g.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
           <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
         </div>`).join('') : '<div class="hint">Ingen gap — alle cachede naboer er alt sitert av papiret.</div>');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
@@ -802,7 +802,7 @@ async function oppdaterRelevansOgOmfang(tekst) {
           <div class="neighbor" data-id="${escapeHtml(n.id)}">
             <div class="ambient-why">avstand ${n.avstand.toFixed(3)}</div>
             <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
-            <div class="neighbor-row1" style="margin-top:.3rem"><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+            <div class="neighbor-row1" style="margin-top:.3rem">${n.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
           </div>`).join('')
       : '<div class="hint">Ingen treff i cachen ennå for dette — ingen treff betyr ikke ingen forskning, bare at du ikke har søkt det opp i Les-fanen.</div>';
     $$('.neighbor', $('#ambient-list')).forEach(n => n.addEventListener('click', () => {

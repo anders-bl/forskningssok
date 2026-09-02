@@ -22,7 +22,7 @@ from pathlib import Path
 
 import sqlite_vec
 
-from domeneprofil import arts_naer_tekst
+from domeneprofil import arts_naer_tekst, domene_naer_tekst
 from schemas import PaperDossier
 
 HJEM = Path.home() / "prosjekter"
@@ -158,6 +158,25 @@ def hent_sitater(paper_id: str | None = None, *, db_path: Path = DB) -> list[dic
              "opprettet": r[4], "paper_tittel": r[5], "paper_doi": r[6]} for r in rows]
 
 
+def _naboer_fra_rader(rows, k: int) -> list[dict]:
+    """Bygger nabo-dicts og BÅNDER dem som ranking.py:_band gjør for hovedsøket
+    (domene_naer, arts_naer FØR avstand) — samme species-trap-motvekt Svart hatt-
+    gjennomgangen 2026-09-02 bygde for hovedsøket, tidligere kun FLAGGET (aldri sortert
+    om) her. Det ærlige gapet («Relevans-panelet filtrerer IKKE på domene_naer/art ennå»,
+    idébank #30) var at et menneske-CYP24A1-treff kunne ligge ØVERST i akkurat dette
+    panelet på ren embedding-avstand med bare et advarselsikon ved siden av — synlig,
+    men ikke mindre fremtredende. Banding fjerner INGEN kandidat (samme kontrakt som før,
+    kun rekkefølgen endres), og kandidatSETTET (de k/k+1 nærmeste i embedding-rommet) er
+    uendret — kun presentasjonsrekkefølgen innenfor det settet."""
+    naboer = [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
+               "kilde_url": r[5], "avstand": r[6],
+               "domene_naer": domene_naer_tekst(f"{r[7]} {r[2]}"),
+               "arts_naer": arts_naer_tekst(f"{r[1]} {r[8]}")}
+              for r in rows]
+    naboer.sort(key=lambda n: (not n["domene_naer"], not n["arts_naer"], n["avstand"]))
+    return naboer[:k]
+
+
 def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
     """Papirer i CACHEN (ikke hele Europe PMC) semantisk nærmest et gitt papir — den
     relasjonelle aksen Ulven ba om, innenfor det som faktisk er søkt/cachet så langt.
@@ -173,16 +192,12 @@ def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
         db.close()
         return []
     rows = db.execute("""
-        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.abstract
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.forfattere, p.abstract
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
         ORDER BY v.distance""", (qvec[0], k + 1, rad[0])).fetchall()
     db.close()
-    # arts_naer FLAGGER, sorterer aldri om — avstand er kontrakten dette panelet lover
-    # (se domeneprofil.py:arts_naer_tekst for hvorfor et menneske-funn kan havne her).
-    return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
-             "kilde_url": r[5], "avstand": r[6], "arts_naer": arts_naer_tekst(f"{r[1]} {r[7]}")}
-            for r in rows][:k]
+    return _naboer_fra_rader(rows, k)
 
 
 def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB) -> list[dict]:
@@ -201,14 +216,12 @@ def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB)
     embed_fn = embed_fn or _hus_embed()
     qvec = embed_fn([tekst])[0]
     rows = db.execute("""
-        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.abstract
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.forfattere, p.abstract
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ?
         ORDER BY v.distance""", (sqlite_vec.serialize_float32(qvec), k)).fetchall()
     db.close()
-    return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
-             "kilde_url": r[5], "avstand": r[6], "arts_naer": arts_naer_tekst(f"{r[1]} {r[7]}")}
-            for r in rows]
+    return _naboer_fra_rader(rows, k)
 
 
 def lagre_utkast(tittel: str, innhold: str, utkast_id: int | None = None,

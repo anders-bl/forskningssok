@@ -120,6 +120,18 @@ kan rangere høyt blant fiskefunn kun på tekstlig nærhet, observert live med e
 CYP24A1-funn. `arts_naer()` bånd papirer som nevner målarten (laks/oppdrettsfisk) over de
 som ikke gjør det — FLAGGER, filtrerer aldri bort. Se `domeneprofil.py:arts_naer_tekst`.
 
+Denne bandingen gjaldt opprinnelig kun hovedsøket (`ranking.py:ranger`) — `bank.py`s
+relasjonelle paneler (`--lignende`, «Lignende»-fanen, citation-gap, og FDR-038s ambient
+Relevans-panel i Skriv-modus) viste samme `arts_naer`-flagg, men i ren avstand-rekkefølge,
+så et artsfjernt treff kunne likevel ligge ØVERST med bare et advarselsikon ved siden av
+(idébank #30s navngitte gap). Lukket 2026-09-02 (natt): `bank.py:_naboer_fra_rader()`
+bånder nå (domene_naer, arts_naer, avstand) i alle fire paneler, samme prinsipp som
+hovedsøket — ingen kandidat fjernes, kun rekkefølgen endres. Frontend viser et ★ (samme
+symbol som hovedsøkets resultatliste) for domene_naer, slik at omordningen er synlig,
+ikke en stille overraskelse mot avstand-tallet ved siden av. Live-verifisert mot ekte
+cachede papirer i kjørende app (chrome-devtools): et CORE-treff med lavere avstand enn et
+Journal of Fish Diseases-treff ble korrekt vist ETTER det domene-nære treffet.
+
 ## Ikke gjort (bevisst, v1)
 
 - **Ekte evidensnivå-KLASSIFISERING** (en rangeringsakse: systematisk oversikt > studie >
@@ -159,12 +171,14 @@ Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke f
 
 ## Testet
 
-128/128 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+144/144 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
 README-en. Dekker: parsing av ekte Europe PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
 TTL-cache (ingen dobbelt HTTP-kall — `tilgang()` og `konsepter()` deler cache-nøkkel),
 kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503 live for alle
 tre kilder), fler-kilde-dedup (DOI/tittel på tvers av Europe PMC+CORE), ADR-013-banding
-(ferskt+domenenært+artsnært slår eldre+høyt-sitert+urelatert/annen-art), embed-cache er
+(ferskt+domenenært+artsnært slår eldre+høyt-sitert+urelatert/annen-art) — nå bevist i
+BÅDE hovedsøket OG `bank.py`s relasjonelle paneler (en artsfjern/domene-fjern nabo som er
+NÆRMERE i ren avstand plasseres likevel etter, se §Species-trap-motvekt), embed-cache er
 idempotent og skiller nær fra fjern (`--lignende`), citation-gap-matching (DOI- og
 tittel-match ekskluderer korrekt, whitespace/tegnsetting-robust, PMID-løse DOI-papirer
 faller korrekt til OpenAlex uten unødvendig 422), emnesøk-med-treff feilrapporteres aldri

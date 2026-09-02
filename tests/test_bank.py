@@ -31,10 +31,10 @@ def _fake_embed(texts: list[str]) -> list[list[float]]:
     return [_vec(vinkler.get(t[0], 0.0)) for t in texts]
 
 
-def _p(pid, tittel, abstract="noe abstract-tekst"):
-    return PaperDossier(pmid=pid, doi=None, tittel=tittel, forfattere="", tidsskrift="",
-                        aar=2026, abstract=abstract, siteringstall=0, open_access=False,
-                        kilde_url=f"https://example.org/{pid}")
+def _p(pid, tittel, abstract="noe abstract-tekst", forfattere="", tidsskrift=""):
+    return PaperDossier(pmid=pid, doi=None, tittel=tittel, forfattere=forfattere,
+                        tidsskrift=tidsskrift, aar=2026, abstract=abstract, siteringstall=0,
+                        open_access=False, kilde_url=f"https://example.org/{pid}")
 
 
 def test_papir_uten_abstract_embeddes_aldri(tmp_path):
@@ -62,9 +62,9 @@ def test_lignende_finner_naert_papir_ikke_fjernt(tmp_path):
     assert "Ctittel" not in titler[:1]  # 90° unna skal ikke slå 5°-naboen
 
 
-def test_lignende_flagger_arts_naer_uten_aa_filtrere_eller_sortere_om(tmp_path):
+def test_lignende_flagger_arts_naer_og_domene_naer_uten_aa_filtrere(tmp_path):
     """Species-trap-motvekt (Svart hatt-funn 2026-09-02) — se domeneprofil.py. Naboen
-    forblir i lista og på sin avstand-plass, kun annotert."""
+    forblir ALLTID i lista (ingen fjernes) — kun annotert og (se test under) omordnet."""
     db = tmp_path / "cache.db"
     lagre([_p("1", "Atittel om nephrocalcinosis"),
            _p("2", "Btittel om Atlantic salmon nephrocalcinosis"),
@@ -75,6 +75,42 @@ def test_lignende_flagger_arts_naer_uten_aa_filtrere_eller_sortere_om(tmp_path):
     naboer_by_id = {n["id"]: n for n in naboer}
     assert naboer_by_id["2"]["arts_naer"] is True
     assert naboer_by_id["3"]["arts_naer"] is False
+
+
+def test_lignende_bander_arts_naer_fremfor_ren_avstand(tmp_path):
+    """Idébank #30s navngitte gap («Relevans-panelet filtrerer IKKE på domene_naer/art
+    ennå») lukket: en artsFJERN nabo som er NÆRMERE i ren embedding-avstand enn en
+    artsNÆR nabo, skal likevel VISES ETTER den — samme banding som ranking.py:_band gir
+    hovedsøket, ikke lenger bare et advarselsikon ved siden av et treff som ligger øverst."""
+    def fake_embed(texts):
+        vinkler = [("Atittel", 0.0), ("Btittel", 3.0), ("Dtittel", 20.0)]
+        return [_vec(next(v for prefiks, v in vinkler if prefiks in t)) for t in texts]
+
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel"), _p("2", "Btittel uten artsterm"),
+           _p("3", "Dtittel om Atlantic salmon nephrocalcinosis")],
+          embed_fn=fake_embed, db_path=db)
+    naboer = lignende("1", k=2, db_path=db)
+    assert [n["id"] for n in naboer] == ["3", "2"]  # artsnær FØRST, selv om lenger unna
+    assert naboer[0]["avstand"] > naboer[1]["avstand"]  # avstanden viser ærlig at "2" var nærmest
+
+
+def test_lignende_bander_domene_naer_fremfor_ren_avstand(tmp_path):
+    """Samme banding, andre halvparten av paret (domene_naer) — norsk fagmiljø/
+    fagtidsskrift rangeres over en nærmere, domene-fjern nabo."""
+    def fake_embed(texts):
+        vinkler = [("Atittel", 0.0), ("Btittel", 3.0), ("Dtittel", 20.0)]
+        return [_vec(next(v for prefiks, v in vinkler if prefiks in t)) for t in texts]
+
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel"),
+           _p("2", "Btittel", tidsskrift="et helt annet tidsskrift"),
+           _p("3", "Dtittel", tidsskrift="Journal of Fish Diseases")],
+          embed_fn=fake_embed, db_path=db)
+    naboer = lignende("1", k=2, db_path=db)
+    assert [n["id"] for n in naboer] == ["3", "2"]
+    assert naboer[0]["domene_naer"] is True
+    assert naboer[1]["domene_naer"] is False
 
 
 def test_ukjent_id_gir_aerlig_tom_liste_ikke_feil(tmp_path):
@@ -104,6 +140,23 @@ def test_lignende_tekst_flagger_arts_naer(tmp_path):
     naboer_by_id = {n["id"]: n for n in naboer}
     assert naboer_by_id["1"]["arts_naer"] is True
     assert naboer_by_id["2"]["arts_naer"] is False
+
+
+def test_lignende_tekst_bander_arts_naer_fremfor_ren_avstand(tmp_path):
+    """Samme idébank #30-fiks som lignende(): ambient-modusens Relevans-panel (FDR-038)
+    er nettopp der Skriv-modus møter species-trapen live — en artsnær nabo skal rangeres
+    over en artsfjern nabo som er nærmere i ren embedding-avstand, ikke bare flagges."""
+    def fake_embed(texts):
+        vinkler = [("En lang nok tekst", 0.0), ("Btittel", 3.0), ("Dtittel", 20.0)]
+        return [_vec(next(v for prefiks, v in vinkler if prefiks in t)) for t in texts]
+
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Btittel uten artsterm"),
+           _p("2", "Dtittel om Atlantic salmon nephrocalcinosis")],
+          embed_fn=fake_embed, db_path=db)
+    naboer = lignende_tekst("En lang nok tekst til å embedde noe fornuftig her", k=2,
+                            embed_fn=fake_embed, db_path=db)
+    assert [n["id"] for n in naboer] == ["2", "1"]
 
 
 def test_lignende_tekst_for_kort_gir_aerlig_tom_liste(tmp_path):
