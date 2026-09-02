@@ -17,6 +17,7 @@ kontrakt multisok bruker — ingen ny modell, ingen nytt embedding-rom.
 """
 import sqlite3
 import sys
+import time
 from pathlib import Path
 
 import sqlite_vec
@@ -54,6 +55,9 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     db.execute("""CREATE TABLE IF NOT EXISTS sitater(
         id INTEGER PRIMARY KEY, paper_id TEXT NOT NULL, tekst TEXT NOT NULL,
         kommentar TEXT, opprettet REAL NOT NULL)""")
+    db.execute("""CREATE TABLE IF NOT EXISTS utkast(
+        id INTEGER PRIMARY KEY, tittel TEXT NOT NULL, innhold TEXT NOT NULL,
+        opprettet REAL NOT NULL, oppdatert REAL NOT NULL)""")
     return db
 
 
@@ -103,7 +107,6 @@ def lagre_sitat(paper_id: str, tekst: str, kommentar: str = "", *, db_path: Path
     """Lagrer en sitert seksjon (+ valgfri kommentar) direkte fra leseflaten. Krever at
     papiret alt er cachet (paper_id må finnes i `papers`) — sitering av noe verktøyet
     ikke selv har hentet ville vært en gjettet kildehenvisning."""
-    import time
     if not hent(paper_id, db_path=db_path):
         raise ValueError(f"{paper_id} er ikke cachet — søk det opp først")
     db = _db(db_path)
@@ -167,3 +170,68 @@ def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
     db.close()
     return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
              "kilde_url": r[5], "avstand": r[6]} for r in rows][:k]
+
+
+def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB) -> list[dict]:
+    """FDR-038 ambient-modus: vilkårlig tekst (det Ulven SKRIVER, ikke et cachet papirs id)
+    → nærmeste papirer i cachen. Samme sqlite-vec-spørring som lignende(), men søkevektoren
+    beregnes on-the-fly fra teksten selv. Ærlig tom liste for for kort tekst (< 20 tegn —
+    et par ord embedder til støy, ikke en meningsfull retning) eller tom cache, ALDRI en
+    feil — «tomt korpus → stille, ærlig negativ» er FDR-038s eget suksesskriterium."""
+    tekst = (tekst or "").strip()
+    if len(tekst) < 20:
+        return []
+    db = _db(db_path)
+    if db.execute("SELECT count(*) FROM papers").fetchone()[0] == 0:
+        db.close()
+        return []
+    embed_fn = embed_fn or _hus_embed()
+    qvec = embed_fn([tekst])[0]
+    rows = db.execute("""
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance
+        FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
+        WHERE v.embedding MATCH ? AND K = ?
+        ORDER BY v.distance""", (sqlite_vec.serialize_float32(qvec), k)).fetchall()
+    db.close()
+    return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
+             "kilde_url": r[5], "avstand": r[6]} for r in rows]
+
+
+def lagre_utkast(tittel: str, innhold: str, utkast_id: int | None = None,
+                  *, db_path: Path = DB) -> dict:
+    """Oppretter eller oppdaterer ett utkast (Skriv-modus). Idempotent på utkast_id — samme
+    id oppdaterer i stedet for å duplisere, slik en autolagring skal virke."""
+    db = _db(db_path)
+    ts = time.time()
+    if utkast_id is not None and db.execute(
+            "SELECT 1 FROM utkast WHERE id=?", (utkast_id,)).fetchone():
+        db.execute("UPDATE utkast SET tittel=?, innhold=?, oppdatert=? WHERE id=?",
+                   (tittel, innhold, ts, utkast_id))
+    else:
+        cur = db.execute(
+            "INSERT INTO utkast(tittel, innhold, opprettet, oppdatert) VALUES (?,?,?,?)",
+            (tittel, innhold, ts, ts))
+        utkast_id = cur.lastrowid
+    db.commit()
+    db.close()
+    return {"id": utkast_id, "tittel": tittel, "innhold": innhold, "oppdatert": ts}
+
+
+def hent_utkast(utkast_id: int, *, db_path: Path = DB) -> dict | None:
+    db = _db(db_path)
+    rad = db.execute(
+        "SELECT id, tittel, innhold, opprettet, oppdatert FROM utkast WHERE id=?",
+        (utkast_id,)).fetchone()
+    db.close()
+    if not rad:
+        return None
+    return {"id": rad[0], "tittel": rad[1], "innhold": rad[2], "opprettet": rad[3], "oppdatert": rad[4]}
+
+
+def liste_utkast(*, db_path: Path = DB) -> list[dict]:
+    """Sist oppdatert først — samme rekkefølge som en «nylig brukt»-liste bør ha."""
+    db = _db(db_path)
+    rows = db.execute(
+        "SELECT id, tittel, opprettet, oppdatert FROM utkast ORDER BY oppdatert DESC").fetchall()
+    db.close()
+    return [{"id": r[0], "tittel": r[1], "opprettet": r[2], "oppdatert": r[3]} for r in rows]

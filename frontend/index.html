@@ -51,9 +51,34 @@ button{ font:inherit; }
 }
 .wordmark{ font-weight:700; font-size:.9375rem; }
 .wordmark small{ font-weight:400; color:var(--muted); margin-left:.4rem; }
+.modeswitch{ display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:2px; gap:2px; }
+.modeswitch button{ font-size:.75rem; font-weight:600; border:0; background:none; color:var(--muted); padding:.3rem .8rem; border-radius:99px; cursor:pointer; }
+.modeswitch button.active{ background:var(--surface); color:var(--accent); box-shadow:var(--shadow); }
 .topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.9rem; }
 
 .shell{ flex:1; min-height:0; display:grid; grid-template-columns:320px 1fr 340px; }
+.shell[hidden]{ display:none; }
+
+/* ---------- Skriv-modus (FDR-038: fast panel, aldri inline, speil ikke orakel) ---------- */
+.skriv-head{ flex:none; padding:.9rem 2rem .6rem; border-bottom:1px solid var(--border); }
+.skriv-tittel{ font-size:1.125rem; font-weight:700; border:0; background:none; color:var(--text); width:100%; margin-bottom:.3rem; }
+.skriv-meta{ font-size:.6875rem; color:var(--muted); }
+.skriv-editor{ flex:1; padding:1.1rem 2rem 3rem; max-width:680px; font-size:1rem; line-height:1.7; color:var(--text); outline:none; overflow-y:auto; }
+.skriv-editor:empty::before{ content:attr(data-placeholder); color:var(--muted); }
+.ambient-status{ display:flex; align-items:center; gap:6px; font-size:.6875rem; color:var(--muted); margin-bottom:.6rem; padding-bottom:.5rem; border-bottom:1px solid var(--border); }
+.ambient-status i{ width:6px; height:6px; border-radius:50%; background:var(--accent); flex:none; }
+.ambient-status.venter i{ background:var(--muted); }
+.ambient-why{ font-size:.625rem; font-weight:700; color:var(--accent); background:var(--surface-2); border-radius:6px; padding:.15rem .45rem; display:inline-block; margin-bottom:.3rem; }
+.axis-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:1rem; }
+.axis-chip{ font-size:.65rem; font-weight:600; border-radius:99px; padding:.28rem .6rem; border:1px solid var(--border); color:var(--muted); display:flex; align-items:center; gap:5px; }
+.axis-chip .bar{ width:22px; height:4px; border-radius:2px; background:var(--border); overflow:hidden; }
+.axis-chip .bar i{ display:block; height:100%; background:var(--accent); }
+.axis-chip.thin{ border-color:var(--warn); color:var(--warn); }
+.draft-item{ padding:.65rem .6rem; border-radius:8px; cursor:pointer; border:1px solid transparent; text-align:left; width:100%; background:none; display:block; }
+.draft-item:hover{ background:var(--surface-2); }
+.draft-item.active{ background:var(--surface-2); border-color:var(--accent); }
+.draft-item .t{ font-size:.8125rem; font-weight:600; }
+.draft-item .m{ font-size:.6875rem; color:var(--muted); }
 .pane{ min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
 .pane + .pane{ border-left:1px solid var(--border); }
 .pane-scroll{ flex:1; overflow-y:auto; }
@@ -138,12 +163,16 @@ svg text{ font-family:system-ui,sans-serif; }
 
 <div class="topbar">
   <div class="wordmark">Litteratursøk <small>av Lauvasdata · forskningssok</small></div>
+  <div class="modeswitch" id="modeswitch">
+    <button class="active" data-mode="les">Les</button>
+    <button data-mode="skriv">Skriv</button>
+  </div>
   <div class="topbar-meta">
     <span id="cache-meta">bank.db · —</span>
   </div>
 </div>
 
-<div class="shell">
+<div class="shell" id="shell-les">
   <div class="pane">
     <div class="pane-head">
       <form id="search-form">
@@ -180,6 +209,45 @@ svg text{ font-family:system-ui,sans-serif; }
       <div class="tabpanel" id="tab-kart"><div class="hint">Åpne et papir for å se relasjonskartet.</div></div>
       <div class="tabpanel" id="tab-gap"><div class="hint">Åpne et papir for å kjøre citation-gap-testen.</div></div>
       <div class="tabpanel" id="tab-notater"><div class="hint">Ingen sitater lagret ennå. Merk tekst i leseflaten og trykk «Sitér».</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SKRIV-MODUS: FDR-038 ambient-modus — fast panel, aldri inline, speil ikke orakel. -->
+<div class="shell" id="shell-skriv" hidden>
+  <div class="pane">
+    <div class="pane-head">
+      <button id="btn-nytt-utkast" style="border:1px solid var(--border); background:var(--surface-2); color:var(--text); border-radius:8px; padding:.5rem; font-size:.75rem; font-weight:600; cursor:pointer;">+ Nytt utkast</button>
+    </div>
+    <div class="pane-scroll"><div id="draft-list" style="padding:.15rem .5rem 1rem;"></div></div>
+  </div>
+
+  <div class="pane">
+    <div class="skriv-head">
+      <input class="skriv-tittel" id="skriv-tittel" placeholder="Uten tittel">
+      <div class="skriv-meta">Kun lokalt · relevans-panelet til høyre oppdateres når du stopper å skrive</div>
+    </div>
+    <div class="pane-scroll">
+      <div class="skriv-editor" id="skriv-editor" contenteditable="true" data-placeholder="Skriv her…"></div>
+    </div>
+  </div>
+
+  <div class="pane">
+    <div class="tabs">
+      <button class="tab active" data-tab-skriv="relevans">Relevans</button>
+      <button class="tab" data-tab-skriv="omfang">Omfang</button>
+    </div>
+    <div class="pane-scroll">
+      <div class="tabpanel active" id="tab-relevans">
+        <div class="ambient-status venter" id="ambient-status"><i></i><span>skriv noe for å se relevante papirer</span></div>
+        <div id="ambient-list"></div>
+        <div class="hint">Speil, ikke orakel: utdrag fra det du alt har cachet, aldri en generert påstand. Samme prinsipp som Fars ambient-modus (FDR-038).</div>
+      </div>
+      <div class="tabpanel" id="tab-omfang">
+        <div class="hint" style="margin-bottom:.7rem">Hvor mye av det du har skrevet berører hver akse — til scoping, ikke en fasit.</div>
+        <div class="axis-row" id="axis-row"></div>
+        <div class="hint">Tynn dekning betyr at du ikke har skrevet/søkt om det ennå — ikke at forskningen mangler.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -284,12 +352,16 @@ async function openPaper(id) {
   $('#tab-kart').innerHTML = `<div class="hint">Laster…</div>`;
 }
 
-// ---------- Fanevalg ----------
+// ---------- Fanevalg (Les) ----------
+// Bevisst begrenset til #shell-les .tab — uten scoping kolliderer denne med Skriv-
+// modusens egne faner (delt .tab/.tabpanel-klasse). Fanget som ekte bug under bygging
+// av Fjordlys-mockupen samme kveld (feil id-prefiks kastet en stille TypeError og lot
+// et panel stå tomt) — scopet fra start her i stedet for å gjenta feilen.
 let loadGapLazy = false;
-$$('.tab').forEach(t => t.addEventListener('click', () => {
+$$('#shell-les .tab').forEach(t => t.addEventListener('click', () => {
   toolbar.hidden = true;
-  $$('.tab').forEach(x => x.classList.remove('active'));
-  $$('.tabpanel').forEach(x => x.classList.remove('active'));
+  $$('#shell-les .tab').forEach(x => x.classList.remove('active'));
+  $$('#shell-les .tabpanel').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   $('#tab-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'gap' && loadGapLazy && state.paperId) { loadGapLazy = false; loadGap(state.paperId); }
@@ -409,6 +481,113 @@ $('#btn-siter').addEventListener('click', async () => {
     $('.tab[data-tab="notater"]').classList.add('active'); $('#tab-notater').classList.add('active');
   } catch (err) { alert('Kunne ikke lagre: ' + err.message); }
 });
+
+// ---------- Skriv-modus (FDR-038 ambient-modus) ----------
+const skrivState = { utkastId: null, debounceTimer: null };
+
+$$('#modeswitch button').forEach(b => b.addEventListener('click', () => {
+  $$('#modeswitch button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  $('#shell-les').hidden = b.dataset.mode !== 'les';
+  $('#shell-skriv').hidden = b.dataset.mode !== 'skriv';
+  if (b.dataset.mode === 'skriv') lastDraftList();
+}));
+
+$$('#shell-skriv .tab').forEach(t => t.addEventListener('click', () => {
+  $$('#shell-skriv .tab').forEach(x => x.classList.remove('active'));
+  $$('#shell-skriv .tabpanel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  $('#tab-' + t.dataset.tabSkriv).classList.add('active');
+}));
+
+async function lastDraftList() {
+  const liste = await api('/api/utkast').catch(() => []);
+  const el = $('#draft-list');
+  if (!liste.length) { el.innerHTML = '<div class="hint">Ingen utkast ennå — trykk «+ Nytt utkast».</div>'; return; }
+  el.innerHTML = liste.map(u => `
+    <button class="draft-item${u.id === skrivState.utkastId ? ' active' : ''}" data-id="${u.id}">
+      <div class="t">${escapeHtml(u.tittel)}</div>
+      <div class="m">${new Date(u.oppdatert * 1000).toLocaleString('no-NO', {dateStyle:'short', timeStyle:'short'})}</div>
+    </button>`).join('');
+  $$('.draft-item', el).forEach(b => b.addEventListener('click', () => apneUtkast(Number(b.dataset.id))));
+}
+
+async function apneUtkast(id) {
+  const u = await api(`/api/utkast/${id}`).catch(() => null);
+  if (!u) return;
+  skrivState.utkastId = u.id;
+  $('#skriv-tittel').value = u.tittel === 'Uten tittel' ? '' : u.tittel;
+  $('#skriv-editor').textContent = u.innhold;
+  lastDraftList();
+  oppdaterRelevansOgOmfang(u.innhold);
+}
+
+$('#btn-nytt-utkast').addEventListener('click', async () => {
+  const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tittel:'', innhold:''})});
+  skrivState.utkastId = u.id;
+  $('#skriv-tittel').value = '';
+  $('#skriv-editor').textContent = '';
+  $('#ambient-status').className = 'ambient-status venter';
+  $('#ambient-status').innerHTML = '<i></i><span>skriv noe for å se relevante papirer</span>';
+  $('#ambient-list').innerHTML = '';
+  $('#axis-row').innerHTML = '';
+  lastDraftList();
+});
+
+function lagreUtkastDebounced() {
+  clearTimeout(skrivState.debounceTimer);
+  const tittel = $('#skriv-tittel').value;
+  const innhold = $('#skriv-editor').textContent;
+  skrivState.debounceTimer = setTimeout(async () => {
+    if (!skrivState.utkastId) {
+      const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tittel, innhold})});
+      skrivState.utkastId = u.id;
+    } else {
+      await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id: skrivState.utkastId, tittel, innhold})});
+    }
+    lastDraftList();
+    oppdaterRelevansOgOmfang(innhold);
+  }, 1200); // debounce ved PAUSE, ikke tastetrykk — FDR-038s eget krav
+}
+$('#skriv-tittel').addEventListener('input', lagreUtkastDebounced);
+$('#skriv-editor').addEventListener('input', lagreUtkastDebounced);
+
+async function oppdaterRelevansOgOmfang(tekst) {
+  const status = $('#ambient-status');
+  if (!tekst || tekst.trim().length < 20) {
+    status.className = 'ambient-status venter';
+    status.innerHTML = '<i></i><span>skriv litt til — for kort tekst å finne relevans i ennå</span>';
+    $('#ambient-list').innerHTML = '';
+    $('#axis-row').innerHTML = '';
+    return;
+  }
+  status.className = 'ambient-status';
+  status.innerHTML = '<i></i><span>oppdatert nå — pauset skriving</span>';
+  try {
+    const [rel, omf] = await Promise.all([
+      api(`/api/relevans?tekst=${encodeURIComponent(tekst)}`),
+      api(`/api/omfang?tekst=${encodeURIComponent(tekst)}`),
+    ]);
+    $('#ambient-list').innerHTML = rel.naboer.length
+      ? rel.naboer.map(n => `
+          <div class="neighbor" data-id="${escapeHtml(n.id)}">
+            <div class="ambient-why">avstand ${n.avstand.toFixed(3)}</div>
+            <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
+            <div class="neighbor-row1" style="margin-top:.3rem"><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span></div>
+          </div>`).join('')
+      : '<div class="hint">Ingen treff i cachen ennå for dette — ingen treff betyr ikke ingen forskning, bare at du ikke har søkt det opp i Les-fanen.</div>';
+    $$('.neighbor', $('#ambient-list')).forEach(n => n.addEventListener('click', () => {
+      $('[data-mode="les"]').click();
+      openPaper(n.dataset.id);
+    }));
+
+    $('#axis-row').innerHTML = Object.entries(omf.akser).map(([akse, verdi]) => `
+      <span class="axis-chip${verdi < 0.3 ? ' thin' : ''}">${escapeHtml(akse)}<span class="bar"><i style="width:${Math.round(verdi*100)}%"></i></span></span>`).join('');
+  } catch (err) {
+    status.innerHTML = `<i></i><span>Feil: ${escapeHtml(err.message)}</span>`;
+  }
+}
 
 // ---------- Første last ----------
 api('/api/status').then(s => $('#cache-meta').textContent = `bank.db · ${s.papirer_cachet} papirer cachet`).catch(()=>{});

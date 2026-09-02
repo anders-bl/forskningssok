@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import bank
+import scoping
 from adapters import openalex
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
@@ -155,6 +156,45 @@ def api_sitater_oppdater(sitat_id: int, body: dict):
     if not bank.oppdater_sitat(sitat_id, body.get("kommentar", "")):
         raise HTTPException(404, "sitat finnes ikke")
     return {"ok": True}
+
+
+@app.get("/api/utkast")
+def api_utkast_liste():
+    return bank.liste_utkast()
+
+
+@app.get("/api/utkast/{utkast_id}")
+def api_utkast_hent(utkast_id: int):
+    u = bank.hent_utkast(utkast_id)
+    if not u:
+        raise HTTPException(404, "utkast finnes ikke")
+    return u
+
+
+@app.post("/api/utkast")
+def api_utkast_lagre(body: dict):
+    """Oppretter (uten «id») eller oppdaterer (med «id») — samme endepunkt, samme
+    autolagre-mønster som sitater. Tom tittel degraderer til «Uten tittel», aldri en feil
+    for en gyldig, bare unavngitt, tekst."""
+    innhold = body.get("innhold", "")
+    tittel = (body.get("tittel") or "").strip() or "Uten tittel"
+    return bank.lagre_utkast(tittel, innhold, body.get("id"))
+
+
+@app.get("/api/relevans")
+def api_relevans(tekst: str, k: int = 4):
+    """FDR-038 ambient-modus: teksten Ulven skriver akkurat nå → nærmeste papirer i
+    cachen. For kort tekst eller tom cache → ærlig tom liste (bank.lignende_tekst()
+    sitt eget kontraktsvar), ALDRI en feil — en «gir ingenting»-respons her SKAL se ut
+    som stillhet, ikke en 4xx/5xx."""
+    return {"naboer": bank.lignende_tekst(tekst, k=k)}
+
+
+@app.get("/api/omfang")
+def api_omfang(tekst: str):
+    """Akse-dekning for Omfang-fanen — se scoping.py for hvorfor dette er en bevisst
+    enkel nøkkelord-heuristikk, ikke en semantisk klassifikator."""
+    return {"akser": scoping.akse_dekning(tekst)}
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
