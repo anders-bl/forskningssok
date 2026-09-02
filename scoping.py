@@ -10,17 +10,11 @@ som det, ikke fremstilt som målt presisjon.
 
 Ærlighets-prinsippet gjelder også her: LAV dekning betyr «du har ikke skrevet/søkt om
 dette ennå», ALDRI «forskningen mangler» — samme distinksjon citation_gap.py insisterer på.
-"""
-AKSER: dict[str, tuple[str, ...]] = {
-    "Faser": ("stage", "phase", "progression", "fase", "stadium", "utvikling"),
-    "Miljøfaktorer": ("co2", "co₂", "hypercapnia", "hyperkapni", "temperature", "temperatur",
-                       "salinity", "salinitet", "environment", "miljø", "vannkjemi", "tetthet"),
-    "Regenerasjon": ("seawater transfer", "smolt", "sjøsetting", "regenerat", "recovery",
-                      "post-smolt", "ferskvann"),
-    "Lever": ("liver", "hepat", "lever"),
-    "Ultralyd-validering": ("ultrasound", "ultrasonograph", "echograph", "ultralyd",
-                             "imaging", "diagnos", "skann"),
-}
+
+Aksene selv bor i domeneprofil.py (samlet med ranking.py sin domeneliste 2026-09-02,
+Svart hatt-funn — se den fila for hvorfor)."""
+from domeneprofil import AKSER
+
 _FULL_VED_ANTALL = 2  # 2+ distinkte nøkkelord i teksten = full stolpe — ukalibrert, se moduldocstring
 
 

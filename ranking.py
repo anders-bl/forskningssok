@@ -10,26 +10,20 @@ resten FØRST, og INNENFOR et bånd sorteres på (ferskhet, siteringer) — ikke
 alene, som ville begravd et 2026-funn under et 2015-funn med ti års forsprang i tid til
 å akkumulere sitater.
 """
+from domeneprofil import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer_tekst
 from rank import rank
 from schemas import PaperDossier
 
-NORSKE_FAGMILJOER = (
-    "havforskningsinstitutt", "veterinærinstitutt", "veterinaerinstitutt",
-    "nmbu", "norwegian university of life sciences", "nofima", "pharmaq",
-)
-FAGTIDSSKRIFTER = (
-    "journal of fish diseases", "aquaculture", "diseases of aquatic organisms",
-    "journal of fish biology", "fish and shellfish immunology",
-)
+__all__ = ["FAGTIDSSKRIFTER", "NORSKE_FAGMILJOER", "domene_naer", "ranger"]
 
 
 def domene_naer(p: PaperDossier) -> bool:
     """Norske/nordiske oppdretts-fagmiljøer + kjerne-fagtidsskrifter vektes opp — ikke
     fordi de siteres mest generisk, men fordi de er nærmest Ulvens faktiske
-    driftskontekst (norsk lakseoppdrett). Substreng-match mot forfatter-affiliasjon-
-    strengen og tidsskriftnavnet Europe PMC allerede returnerer — ingen ny henting."""
-    tekst = f"{p.forfattere} {p.tidsskrift}".lower()
-    return any(m in tekst for m in NORSKE_FAGMILJOER + FAGTIDSSKRIFTER)
+    driftskontekst (norsk lakseoppdrett, se domeneprofil.py). Substreng-match mot
+    forfatter-affiliasjon-strengen og tidsskriftnavnet Europe PMC allerede returnerer —
+    ingen ny henting."""
+    return domene_naer_tekst(f"{p.forfattere} {p.tidsskrift}")
 
 
 def _band(p: PaperDossier) -> tuple:
