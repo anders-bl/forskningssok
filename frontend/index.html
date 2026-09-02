@@ -95,6 +95,15 @@ button{ font:inherit; }
 }
 #search-form button:hover{ background:var(--accent-lt); }
 .search-meta{ font-size:.6875rem; color:var(--muted); display:flex; justify-content:space-between; }
+.utforsk-forslag{
+  border:1px dashed var(--accent); background:var(--surface-2); color:var(--accent);
+  border-radius:99px; padding:.3rem .7rem; font-size:.6875rem; font-weight:600; cursor:pointer;
+  margin-top:.5rem; display:none; align-items:center; gap:.3rem; width:fit-content;
+}
+.utforsk-forslag.vis{ display:flex; }
+.cache-echo{ padding:.5rem .5rem .2rem; }
+.cache-echo-tittel{ font-size:.6875rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:.4rem; padding:0 .1rem; }
+.cache-echo .result{ background:var(--surface-2); }
 
 .result-list{ padding:.15rem .5rem 1rem; display:flex; flex-direction:column; gap:.15rem; }
 .result{
@@ -183,8 +192,12 @@ svg text{ font-family:system-ui,sans-serif; }
         <button type="submit">Søk</button>
       </form>
       <div class="search-meta"><span id="result-count"></span><span id="result-status"></span></div>
+      <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
     </div>
-    <div class="pane-scroll"><div class="result-list" id="result-list"></div></div>
+    <div class="pane-scroll">
+      <div class="cache-echo" id="cache-echo" hidden></div>
+      <div class="result-list" id="result-list"></div>
+    </div>
   </div>
 
   <div class="pane">
@@ -276,13 +289,17 @@ function fmtCite(p) {
   return `${forfatter} et al. (${p.aar || '?'}). ${p.tidsskrift}.${p.doi ? ' doi:' + p.doi : ''}`;
 }
 
-// ---------- Søk ----------
+// ---------- Søk — tre modi fra ETT søk (søk-doktrinen: Oppslag+Oppdagelse alltid
+// sammen — begge billige; Utforskning tilbys som ett synlig klikk, aldri automatisk
+// (henter+embedder 20 nye dokumenter, for tungt å kjøre på hvert tastetrykk-søk). ----------
 $('#search-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const q = $('#search-input').value.trim();
   if (!q) return;
   $('#result-status').textContent = 'søker…';
   $('#result-list').innerHTML = '';
+  $('#cache-echo').hidden = true;
+  $('#utforsk-forslag').classList.remove('vis');
   try {
     const data = await api(`/api/sok?q=${encodeURIComponent(q)}&n=20`);
     $('#result-status').textContent = '';
@@ -290,10 +307,47 @@ $('#search-form').addEventListener('submit', async (e) => {
     for (const p of data.papirer) state.papers[p.id] = p;
     renderResults(data.papirer, data.eksakt_id);
     if (data.papirer.length) openPaper(data.papirer[0].id);
+
+    // Oppdagelse: samme spørring, mot DIN cache — vis kun det som IKKE alt er i
+    // Oppslag-lista (ellers er det bare den samme lista vist to ganger).
+    visCacheEko(q, data.papirer.map(p => p.id));
+
+    // Utforskning: foreslå topphitets fagfelt som ett synlig, men ikke-automatisk, klikk.
+    if (data.papirer.length) foreslaUtforskning(data.papirer[0].id);
   } catch (err) {
     $('#result-status').textContent = 'Feil: ' + err.message;
   }
 });
+
+async function visCacheEko(q, alleredeViste) {
+  const el = $('#cache-echo');
+  try {
+    const rel = await api(`/api/relevans?tekst=${encodeURIComponent(q)}&k=6`);
+    const nye = rel.naboer.filter(n => !alleredeViste.includes(n.id));
+    if (!nye.length) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<div class="cache-echo-tittel">Fra din cache — samme betydning, andre ord</div>' +
+      nye.slice(0, 3).map(n => `
+        <button class="result" data-id="${escapeHtml(n.id)}">
+          <div class="result-row1"><span>${n.aar||'?'} · avstand ${n.avstand.toFixed(3)}</span></div>
+          <div class="result-title">${escapeHtml(n.tittel)}</div>
+          <div class="result-journal">${escapeHtml(n.tidsskrift||'')}</div>
+        </button>`).join('');
+    $$('.result', el).forEach(b => b.addEventListener('click', () => openPaper(b.dataset.id)));
+  } catch { el.hidden = true; } // Oppdagelse er en bonus-linse, aldri blokkerende for selve søket
+}
+
+async function foreslaUtforskning(toppId) {
+  const knapp = $('#utforsk-forslag');
+  try {
+    const d = await api(`/api/emner/${encodeURIComponent(toppId)}`);
+    if (!d.emner.length) return;
+    const emne = d.emner[0];
+    $('#utforsk-forslag-navn').textContent = `Utforsk feltet: ${emne.navn}`;
+    knapp.onclick = () => utforskEmne(emne.id, emne.navn);
+    knapp.classList.add('vis');
+  } catch { /* ingen forslag er en ærlig ikke-feil — knappen forblir skjult */ }
+}
 
 function renderResults(papirer, eksaktId) {
   const list = $('#result-list');
