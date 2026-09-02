@@ -79,6 +79,38 @@ def test_sitat_slett_ukjent_gir_404():
     assert r.status_code == 404
 
 
+def test_rapport_kildesamling_returnerer_markdown():
+    papir = {"id": "1", "tittel": "T", "forfattere": "", "tidsskrift": "", "aar": 2026,
+             "doi": None, "abstract": "", "siteringstall": 0, "open_access": False, "kilde_url": "u"}
+    with patch("api.bank.hent", return_value=papir):
+        r = client.get("/api/rapport/kildesamling", params={"ids": "1"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/markdown")
+    assert "# Kildesamling" in r.text
+
+
+def test_rapport_kildesamling_ukjente_id_er_droppes_men_kjente_beholdes():
+    def _hent(pid):
+        return None if pid == "ukjent" else {"id": pid, "tittel": "T", "forfattere": "",
+            "tidsskrift": "", "aar": 2026, "doi": None, "abstract": "", "siteringstall": 0,
+            "open_access": False, "kilde_url": "u"}
+    with patch("api.bank.hent", side_effect=_hent):
+        r = client.get("/api/rapport/kildesamling", params={"ids": "1,ukjent"})
+    assert r.status_code == 200
+    assert "T" in r.text
+
+
+def test_rapport_kildesamling_ingen_gyldige_id_gir_404():
+    with patch("api.bank.hent", return_value=None):
+        r = client.get("/api/rapport/kildesamling", params={"ids": "ukjent"})
+    assert r.status_code == 404
+
+
+def test_rapport_kildesamling_tom_ids_gir_400():
+    r = client.get("/api/rapport/kildesamling", params={"ids": ""})
+    assert r.status_code == 400
+
+
 def test_omfang_returnerer_akser():
     akser = {"Lever": 1.0, "Faser": 0.0}
     with patch("api.scoping.akse_dekning", return_value=akser):

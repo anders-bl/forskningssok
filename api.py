@@ -11,10 +11,11 @@ from dataclasses import asdict
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 import bank
+import rapport
 import scoping
 from adapters import openalex
 from adapters.europe_pmc import DB as CACHE_DB
@@ -218,6 +219,22 @@ def api_relevans(tekst: str, k: int = 4):
     sitt eget kontraktsvar), ALDRI en feil — en «gir ingenting»-respons her SKAL se ut
     som stillhet, ikke en 4xx/5xx."""
     return {"naboer": bank.lignende_tekst(tekst, k=k)}
+
+
+@app.get("/api/rapport/kildesamling")
+def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling"):
+    """Markdown-eksport av et papirutvalg — se rapport.py. `ids` = kommaseparerte
+    cache-id-er (typisk et helt søkeresultat, sendt fra frontend). Ukjente/ikke-cachede
+    id-er droppes ærlig (samme prinsipp som ellers), ALDRI en feil for én manglende blant
+    mange gyldige — kun tom hvis INGEN av dem var cachet."""
+    id_liste = [i.strip() for i in ids.split(",") if i.strip()]
+    if not id_liste:
+        raise HTTPException(400, "ingen id-er oppgitt")
+    papirer = [p for p in (bank.hent(i) for i in id_liste) if p]
+    if not papirer:
+        raise HTTPException(404, "ingen av de oppgitte id-ene er cachet")
+    md = rapport.kildesamling(papirer, tittel=tittel)
+    return PlainTextResponse(md, media_type="text/markdown; charset=utf-8")
 
 
 @app.get("/api/omfang")
