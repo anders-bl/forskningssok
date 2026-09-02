@@ -1,0 +1,15 @@
+# ═══════════════════════════════════════════════════════════════
+#  HUS-STANDARD Python-versjon — Bruk samme versjon i alle repoer
+# ═══════════════════════════════════════════════════════════════
+#
+#  Bruk:
+#    1. Kopier denne fila til <repo>/.python-version
+#    2. Kjør: pyenv install (hvis versjonen mangler)
+#    3. Kjør: pyenv local (låser versjonen til dette repoet)
+#
+#  Anbefalt versjon: 3.12.0 (LTS, god kompatibilitet)
+#  Unngå: 3.14+ (for ny, mange pakker mangler støtte)
+#
+# ═══════════════════════════════════════════════════════════════
+
+3.12.0
