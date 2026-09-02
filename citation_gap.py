@@ -23,46 +23,50 @@ RAPPORTERER hvilken kilde som faktisk svarte (transparens-prinsippet, idébank #
 noe MANGLER i litteraturen — det er en kandidat for et menneske (Ulven/Anders) å vurdere.
 Verktøyet leverer listen, gjetter aldri selv om noe «burde» vært sitert.
 """
-import re
-
 from adapters import openalex
 from adapters.europe_pmc import referanser as europepmc_referanser
 from bank import lignende
+from dedup import norm_tittel as _norm_tittel
 
 
-def _norm_tittel(t: str) -> str:
-    """Fjerner tegnsetting FØR whitespace kollapses — «Tittel — Undertittel!» og
-    «tittel undertittel» skal matche selv om kilden (/search vs. /references) formaterer
-    bindestrek/tegnsetting ulikt. Fanget av en ekte testfeil under bygging (em-dash i én
-    kilde ga dobbelt mellomrom som IKKE matchet enkelt mellomrom i den andre)."""
-    uten_tegn = re.sub(r"[^a-z0-9 ]", " ", (t or "").lower())
-    return re.sub(r"\s+", " ", uten_tegn).strip()
-
-
-def _hent_referanser(paper_id: str, kilde_kode: str, ekte_id: str) -> tuple[list[dict], str]:
-    """Europe PMC først (mest presis kilde-tro — dette ER kilden vi ellers bruker).
-    OpenAlex kun hvis Europe PMC faktisk feiler, OG bare når paper_id er en DOI (OpenAlex
-    slår opp på DOI, ikke PMID) — begge feiler -> RuntimeError forplantes uendret, aldri
-    et stille tomt resultat som ville sett ut som «ingenting å sammenligne mot»."""
-    try:
-        return europepmc_referanser(kilde_kode, ekte_id), "europe_pmc"
-    except RuntimeError as e_pmc:
-        if not paper_id.startswith("10."):
-            raise
+def _hent_referanser(paper_id: str, kilde_kode: str, pmid: str | None) -> tuple[list[dict], str]:
+    """Europe PMC først NÅR pmid finnes (mest presis kilde-tro — dette ER kilden vi
+    ellers bruker); Europe PMC krever PMID, så uten det hopper vi rett til OpenAlex i
+    stedet for å gjøre et kall vi vet feiler. OpenAlex krever DOI — brukt enten fordi
+    pmid manglet (CORE/OpenAlex-only-papirer har ofte ikke PMID) eller som fallback når
+    Europe PMC faktisk feiler mens paper_id er en DOI. Ingen brukbar kilde -> RuntimeError
+    forplantes uendret, aldri et stille tomt resultat som ville sett ut som «ingenting å
+    sammenligne mot»."""
+    e_pmc = None
+    if pmid:
         try:
-            return openalex.referanser(paper_id), "openalex (fallback — Europe PMC utilgjengelig)"
+            return europepmc_referanser(kilde_kode, pmid), "europe_pmc"
+        except RuntimeError as e:
+            e_pmc = e
+    if paper_id.startswith("10."):
+        try:
+            data = openalex.referanser(paper_id)
+            kilde = "openalex" if e_pmc is None else "openalex (fallback — Europe PMC utilgjengelig)"
+            return data, kilde
         except RuntimeError as e_oa:
-            raise RuntimeError(f"begge referanse-kilder feilet — Europe PMC: {e_pmc} | OpenAlex: {e_oa}") from e_oa
+            if e_pmc is not None:
+                raise RuntimeError(f"begge referanse-kilder feilet — Europe PMC: {e_pmc} | OpenAlex: {e_oa}") from e_oa
+            raise RuntimeError(f"OpenAlex utilgjengelig, og papiret mangler PMID for Europe PMC: {e_oa}") from e_oa
+    if e_pmc is not None:
+        raise e_pmc
+    raise RuntimeError("papiret mangler både PMID og DOI — ingen referanse-kilde tilgjengelig")
 
 
-def gap_kandidater(paper_id: str, kilde_kode: str, ekte_id: str, k: int = 10) -> dict:
-    """paper_id = cache-id brukt i bank.py (doi/pmid). kilde_kode+ekte_id = det Europe
-    PMC trenger for /references (f.eks. "MED", "41363532"). Matcher naboer mot den
-    faktiske referanselisten på DOI FØRST (mest presist når til stede), tittel som
-    fallback (DOI mangler ofte i referanselister — se adapters/europe_pmc.py:referanser
-    sin docstring). Returnerer {siterte_antall, referanse_kilde, naboer, gap} — `gap` er
-    naboene som verken DOI- eller tittel-matcher noe i referanselisten."""
-    ref_rader, kilde_brukt = _hent_referanser(paper_id, kilde_kode, ekte_id)
+def gap_kandidater(paper_id: str, kilde_kode: str, pmid: str | None, k: int = 10) -> dict:
+    """paper_id = cache-id brukt i bank.py (doi/pmid). kilde_kode+pmid = det Europe PMC
+    trenger for /references (f.eks. "MED", "41363532") — pmid kan være None (CORE/
+    OpenAlex-only-papirer mangler ofte PMID), da brukes OpenAlex direkte (krever i
+    stedet at paper_id er en DOI). Matcher naboer mot den faktiske referanselisten på
+    DOI FØRST (mest presist når til stede), tittel som fallback (DOI mangler ofte i
+    referanselister — se adapters/europe_pmc.py:referanser sin docstring). Returnerer
+    {siterte_antall, referanse_kilde, naboer, gap} — `gap` er naboene som verken DOI-
+    eller tittel-matcher noe i referanselisten."""
+    ref_rader, kilde_brukt = _hent_referanser(paper_id, kilde_kode, pmid)
     siterte_doier = {r["doi"].lower() for r in ref_rader if r.get("doi")}
     siterte_titler = {_norm_tittel(r.get("title", "")) for r in ref_rader if r.get("title")}
 

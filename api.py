@@ -82,14 +82,14 @@ def api_sok(q: str, n: int = 20):
     if not q.strip():
         raise HTTPException(400, "tom spørring")
     try:
-        papirer, eksakt_id = sok_og_ranger(q, page_size=max(n, 20))
+        papirer, eksakt_id, kilder = sok_og_ranger(q, page_size=max(n, 20))
     except RuntimeError as e:
         raise HTTPException(502, f"Europe PMC utilgjengelig: {e}") from e
     # asdict() dropper .id — det er en @property (utledet doi/pmid-fallback), ikke et
     # dataclass-felt. Fanget som ekte bug live 2026-09-02: uten dette fikk hvert papir
     # id:undefined i frontend, og «siste skrevet vinner»-kollisjonen åpnet alltid det
     # SISTE søkeresultatet uansett hvilket man klikket på.
-    return {"query": q, "eksakt_id": eksakt_id,
+    return {"query": q, "eksakt_id": eksakt_id, "kilder": kilder,
             "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p)} for p in papirer[:n]]}
 
 
@@ -113,8 +113,8 @@ def api_gap(paper_id: str, k: int = 10):
     papir = bank.hent(paper_id)
     if not papir:
         raise HTTPException(404, f"{paper_id} er ikke cachet — søk det opp først")
-    if not papir["pmid"]:
-        raise HTTPException(422, "papiret mangler PMID — /references krever det")
+    if not papir["pmid"] and not papir["doi"]:
+        raise HTTPException(422, "papiret mangler både PMID og DOI — ingen referanse-kilde tilgjengelig")
     try:
         return gap_kandidater(paper_id, papir["kilde_kode"] or "MED", papir["pmid"], k=k)
     except RuntimeError as e:
@@ -174,6 +174,13 @@ def api_sitater_oppdater(sitat_id: int, body: dict):
     return {"ok": True}
 
 
+@app.delete("/api/sitater/{sitat_id}")
+def api_sitater_slett(sitat_id: int):
+    if not bank.slett_sitat(sitat_id):
+        raise HTTPException(404, "sitat finnes ikke")
+    return {"ok": True}
+
+
 @app.get("/api/utkast")
 def api_utkast_liste():
     return bank.liste_utkast()
@@ -195,6 +202,13 @@ def api_utkast_lagre(body: dict):
     innhold = body.get("innhold", "")
     tittel = (body.get("tittel") or "").strip() or "Uten tittel"
     return bank.lagre_utkast(tittel, innhold, body.get("id"))
+
+
+@app.delete("/api/utkast/{utkast_id}")
+def api_utkast_slett(utkast_id: int):
+    if not bank.slett_utkast(utkast_id):
+        raise HTTPException(404, "utkast finnes ikke")
+    return {"ok": True}
 
 
 @app.get("/api/relevans")

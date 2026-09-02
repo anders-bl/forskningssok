@@ -13,28 +13,42 @@ Kjør:
 import argparse
 import sys
 
+from adapters import core as core_adapter
 from adapters.europe_pmc import sok
 from bank import hent, lagre, lignende
 from citation_gap import gap_kandidater
+from dedup import dedupliser
 from ranking import domene_naer, ranger
 from resolve import resolve
 from schemas import PaperDossier
 
 
-def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], str | None]:
+def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], str | None, dict]:
     """Europe PMC ER resolve-steget for oppdagelses-søk (fritekst-relevans mot en
     hel korpusindeks) — resolve.py sin substreng-kandidat-gren passer et NAVN (kort
     streng), ikke en emnesetning mot lange papirtitler, og ville feilaktig meldt
     «ingen treff» der Europe PMC ga 200+. Derfor: resolve() brukes her KUN til å
     flagge det ene ekte tilfellet den er laget for — spørringen ER en tittel, ordrett
     (Ulven limer inn en kjent tittel/DOI-lignende streng). Alt annet er kandidater,
-    alltid, rangert av ranking.py."""
+    alltid, rangert av ranking.py.
+
+    Europe PMC er PÅKREVD kilde — en feil der forplantes uendret (uendret oppførsel).
+    CORE er en TILLEGGSKILDE (institusjonsarkiv/gråtekst Europe PMC ikke indekserer,
+    se adapters/core.py) — en CORE-feil skal ikke ta ned et ellers fungerende søk, men
+    skal heller ikke skjules: returnerte `kilder`-dict rapporterer om den lyktes, samme
+    transparens-prinsipp som citation_gap.py sin `referanse_kilde`."""
     kandidater = sok(query, page_size=page_size)
+    kilder = {"europe_pmc": True, "core": True}
+    try:
+        kandidater = kandidater + core_adapter.sok(query, limit=page_size)
+    except RuntimeError:
+        kilder["core"] = False
+    kandidater = dedupliser(kandidater)
     rangert = ranger(kandidater)
     lagre(rangert)  # cache/embed for fremtidig --lignende-søk, feiler stille aldri kritisk
     resultat = resolve(query, rangert, tekst=lambda p: p.tittel)
     eksakt_id = resultat.eksakt.id if resultat.eksakt else None
-    return rangert, eksakt_id
+    return rangert, eksakt_id, kilder
 
 
 def _print_papirer(papirer: list[PaperDossier], antall: int, query: str, eksakt_id: str | None):
@@ -69,8 +83,8 @@ def main():
         if not papir:
             print(f"{a.gap} er ikke cachet ennå — søk det opp først (--lignende krever samme).")
             return
-        if not papir["pmid"]:
-            print(f"{a.gap} mangler PMID i cachen — /references krever det (kun MED-kilden er testet).")
+        if not papir["pmid"] and not papir["doi"]:
+            print(f"{a.gap} mangler både PMID og DOI i cachen — ingen referanse-kilde tilgjengelig.")
             return
         try:
             resultat = gap_kandidater(a.gap, papir["kilde_kode"] or "MED", papir["pmid"], k=a.antall)
@@ -103,10 +117,12 @@ def main():
         ap.error("oppgi en søkestreng, eller --lignende ID")
     query = " ".join(a.query)
     try:
-        papirer, eksakt_id = sok_og_ranger(query, page_size=max(a.antall, 20))
+        papirer, eksakt_id, kilder = sok_og_ranger(query, page_size=max(a.antall, 20))
     except RuntimeError as e:
         print(f"Feil mot Europe PMC: {e}", file=sys.stderr)
         sys.exit(1)
+    if not kilder["core"]:
+        print("(CORE utilgjengelig akkurat nå — viser kun Europe PMC-treff)\n", file=sys.stderr)
     _print_papirer(papirer, a.antall, query, eksakt_id)
 
 

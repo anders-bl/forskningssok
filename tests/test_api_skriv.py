@@ -53,6 +53,32 @@ def test_relevans_tomt_svar_er_200_ikke_feil():
     assert r.json()["naboer"] == []
 
 
+def test_utkast_slett():
+    with patch("api.bank.slett_utkast", return_value=True) as m:
+        r = client.delete("/api/utkast/1")
+    assert r.status_code == 200
+    m.assert_called_once_with(1)
+
+
+def test_utkast_slett_ukjent_gir_404():
+    with patch("api.bank.slett_utkast", return_value=False):
+        r = client.delete("/api/utkast/999")
+    assert r.status_code == 404
+
+
+def test_sitat_slett():
+    with patch("api.bank.slett_sitat", return_value=True) as m:
+        r = client.delete("/api/sitater/1")
+    assert r.status_code == 200
+    m.assert_called_once_with(1)
+
+
+def test_sitat_slett_ukjent_gir_404():
+    with patch("api.bank.slett_sitat", return_value=False):
+        r = client.delete("/api/sitater/999")
+    assert r.status_code == 404
+
+
 def test_omfang_returnerer_akser():
     akser = {"Lever": 1.0, "Faser": 0.0}
     with patch("api.scoping.akse_dekning", return_value=akser):

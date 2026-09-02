@@ -161,10 +161,14 @@ button{ font:inherit; }
 .hint{ font-size:.75rem; color:var(--muted); line-height:1.55; }
 
 .note{ border:1px solid var(--border); border-radius:10px; padding:.7rem .75rem; margin-bottom:.65rem; background:var(--surface); }
-.note-quote{ font-style:italic; font-size:.8125rem; line-height:1.5; margin-bottom:.5rem; padding-left:.65rem; border-left:2px solid var(--border); }
+.note-quote{ display:flex; justify-content:space-between; gap:.5rem; font-style:italic; font-size:.8125rem; line-height:1.5; margin-bottom:.5rem; padding-left:.65rem; border-left:2px solid var(--border); }
 .note-kommentar{ width:100%; border:1px solid transparent; background:none; color:var(--text); font:inherit; font-size:.75rem; resize:none; padding:.2rem; border-radius:6px; }
 .note-kommentar:hover,.note-kommentar:focus{ border-color:var(--border); background:var(--surface-2); }
 .note-meta{ display:flex; justify-content:space-between; font-size:.6875rem; color:var(--muted); margin-top:.4rem; }
+.note-slett,.draft-slett{ border:none; background:none; color:var(--muted); cursor:pointer; font-size:1rem; line-height:1; padding:.1rem .3rem; border-radius:6px; flex-shrink:0; }
+.note-slett:hover,.draft-slett:hover{ color:var(--warn); background:var(--warn-soft); }
+.draft-row{ display:flex; align-items:stretch; gap:.15rem; }
+.draft-row .draft-item{ flex:1; min-width:0; }
 
 svg text{ font-family:system-ui,sans-serif; }
 ::-webkit-scrollbar{ width:9px; }
@@ -522,13 +526,18 @@ async function loadNotater(id) {
     if (!sitater.length) { el.innerHTML = '<div class="hint">Ingen sitater for dette papiret ennå. Merk tekst i leseflaten og trykk «Sitér».</div>'; return; }
     el.innerHTML = sitater.map(s => `
       <div class="note" data-id="${s.id}">
-        <div class="note-quote">«${escapeHtml(s.tekst)}»</div>
+        <div class="note-quote">«${escapeHtml(s.tekst)}»<button class="note-slett" title="Slett sitat">×</button></div>
         <textarea class="note-kommentar" placeholder="Kommentar…" rows="1">${escapeHtml(s.kommentar||'')}</textarea>
         <div class="note-meta"><span>${escapeHtml(fmtCite(state.papers[id]||{}))}</span><span>${new Date(s.opprettet*1000).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}</span></div>
       </div>`).join('');
     $$('.note-kommentar', el).forEach(ta => ta.addEventListener('blur', async () => {
       const noteId = ta.closest('.note').dataset.id;
       await api(`/api/sitater/${noteId}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({kommentar: ta.value})});
+    }));
+    $$('.note-slett', el).forEach(btn => btn.addEventListener('click', async () => {
+      const noteId = btn.closest('.note').dataset.id;
+      await api(`/api/sitater/${noteId}`, {method:'DELETE'});
+      loadNotater(id);
     }));
   } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
 }
@@ -586,11 +595,28 @@ async function lastDraftList() {
   const el = $('#draft-list');
   if (!liste.length) { el.innerHTML = '<div class="hint">Ingen utkast ennå — trykk «+ Nytt utkast».</div>'; return; }
   el.innerHTML = liste.map(u => `
-    <button class="draft-item${u.id === skrivState.utkastId ? ' active' : ''}" data-id="${u.id}">
-      <div class="t">${escapeHtml(u.tittel)}</div>
-      <div class="m">${new Date(u.oppdatert * 1000).toLocaleString('no-NO', {dateStyle:'short', timeStyle:'short'})}</div>
-    </button>`).join('');
+    <div class="draft-row">
+      <button class="draft-item${u.id === skrivState.utkastId ? ' active' : ''}" data-id="${u.id}">
+        <div class="t">${escapeHtml(u.tittel)}</div>
+        <div class="m">${new Date(u.oppdatert * 1000).toLocaleString('no-NO', {dateStyle:'short', timeStyle:'short'})}</div>
+      </button>
+      <button class="draft-slett" title="Slett utkast" data-id="${u.id}">×</button>
+    </div>`).join('');
   $$('.draft-item', el).forEach(b => b.addEventListener('click', () => apneUtkast(Number(b.dataset.id))));
+  $$('.draft-slett', el).forEach(b => b.addEventListener('click', async () => {
+    const draftId = Number(b.dataset.id);
+    await api(`/api/utkast/${draftId}`, {method:'DELETE'});
+    if (skrivState.utkastId === draftId) {
+      skrivState.utkastId = null;
+      $('#skriv-tittel').value = '';
+      $('#skriv-editor').textContent = '';
+      $('#ambient-status').className = 'ambient-status venter';
+      $('#ambient-status').innerHTML = '<i></i><span>skriv noe for å se relevante papirer</span>';
+      $('#ambient-list').innerHTML = '';
+      $('#axis-row').innerHTML = '';
+    }
+    lastDraftList();
+  }));
 }
 
 async function apneUtkast(id) {

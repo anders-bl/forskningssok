@@ -9,7 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bank import (  # noqa: E402
-    hent_utkast, lagre, lagre_utkast, lignende, lignende_tekst, liste_utkast,
+    hent_sitater, hent_utkast, lagre, lagre_sitat, lagre_utkast, lignende, lignende_tekst,
+    liste_utkast, slett_sitat, slett_utkast,
 )
 from schemas import PaperDossier  # noqa: E402
 
@@ -122,3 +123,30 @@ def test_liste_utkast_nyeste_forst(tmp_path):
 def test_hent_ukjent_utkast_gir_aerlig_none(tmp_path):
     db = tmp_path / "cache.db"
     assert hent_utkast(999, db_path=db) is None
+
+
+def test_slett_utkast(tmp_path):
+    db = tmp_path / "cache.db"
+    u = lagre_utkast("skal slettes", "x", db_path=db)
+    assert slett_utkast(u["id"], db_path=db) is True
+    assert hent_utkast(u["id"], db_path=db) is None
+
+
+def test_slett_ukjent_utkast_gir_aerlig_false_ikke_feil(tmp_path):
+    db = tmp_path / "cache.db"
+    assert slett_utkast(999, db_path=db) is False
+
+
+# ---------- sitater ----------
+
+def test_slett_sitat(tmp_path):
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)
+    s = lagre_sitat("1", "et sitat", db_path=db)
+    assert slett_sitat(s["id"], db_path=db) is True
+    assert hent_sitater("1", db_path=db) == []
+
+
+def test_slett_ukjent_sitat_gir_aerlig_false_ikke_feil(tmp_path):
+    db = tmp_path / "cache.db"
+    assert slett_sitat(999, db_path=db) is False

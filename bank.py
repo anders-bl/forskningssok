@@ -129,6 +129,15 @@ def oppdater_sitat(sitat_id: int, kommentar: str, *, db_path: Path = DB) -> bool
     return endret
 
 
+def slett_sitat(sitat_id: int, *, db_path: Path = DB) -> bool:
+    db = _db(db_path)
+    cur = db.execute("DELETE FROM sitater WHERE id=?", (sitat_id,))
+    db.commit()
+    slettet = cur.rowcount > 0
+    db.close()
+    return slettet
+
+
 def hent_sitater(paper_id: str | None = None, *, db_path: Path = DB) -> list[dict]:
     """Alle lagrede sitater, nyeste først — filtrert på ett papir hvis oppgitt, ellers
     hele notat-loggen (Notater-fanen på tvers av alt som er lest)."""
@@ -226,6 +235,15 @@ def hent_utkast(utkast_id: int, *, db_path: Path = DB) -> dict | None:
     if not rad:
         return None
     return {"id": rad[0], "tittel": rad[1], "innhold": rad[2], "opprettet": rad[3], "oppdatert": rad[4]}
+
+
+def slett_utkast(utkast_id: int, *, db_path: Path = DB) -> bool:
+    db = _db(db_path)
+    cur = db.execute("DELETE FROM utkast WHERE id=?", (utkast_id,))
+    db.commit()
+    slettet = cur.rowcount > 0
+    db.close()
+    return slettet
 
 
 def liste_utkast(*, db_path: Path = DB) -> list[dict]:

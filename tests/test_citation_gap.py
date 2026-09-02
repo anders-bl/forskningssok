@@ -100,3 +100,26 @@ def test_begge_kilder_feiler_gir_kombinert_feilmelding():
          patch("citation_gap.lignende", return_value=NABOER):
         with pytest.raises(RuntimeError, match="EBI nede.*OA nede"):
             gap_kandidater("10.1000/mitt-papir", "MED", "123")
+
+
+def test_manglende_pmid_med_doi_hopper_rett_til_openalex_uten_aa_forsoke_europe_pmc():
+    """CORE/OpenAlex-only-papirer mangler ofte PMID — Europe PMC krever det, så et
+    forsøk der ville vært bortkastet, ikke bare unødvendig. pmid=None + DOI-id skal
+    gå rett til OpenAlex, umerket som fallback (Europe PMC ble aldri forsøkt)."""
+    with patch("citation_gap.europepmc_referanser") as m_pmc, \
+         patch("citation_gap.openalex.referanser", return_value=REFERANSER) as m_oa, \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", None)
+    m_pmc.assert_not_called()
+    m_oa.assert_called_once_with("10.1000/mitt-papir")
+    assert ut["referanse_kilde"] == "openalex"  # ikke "fallback" — det var ikke ett
+
+
+def test_manglende_pmid_og_doi_gir_tydelig_feil_ikke_stille_tomt():
+    with patch("citation_gap.europepmc_referanser") as m_pmc, \
+         patch("citation_gap.openalex.referanser") as m_oa, \
+         patch("citation_gap.lignende", return_value=NABOER):
+        with pytest.raises(RuntimeError, match="mangler både PMID og DOI"):
+            gap_kandidater("41363532", "MED", None)  # PMID-løst id, ikke DOI
+    m_pmc.assert_not_called()
+    m_oa.assert_not_called()
