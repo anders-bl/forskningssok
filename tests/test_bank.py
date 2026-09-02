@@ -1,0 +1,64 @@
+"""Verifiserer cache/embed-laget uten å røre Ollama/husets embedder — embed_fn injiseres,
+samme disiplin som fag_bank.py men testbar offline. Fake-embedderen returnerer et
+deterministisk vektor-par som gjør «lignende» geometrisk sjekkbar (to nære vinkler,
+én fjern), ikke bare «returnerer noe».
+"""
+import math
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from bank import lagre, lignende  # noqa: E402
+from schemas import PaperDossier  # noqa: E402
+
+DIM = 1024
+
+
+def _vec(vinkel_grader: float) -> list[float]:
+    """2D-retning bakt inn i de to første dimensjonene, resten nullet — nok til at
+    kosinus-/L2-avstand skiller «nær» fra «fjern» uten ekte semantikk."""
+    r = math.radians(vinkel_grader)
+    v = [0.0] * DIM
+    v[0], v[1] = math.cos(r), math.sin(r)
+    return v
+
+
+def _fake_embed(texts: list[str]) -> list[list[float]]:
+    vinkler = {"A": 0.0, "B": 5.0, "C": 90.0}
+    return [_vec(vinkler.get(t[0], 0.0)) for t in texts]
+
+
+def _p(pid, tittel, abstract="noe abstract-tekst"):
+    return PaperDossier(pmid=pid, doi=None, tittel=tittel, forfattere="", tidsskrift="",
+                        aar=2026, abstract=abstract, siteringstall=0, open_access=False,
+                        kilde_url=f"https://example.org/{pid}")
+
+
+def test_papir_uten_abstract_embeddes_aldri(tmp_path):
+    db = tmp_path / "cache.db"
+    n = lagre([_p("1", "Atittel", abstract="")], embed_fn=_fake_embed, db_path=db)
+    assert n == 0
+    assert lignende("1", db_path=db) == []
+
+
+def test_idempotent_lagring_dobbeltlagrer_ikke(tmp_path):
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)
+    n2 = lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)
+    assert n2 == 0
+
+
+def test_lignende_finner_naert_papir_ikke_fjernt(tmp_path):
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel"), _p("2", "Btittel"), _p("3", "Ctittel")],
+          embed_fn=_fake_embed, db_path=db)
+    naboer = lignende("1", k=2, db_path=db)
+    assert naboer, "forventet minst én nabo"
+    assert naboer[0]["tittel"] == "Btittel"  # 5° unna, klart nærmest
+    titler = [n["tittel"] for n in naboer]
+    assert "Ctittel" not in titler[:1]  # 90° unna skal ikke slå 5°-naboen
+
+
+def test_ukjent_id_gir_aerlig_tom_liste_ikke_feil(tmp_path):
+    db = tmp_path / "cache.db"
+    assert lignende("finnes-ikke", db_path=db) == []
