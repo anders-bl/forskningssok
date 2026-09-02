@@ -22,7 +22,9 @@ from adapters import openalex
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
-from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer, ranger
+from domeneprofil import arts_naer_tekst, domene_naer_tekst
+from evidensniva import evidensniva
+from ranking import arts_naer, domene_naer, ranger
 
 app = FastAPI(title="forskningssok API")
 
@@ -107,7 +109,7 @@ def api_sok(q: str, n: int = 20):
     # id:undefined i frontend, og «siste skrevet vinner»-kollisjonen åpnet alltid det
     # SISTE søkeresultatet uansett hvilket man klikket på.
     return {"query": q, "eksakt_id": eksakt_id, "kilder": kilder,
-            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p)} for p in papirer[:n]]}
+            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), "evidensniva": evidensniva(p.tittel, p.abstract)} for p in papirer[:n]]}
 
 
 @app.get("/api/papir/{paper_id:path}")
@@ -115,8 +117,13 @@ def api_papir(paper_id: str):
     papir = bank.hent(paper_id)
     if not papir:
         raise HTTPException(404, f"{paper_id} er ikke cachet — søk det opp først")
-    tekst = f"{papir['forfattere']} {papir['tidsskrift']}".lower()
-    papir["domene_naer"] = any(m in tekst for m in NORSKE_FAGMILJOER + FAGTIDSSKRIFTER)
+    # Kaller de DELTE funksjonene direkte (ikke en egen inline-reimplementasjon) — en
+    # tidligere duplisert versjon her IKKE fikk med seg salmon-calcitonin-fiksen i
+    # domeneprofil.py:arts_naer_tekst (funnet live 2026-09-02, samme kveld den ble lagt
+    # til) fordi den regnet på ARTSTERMER selv i stedet for å kalle funksjonen.
+    papir["domene_naer"] = domene_naer_tekst(f"{papir['forfattere']} {papir['tidsskrift']}")
+    papir["arts_naer"] = arts_naer_tekst(f"{papir['tittel']} {papir['abstract']}")
+    papir["evidensniva"] = evidensniva(papir["tittel"], papir["abstract"])
     return papir
 
 
@@ -151,6 +158,21 @@ def api_emner(paper_id: str):
         raise HTTPException(502, str(e)) from e
 
 
+@app.get("/api/tilgang/{paper_id:path}")
+def api_tilgang(paper_id: str):
+    """Lisens/fri-PDF/utgiver — erstatter det opprinnelig foreslåtte "koble til
+    bruktsøk"-sporet, se adapters/openalex.py:tilgang sin docstring for hvorfor. Kun for
+    papirer med DOI (OpenAlex slår opp på DOI) — ærlig tomt objekt for resten, ALDRI en
+    404/feil for noe som bare mangler forutsetningen."""
+    tomt = {"lisens": None, "fri_pdf_url": None, "utgiver": None, "oa_status": None}
+    if not paper_id.startswith("10."):
+        return tomt
+    try:
+        return openalex.tilgang(paper_id)
+    except RuntimeError as e:
+        raise HTTPException(502, str(e)) from e
+
+
 @app.get("/api/emne/{emne_id}")
 def api_emne_utforsk(emne_id: str, navn: str = "", n: int = 20):
     """Søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen). Alle
@@ -164,7 +186,7 @@ def api_emne_utforsk(emne_id: str, navn: str = "", n: int = 20):
     rangert = ranger(papirer)
     bank.lagre(rangert)  # samme cache/embed-sti som vanlig søk — emne-funn blir del av korpuset
     return {"emne_id": emne_id, "emne_navn": navn,
-            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p)} for p in rangert[:n]]}
+            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), "evidensniva": evidensniva(p.tittel, p.abstract)} for p in rangert[:n]]}
 
 
 @app.get("/api/sitater")

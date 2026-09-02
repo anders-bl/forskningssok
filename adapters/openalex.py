@@ -69,6 +69,26 @@ def konsepter(doi: str, *, db_path: Path = DB) -> list[dict]:
             for t in _verk(doi, db_path=db_path).get("topics", [])]
 
 
+def tilgang(doi: str, *, db_path: Path = DB) -> dict:
+    """Lisens/tilgang-info — SAMME _verk()-kall som konsepter() (TTL-cachet, ingen ekstra
+    HTTP-kall hvis papiret alt er slått opp). Erstatter det opprinnelig foreslåtte
+    "koble til bruktsøk"-sporet (idébank #28) — undersøkt 2026-09-02: bruktsøk/bruktmarked
+    er ISBN-baserte fysiske varer (Speider/FDR-029), journalartikler har DOI, ikke ISBN,
+    strukturelt feil domene. Dette er hva OpenAlex FAKTISK har, i kallet vi alt gjør:
+    ekte lisens-streng (SPDX-aktig, f.eks. "cc-by-nc-nd"), direkte fri-PDF-lenke når den
+    finnes, utgiver, og oa_status (gold/green/hybrid/closed/diamond). INGEN prisdata
+    finnes noe sted i OpenAlex — `pris` er derfor ALDRI et felt her, kun fravær av
+    fri tilgang (ærlighets-prinsippet: aldri gjettet, aldri en oppdiktet pris)."""
+    data = _verk(doi, db_path=db_path)
+    oa_loc = data.get("best_oa_location") or {}
+    return {
+        "lisens": oa_loc.get("license"),
+        "fri_pdf_url": oa_loc.get("pdf_url"),
+        "utgiver": (oa_loc.get("source") or {}).get("host_organization_name"),
+        "oa_status": (data.get("open_access") or {}).get("oa_status"),
+    }
+
+
 def _rekonstruer_abstract(inv_idx: dict | None) -> str:
     """OpenAlex leverer abstract som en invertert indeks (ord → posisjonsliste), ikke
     løpende tekst — juridisk/lisens-motivert format fra deres side, ikke noe å gjette

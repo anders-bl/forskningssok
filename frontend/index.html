@@ -123,6 +123,8 @@ button{ font:inherit; }
 .result-row1{ display:flex; align-items:baseline; gap:.4rem; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; font-variant-numeric:tabular-nums; }
 .star{ color:var(--accent); }
 .pill-oa{ background:var(--surface-2); color:var(--accent); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
+.pill-species{ background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
+.pill-evidens{ background:var(--surface-2); color:var(--muted); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
 .result-title{ font-size:.8125rem; line-height:1.35; margin-bottom:.25rem; }
 .result-journal{ font-size:.6875rem; color:var(--muted); font-style:italic; }
 
@@ -133,6 +135,9 @@ button{ font:inherit; }
 .emner{ display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.6rem; }
 .emne-chip{ background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:99px; padding:.15rem .55rem; font-size:.6875rem; cursor:pointer; }
 .emne-chip:hover{ border-color:var(--accent); color:var(--accent); }
+.reader-tilgang{ margin-top:.5rem; font-size:.6875rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.reader-tilgang a{ color:var(--accent); text-decoration:none; }
+.reader-tilgang a:hover{ text-decoration:underline; }
 .utforsk-banner{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; background:var(--surface-2); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; font-size:.75rem; }
 .utforsk-banner button{ border:0; background:none; color:var(--accent); font-weight:600; cursor:pointer; font-size:.6875rem; }
 .reader-body{ padding:1.3rem 2rem 3rem; }
@@ -223,6 +228,7 @@ svg text{ font-family:system-ui,sans-serif; }
       <div class="reader-title" id="reader-title"></div>
       <div class="reader-authors" id="reader-authors"></div>
       <div class="emner" id="reader-emner"></div>
+      <div class="reader-tilgang" id="reader-tilgang"></div>
     </div>
     <div class="pane-scroll">
       <div id="empty-reader">Søk til venstre, velg et papir for å lese abstractet her.</div>
@@ -387,6 +393,8 @@ function renderResults(papirer, eksaktId) {
       <div class="result-row1">
         ${p.domene_naer ? '<span class="star">★</span>' : ''}<span>${p.aar || '?'} · ${p.siteringstall ?? '?'} sit.</span>
         ${p.open_access ? '<span class="pill-oa">OA</span>' : ''}
+        ${p.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk i tittel/abstract — kan være en annen art (f.eks. humanmedisin)">⚠ art?</span>' : ''}
+        ${evidensBadge(p.evidensniva)}
       </div>
       <div class="result-title">${escapeHtml(p.tittel)}</div>
       <div class="result-journal">${escapeHtml(p.tidsskrift || '')}</div>`;
@@ -474,6 +482,16 @@ async function utforskEmne(emneId, emneNavn) {
 
 function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+const EVIDENS_KORT = {
+  'Systematisk oversikt/meta-analyse': 'SR', 'Randomisert kontrollert studie': 'RCT',
+  'Kohort-/observasjonsstudie': 'Kohort', 'Case-rapport/case-serie': 'Case',
+};
+function evidensBadge(niva) {
+  if (!niva || niva === 'Ukjent design') return '';
+  const kort = EVIDENS_KORT[niva] || niva;
+  return `<span class="pill-evidens" title="${escapeHtml(niva)} — mønster-basert, ikke en kvalitetsdom">${escapeHtml(kort)}</span>`;
+}
+
 // ---------- Leseflate ----------
 async function openPaper(id) {
   state.paperId = id;
@@ -489,7 +507,9 @@ async function openPaper(id) {
     `<span>${escapeHtml(p.tidsskrift||'')} · ${p.aar||'?'}</span>` +
     (p.doi ? `<span>· ${p.doi}</span>` : '') +
     `<span>· ${p.open_access ? 'open access' : 'abstract (ikke OA)'}</span>` +
-    (p.domene_naer ? '<span class="star">· ★ domene-nær</span>' : '');
+    (p.domene_naer ? '<span class="star">· ★ domene-nær</span>' : '') +
+    (p.arts_naer === false ? '<span style="color:var(--warn)" title="Nevner ikke laks/oppdrettsfisk i tittel/abstract">· ⚠ trolig annen art</span>' : '') +
+    (p.evidensniva && p.evidensniva !== 'Ukjent design' ? `<span title="Mønster-basert, ikke en kvalitetsdom — se evidensniva.py">· ${escapeHtml(p.evidensniva)}</span>` : '');
   $('#reader-title').textContent = p.tittel;
   $('#reader-authors').textContent = p.forfattere || '';
   const body = $('#reader-body');
@@ -507,6 +527,18 @@ async function openPaper(id) {
       $$('.emne-chip', $('#reader-emner')).forEach(chip => chip.addEventListener('click', () =>
         utforskEmne(chip.dataset.emneId, chip.dataset.emneNavn)));
     }).catch(()=>{}); // emner er en bonus, aldri blokkerende — stille feil er OK KUN her
+  }
+
+  $('#reader-tilgang').innerHTML = '';
+  if (id.startsWith('10.')) {
+    api(`/api/tilgang/${encodeURIComponent(id)}`).then(t => {
+      const deler = [];
+      if (t.fri_pdf_url) deler.push(`<a href="${escapeHtml(t.fri_pdf_url)}" target="_blank" rel="noopener">📄 Fri PDF</a>`);
+      if (t.lisens) deler.push(`Lisens: ${escapeHtml(t.lisens)}`);
+      if (t.utgiver) deler.push(escapeHtml(t.utgiver));
+      if (!deler.length) deler.push(`<a href="https://doi.org/${escapeHtml(id)}" target="_blank" rel="noopener">Sjekk hos utgiver ↗</a> — ingen åpen kopi funnet, ingen prisdata tilgjengelig her`);
+      $('#reader-tilgang').innerHTML = deler.join(' · ');
+    }).catch(()=>{}); // tilgang-info er en bonus, aldri blokkerende
   }
 
   loadLignende(id);
@@ -543,7 +575,7 @@ async function loadLignende(id) {
     el.innerHTML = '<div class="hint" style="margin-bottom:.6rem">Semantiske naboer i cachen (bge-m3-avstand) — ikke hele Europe PMC.</div>' +
       data.naboer.map(n => `
         <div class="neighbor" data-id="${escapeHtml(n.id)}">
-          <div class="neighbor-row1"><span class="dist">${n.avstand.toFixed(3)}</span><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span></div>
+          <div class="neighbor-row1"><span class="dist">${n.avstand.toFixed(3)}</span><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
           <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
         </div>`).join('');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
@@ -564,7 +596,7 @@ async function loadGap(id) {
       <div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv${kildeMerknad}. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
       (data.gap.length ? data.gap.map(g => `
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
-          <div class="neighbor-row1"><span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span></div>
+          <div class="neighbor-row1"><span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${g.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
           <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
         </div>`).join('') : '<div class="hint">Ingen gap — alle cachede naboer er alt sitert av papiret.</div>');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
@@ -768,7 +800,7 @@ async function oppdaterRelevansOgOmfang(tekst) {
           <div class="neighbor" data-id="${escapeHtml(n.id)}">
             <div class="ambient-why">avstand ${n.avstand.toFixed(3)}</div>
             <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
-            <div class="neighbor-row1" style="margin-top:.3rem"><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span></div>
+            <div class="neighbor-row1" style="margin-top:.3rem"><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
           </div>`).join('')
       : '<div class="hint">Ingen treff i cachen ennå for dette — ingen treff betyr ikke ingen forskning, bare at du ikke har søkt det opp i Les-fanen.</div>';
     $$('.neighbor', $('#ambient-list')).forEach(n => n.addEventListener('click', () => {

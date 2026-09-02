@@ -17,6 +17,12 @@ VERK_RESPONS = {
     "topics": [{"id": "https://openalex.org/T10506", "display_name": "Aquaculture disease management and microbiota"},
                {"id": "https://openalex.org/T13350", "display_name": "Myxozoan Parasites in Aquatic Species"}],
     "referenced_works": [f"https://openalex.org/W{i}" for i in range(3)],
+    "open_access": {"is_oa": True, "oa_status": "hybrid"},
+    "best_oa_location": {
+        "license": "cc-by-nc-nd",
+        "pdf_url": "https://onlinelibrary.wiley.com/doi/pdfdirect/10.1111/jfd.13815",
+        "source": {"host_organization_name": "Wiley"},
+    },
 }
 EMNE_RESPONS = {"results": [{
     "id": "https://openalex.org/W999", "title": "Et emne-utforsket funn",
@@ -52,7 +58,32 @@ def test_konsepter_returnerer_emnetagger_med_id(tmp_path):
     assert tagger[0]["id"] == "T10506"  # kort form, ikke full URL — det filteret trenger
 
 
-def test_verk_for_emne_mapper_ekte_felt(tmp_path):
+def test_tilgang_mapper_lisens_og_fri_pdf(tmp_path):
+    db = tmp_path / "cache.db"
+    with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data=VERK_RESPONS)):
+        info = openalex.tilgang("10.1111/jfd.13815", db_path=db)
+    assert info["lisens"] == "cc-by-nc-nd"
+    assert info["fri_pdf_url"] == "https://onlinelibrary.wiley.com/doi/pdfdirect/10.1111/jfd.13815"
+    assert info["utgiver"] == "Wiley"
+    assert info["oa_status"] == "hybrid"
+
+
+def test_tilgang_deler_ttl_cache_med_konsepter_ingen_ekstra_kall(tmp_path):
+    db = tmp_path / "cache.db"
+    with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data=VERK_RESPONS)) as m:
+        openalex.konsepter("10.1111/jfd.13815", db_path=db)
+        openalex.tilgang("10.1111/jfd.13815", db_path=db)
+    assert m.call_count == 1  # samme _verk()::doi cache-nøkkel
+
+
+def test_tilgang_ingen_oa_lokasjon_gir_aerlig_fravaer_ikke_feil(tmp_path):
+    db = tmp_path / "cache.db"
+    ingen_oa = {"title": "x", "open_access": {"is_oa": False, "oa_status": "closed"}}
+    with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data=ingen_oa)):
+        info = openalex.tilgang("10.1111/lukket", db_path=db)
+    assert info["lisens"] is None
+    assert info["fri_pdf_url"] is None
+    assert info["oa_status"] == "closed"
     db = tmp_path / "cache.db"
     with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data=EMNE_RESPONS)) as m:
         papirer = openalex.verk_for_emne("T10506", limit=20, db_path=db)

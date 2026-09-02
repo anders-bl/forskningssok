@@ -114,10 +114,19 @@ Nofima, Pharmaq + kjerne-fagtidsskrifter) rangeres FØR siteringstall, ellers vi
 2026-Havforskningsinstituttet-funn (0 sitater, for nytt) begravd seg selv under et
 2015-MIT-funn (50 sitater) i et helt annet fagfelt.
 
+**Species-trap-motvekt** (lagt til 2026-09-02, Svart hatt-funn): ren embedding-avstand har
+ingen art-/domenefilter — et menneske-nyrestein-funn (delt nøkkelord «nephrocalcinosis»)
+kan rangere høyt blant fiskefunn kun på tekstlig nærhet, observert live med et ekte
+CYP24A1-funn. `arts_naer()` bånd papirer som nevner målarten (laks/oppdrettsfisk) over de
+som ikke gjør det — FLAGGER, filtrerer aldri bort. Se `domeneprofil.py:arts_naer_tekst`.
+
 ## Ikke gjort (bevisst, v1)
 
-- **Evidensnivå-klassifisering** (systematisk oversikt > studie > case-rapport) —
-  krever NLP over fulltekst, ikke bygget. `PaperDossier` har ikke feltet ennå.
+- **Ekte evidensnivå-KLASSIFISERING** (en rangeringsakse: systematisk oversikt > studie >
+  case-rapport) — krever NLP over fulltekst, ikke bygget. Det som FINNES (lagt til
+  2026-09-02): `evidensniva.py` — et mønster-badge for visning (signalord forfattere selv
+  bruker: «systematic review», «case report» …), aldri brukt til å filtrere/rangere. Se
+  modulens egen docstring for hvorfor det IKKE er det samme som ekte klassifisering.
 - **DisCoCat-typet sitasjonsgraf** (typede morfismer: støtter/motsier/bygger-på) —
   eksplisitt utsatt, samme datamangel-felle (få eksempler mot 1024 dim) som
   `konsepter/discocat-operator` selv fant på wiki-grafen. `bank.py` er ren
@@ -126,21 +135,40 @@ Nofima, Pharmaq + kjerne-fagtidsskrifter) rangeres FØR siteringstall, ellers vi
 - **Fulltekst-mining** — kun abstract i v1.
 - **Integrasjon mot firmaets ultralyd-skanndata** — eget, mye større prosjekt.
 
+## Lisens/tilgang — hvorfor ikke «koble til bruktsøk»
+
+Opprinnelig idé (idébank #28): koble til `bruktsøk`/`bruktmarked` for pris/lisens på
+litteratur Ulven vil kjøpe. Undersøkt 2026-09-02: bruktmarked er ISBN-baserte fysiske
+varer (Speider/FDR-029: Open Library-oppslag → Bokbörsen/Aurelia-priser) — journalartikler
+har DOI, ikke ISBN, og omsettes ikke der. Strukturelt feil domene, ikke koblet til.
+
+Det som faktisk finnes: `adapters/openalex.py:tilgang()` leser lisens/fri-PDF/utgiver fra
+DET SAMME OpenAlex-kallet `konsepter()` allerede gjør (ingen ekstra HTTP) — ekte
+SPDX-aktig lisensstreng (f.eks. `cc-by-nc-nd`), direkte fri-PDF-lenke når den finnes,
+utgivernavn, og oa_status. **Ingen prisdata finnes noe sted i OpenAlex** — `/api/tilgang`
+returnerer ærlig fravær (aldri en gjettet pris), med en `doi.org`-lenke til utgiveren når
+ingen åpen kopi er funnet.
+
 ## Tips for domeneavgrensning
 
 Et bart `nephrocalcinosis`-søk treffer mest human-medisin (nyrestein hos mennesker
 dominerer literaturvolumet). Legg til artstermer for oppdrettsdomenet, f.eks.
 `"nephrocalcinosis salmon"` eller `"nephrocalcinosis aquaculture smolt"` — ærlig
 uten-gjetning-prinsippet betyr at verktøyet ikke stille legger til artsfilter du ikke ba om.
+Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke filtreres.
 
 ## Testet
 
-77/77 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
-README-en. Dekker: parsing av ekte Europe PMC/OpenAlex/CORE-felt, TTL-cache (ingen dobbelt
-HTTP-kall), kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503
-live for alle tre kilder), fler-kilde-dedup (DOI/tittel på tvers av Europe PMC+CORE),
-ADR-013-banding (ferskt+domenenært slår eldre+høyt-sitert+urelatert), embed-cache er
+128/128 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+README-en. Dekker: parsing av ekte Europe PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
+TTL-cache (ingen dobbelt HTTP-kall — `tilgang()` og `konsepter()` deler cache-nøkkel),
+kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503 live for alle
+tre kilder), fler-kilde-dedup (DOI/tittel på tvers av Europe PMC+CORE), ADR-013-banding
+(ferskt+domenenært+artsnært slår eldre+høyt-sitert+urelatert/annen-art), embed-cache er
 idempotent og skiller nær fra fjern (`--lignende`), citation-gap-matching (DOI- og
 tittel-match ekskluderer korrekt, whitespace/tegnsetting-robust, PMID-løse DOI-papirer
 faller korrekt til OpenAlex uten unødvendig 422), emnesøk-med-treff feilrapporteres aldri
-som «ingen treff», og slett av sitater/utkast gir ærlig 404 på ukjent id.
+som «ingen treff», slett av sitater/utkast gir ærlig 404 på ukjent id, fire rapportmaler
+(kildesamling/sitatnotater/citation-gap/omfang) i både Markdown og PDF, species-trap-caset
+fra 2026-09-02 reprodusert som regresjonstest, og evidensniva-mønstre gjenkjennes/degraderer
+ærlig til «Ukjent design» uten treff.

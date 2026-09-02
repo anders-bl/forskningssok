@@ -62,6 +62,21 @@ def test_lignende_finner_naert_papir_ikke_fjernt(tmp_path):
     assert "Ctittel" not in titler[:1]  # 90° unna skal ikke slå 5°-naboen
 
 
+def test_lignende_flagger_arts_naer_uten_aa_filtrere_eller_sortere_om(tmp_path):
+    """Species-trap-motvekt (Svart hatt-funn 2026-09-02) — se domeneprofil.py. Naboen
+    forblir i lista og på sin avstand-plass, kun annotert."""
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel om nephrocalcinosis"),
+           _p("2", "Btittel om Atlantic salmon nephrocalcinosis"),
+           _p("3", "Ctittel uten artsterm")],
+          embed_fn=_fake_embed, db_path=db)
+    naboer = lignende("1", k=2, db_path=db)
+    assert len(naboer) == 2  # ingen filtrert bort
+    naboer_by_id = {n["id"]: n for n in naboer}
+    assert naboer_by_id["2"]["arts_naer"] is True
+    assert naboer_by_id["3"]["arts_naer"] is False
+
+
 def test_ukjent_id_gir_aerlig_tom_liste_ikke_feil(tmp_path):
     db = tmp_path / "cache.db"
     assert lignende("finnes-ikke", db_path=db) == []
@@ -78,6 +93,17 @@ def test_lignende_tekst_finner_naert_papir_ikke_fjernt(tmp_path):
     assert naboer, "forventet minst én nabo"
     assert naboer[0]["tittel"] == "Atittel"  # samme vinkel (0°) — nærmest per konstruksjon
     assert naboer[1]["tittel"] == "Btittel"  # 5° unna, nest nærmest
+
+
+def test_lignende_tekst_flagger_arts_naer(tmp_path):
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel om salmon nephrocalcinosis"), _p("2", "Btittel uten artsterm")],
+          embed_fn=_fake_embed, db_path=db)
+    naboer = lignende_tekst("En lang nok tekst til å embedde noe fornuftig her", k=2,
+                            embed_fn=_fake_embed, db_path=db)
+    naboer_by_id = {n["id"]: n for n in naboer}
+    assert naboer_by_id["1"]["arts_naer"] is True
+    assert naboer_by_id["2"]["arts_naer"] is False
 
 
 def test_lignende_tekst_for_kort_gir_aerlig_tom_liste(tmp_path):

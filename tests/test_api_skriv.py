@@ -172,6 +172,47 @@ def test_rapport_omfang_returnerer_markdown_med_forslag():
     assert "Faser — 100 %" in r.text
 
 
+def test_papir_bruker_delt_arts_naer_ikke_egen_reimplementasjon():
+    """Regresjon: en tidligere versjon regnet arts_naer inline med ARTSTERMER direkte i
+    stedet for å kalle domeneprofil.arts_naer_tekst() — fikk derfor IKKE med seg
+    salmon-calcitonin-fiksen for dette endepunktet. Se api.py:api_papir sin kommentar."""
+    papir = {"tittel": "CYP24A1 mutations", "forfattere": "", "tidsskrift": "",
+             "abstract": "Patients were treated with salmon calcitonin injection.",
+             "aar": 2022, "doi": None, "pmid": None, "siteringstall": 0,
+             "open_access": False, "kilde_url": "u", "kilde_kode": "MED"}
+    with patch("api.bank.hent", return_value=papir):
+        r = client.get("/api/papir/x")
+    assert r.status_code == 200
+    assert r.json()["arts_naer"] is False
+
+
+def test_papir_ukjent_gir_404():
+    with patch("api.bank.hent", return_value=None):
+        r = client.get("/api/papir/ukjent")
+    assert r.status_code == 404
+
+
+def test_tilgang_returnerer_lisens_og_pdf():
+    info = {"lisens": "cc-by", "fri_pdf_url": "https://x/pdf", "utgiver": "Wiley", "oa_status": "gold"}
+    with patch("api.openalex.tilgang", return_value=info) as m:
+        r = client.get("/api/tilgang/10.1111/jfd.13815")
+    assert r.status_code == 200
+    assert r.json() == info
+    m.assert_called_once_with("10.1111/jfd.13815")
+
+
+def test_tilgang_uten_doi_gir_aerlig_tomt_objekt_ikke_feil():
+    r = client.get("/api/tilgang/41363532")  # PMID, ikke DOI
+    assert r.status_code == 200
+    assert r.json() == {"lisens": None, "fri_pdf_url": None, "utgiver": None, "oa_status": None}
+
+
+def test_tilgang_kilde_feil_gir_502():
+    with patch("api.openalex.tilgang", side_effect=RuntimeError("OpenAlex utilgjengelig: x")):
+        r = client.get("/api/tilgang/10.1111/jfd.13815")
+    assert r.status_code == 502
+
+
 def test_omfang_returnerer_akser():
     akser = {"Lever": 1.0, "Faser": 0.0}
     with patch("api.scoping.akse_dekning", return_value=akser):

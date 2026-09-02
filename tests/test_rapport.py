@@ -51,6 +51,20 @@ def test_tittel_parameter_brukes_som_overskrift():
     assert ut.startswith("# Min egen tittel")
 
 
+def test_kildesamling_viser_evidensniva_naar_gjenkjent():
+    p = _p("1", "A systematic review of nephrocalcinosis in salmon")
+    ut = kildesamling([p])
+    assert "Systematisk oversikt/meta-analyse" in ut
+
+
+def test_kildesamling_flagger_species_trap_i_rapporten():
+    """Det faktiske caset 2026-09-02 — ingen fisketerm — skal varsles i EKSPORTEN også,
+    ikke bare i UI-badgen."""
+    p = _p("1", "CYP24A1 pathogenic variant nephrocalcinosis case report")
+    ut = kildesamling([p])
+    assert "nevner ikke laks" in ut.lower()
+
+
 # ---------- PDF-rendering (delt av alle malene) ----------
 
 def test_pdf_gir_gyldige_pdf_bytes():

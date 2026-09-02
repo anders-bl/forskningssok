@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from xml.sax.saxutils import escape as _xml_escape
 
-from domeneprofil import domene_naer_tekst
+from domeneprofil import arts_naer_tekst, domene_naer_tekst
+from evidensniva import evidensniva
 
 _UTDRAG_LENGDE = 400
 
@@ -122,6 +123,12 @@ def _kildesamling_papir_blokker(p: dict) -> list[Blokk]:
     ]
     if lenke:
         ut.append(Blokk("lenke", lenke))
+    niva = evidensniva(p.get("tittel", ""), p.get("abstract", ""))
+    varsel = "" if arts_naer_tekst(f"{p.get('tittel', '')} {p.get('abstract', '')}") \
+        else " · ⚠ nevner ikke laks/oppdrettsfisk — sjekk art før bruk"
+    if niva != "Ukjent design" or varsel:
+        merknad = niva if niva != "Ukjent design" else ""
+        ut.append(Blokk("p", f"{merknad}{varsel}".strip(" ·")))
     abstract = (p.get("abstract") or "").strip()
     if abstract:
         utdrag = abstract[:_UTDRAG_LENGDE]

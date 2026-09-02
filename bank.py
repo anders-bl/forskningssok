@@ -22,6 +22,7 @@ from pathlib import Path
 
 import sqlite_vec
 
+from domeneprofil import arts_naer_tekst
 from schemas import PaperDossier
 
 HJEM = Path.home() / "prosjekter"
@@ -172,13 +173,16 @@ def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
         db.close()
         return []
     rows = db.execute("""
-        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.abstract
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
         ORDER BY v.distance""", (qvec[0], k + 1, rad[0])).fetchall()
     db.close()
+    # arts_naer FLAGGER, sorterer aldri om — avstand er kontrakten dette panelet lover
+    # (se domeneprofil.py:arts_naer_tekst for hvorfor et menneske-funn kan havne her).
     return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
-             "kilde_url": r[5], "avstand": r[6]} for r in rows][:k]
+             "kilde_url": r[5], "avstand": r[6], "arts_naer": arts_naer_tekst(f"{r[1]} {r[7]}")}
+            for r in rows][:k]
 
 
 def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB) -> list[dict]:
@@ -197,13 +201,14 @@ def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB)
     embed_fn = embed_fn or _hus_embed()
     qvec = embed_fn([tekst])[0]
     rows = db.execute("""
-        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.abstract
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ?
         ORDER BY v.distance""", (sqlite_vec.serialize_float32(qvec), k)).fetchall()
     db.close()
     return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
-             "kilde_url": r[5], "avstand": r[6]} for r in rows]
+             "kilde_url": r[5], "avstand": r[6], "arts_naer": arts_naer_tekst(f"{r[1]} {r[7]}")}
+            for r in rows]
 
 
 def lagre_utkast(tittel: str, innhold: str, utkast_id: int | None = None,

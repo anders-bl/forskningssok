@@ -20,6 +20,12 @@ FAGTIDSSKRIFTER = (
     "journal of fish biology", "fish and shellfish immunology",
 )
 
+ARTSTERMER = (
+    "salmon", "salmo salar", "laks", "smolt", "post-smolt", "salmonid", "salmonids",
+    "atlantic salmon", "trout", "ørret", "aquaculture", "oppdrett", "teleost", "finfish",
+    "farmed fish", "fish",
+)
+
 AKSER: dict[str, tuple[str, ...]] = {
     "Faser": ("stage", "phase", "progression", "fase", "stadium", "utvikling"),
     "Miljøfaktorer": ("co2", "co₂", "hypercapnia", "hyperkapni", "temperature", "temperatur",
@@ -37,3 +43,23 @@ def domene_naer_tekst(tekst: str) -> bool:
     for hvorfor (forfatter-affiliasjon/tidsskrift, ikke generisk siteringstall)."""
     t = (tekst or "").lower()
     return any(m in t for m in NORSKE_FAGMILJOER + FAGTIDSSKRIFTER)
+
+
+def arts_naer_tekst(tekst: str) -> bool:
+    """Nevner tittel+abstract MÅLARTEN (laks/oppdrettsfisk) i det hele tatt? Species-trap-
+    funn fra Svart hatt-gjennomgangen 2026-09-02, live observert: et bart nøkkelordsøk på
+    «nephrocalcinosis» treffer mest human-nyrestein-litteratur (langt større publiserings-
+    volum, se README §Tips for domeneavgrensning) — ren embedding-avstand har INGEN
+    art-/domenefilter, så et menneske-CYP24A1-funn kan rangere høyt blant fiskepapirer kun
+    på tekstlig nærhet. Dette er et FRAVÆR/NÆRVÆR-signal, ikke en artsklassifikator — et
+    papir UTEN treff her blir ALDRI filtrert bort, kun flagget (samme ærlighets-prinsipp:
+    et menneske-sammenligningsstudie kan være legitimt relevant, avgjørelsen er Ulvens)."""
+    t = (tekst or "").lower()
+    # «salmon calcitonin» er et vanlig LEGEMIDDELNAVN i kalsium-/nyrestein-litteratur
+    # (kalsitonin ble opprinnelig isolert fra laks) — en systematisk falsk-positiv
+    # kollisjon i NETTOPP dette domenet (nephrocalcinosis + kalsiumregulering), fanget
+    # live 2026-09-02 på et ekte pediatrisk case-serie-funn om CYP24A1-mutasjoner.
+    # Fjernes FØR substreng-sjekken — en ordgrense-regex ville uansett matchet «salmon»
+    # inni «salmon calcitonin».
+    t = t.replace("salmon calcitonin", "")
+    return any(m in t for m in ARTSTERMER)

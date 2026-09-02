@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from ranking import domene_naer, ranger  # noqa: E402
+from ranking import arts_naer, domene_naer, ranger  # noqa: E402
 from schemas import PaperDossier  # noqa: E402
 
 
@@ -51,3 +51,30 @@ def test_nyere_fremfor_eldre_innenfor_samme_baand():
     nyere = _p(tittel="nyere", aar=2026, siteringstall=1)
     ut = ranger([eldre, nyere])
     assert [p.tittel for p in ut] == ["nyere", "eldre"]
+
+
+# ---------- Species-trap-motvekt (Svart hatt-funn 2026-09-02) ----------
+
+def test_arts_naer_matcher_maalart_i_tittel_eller_abstract():
+    laks = _p(tittel="Nephrocalcinosis in Atlantic salmon", abstract="")
+    menneske = _p(tittel="Nephrocalcinosis and CYP24A1 variant", abstract="a case report")
+    assert arts_naer(laks)
+    assert not arts_naer(menneske)
+
+
+def test_ekte_species_trap_caset_menneskefunn_rangeres_under_fiskefunn_utenfor_domenebaand():
+    """Det faktiske caset observert live 2026-09-02: et menneske-CYP24A1-funn UTEN norsk
+    fagmiljø-tilknytning skal ALDRI rangeres over et fiskefunn UTEN norsk fagmiljø-
+    tilknytning, selv om begge er utenfor domene-båndet og menneskefunnet har flere
+    siteringer/er ferskere."""
+    menneske = _p(tittel="CYP24A1 pathogenic variant nephrocalcinosis", forfattere="Someone, MIT",
+                   tidsskrift="Journal of rare diseases", aar=2026, siteringstall=5)
+    fisk = _p(tittel="Nephrocalcinosis in farmed Atlantic salmon smolt", forfattere="Someone Else, MIT",
+              tidsskrift="Nature", aar=2020, siteringstall=1)
+    ut = ranger([menneske, fisk])
+    assert [p.tittel for p in ut] == [fisk.tittel, menneske.tittel]
+
+
+def test_arts_naer_filtrerer_aldri_bort_kun_flagger():
+    menneske = _p(tittel="Ukjent art-tittel", abstract="")
+    assert ranger([menneske]) == [menneske]  # forblir i lista
