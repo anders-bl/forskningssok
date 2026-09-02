@@ -1,15 +1,7 @@
-# ═══════════════════════════════════════════════════════════════
-#  HUS-STANDARD Python-versjon — Bruk samme versjon i alle repoer
-# ═══════════════════════════════════════════════════════════════
-#
-#  Bruk:
-#    1. Kopier denne fila til <repo>/.python-version
-#    2. Kjør: pyenv install (hvis versjonen mangler)
-#    3. Kjør: pyenv local (låser versjonen til dette repoet)
-#
-#  Anbefalt versjon: 3.12.0 (LTS, god kompatibilitet)
-#  Unngå: 3.14+ (for ny, mange pakker mangler støtte)
-#
-# ═══════════════════════════════════════════════════════════════
+# Ikke pyenv-håndhevet på denne maskinen (ingen pyenv installert) — denne fila er
+# per nå informativ. Verdien speiler venv/ som faktisk finnes i dette repoet
+# (bygget mot 3.14.7, med reportlab/sqlite-vec/fastapi/httpx/uvicorn alle
+# fungerende — "unngå 3.14+" fra hus-malen stemmer ikke for DETTE repoet).
+# Kjør alltid venv/bin/python direkte fremfor å stole på denne.
 
-3.12.0
+3.14.7
