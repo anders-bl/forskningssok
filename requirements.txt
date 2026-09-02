@@ -1,3 +1,5 @@
 pytest
 httpx
 sqlite-vec
+fastapi
+uvicorn

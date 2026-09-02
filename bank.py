@@ -51,6 +51,9 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
         pass  # kolonnen finnes alt (ny db, eller migrasjonen alt kjørt)
     db.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS paper_vec
         USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])""")
+    db.execute("""CREATE TABLE IF NOT EXISTS sitater(
+        id INTEGER PRIMARY KEY, paper_id TEXT NOT NULL, tekst TEXT NOT NULL,
+        kommentar TEXT, opprettet REAL NOT NULL)""")
     return db
 
 
@@ -79,16 +82,67 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
     return len(nye)
 
 
+_PAPER_KOLONNER = ("id", "tittel", "forfattere", "tidsskrift", "aar", "doi", "pmid",
+                   "abstract", "siteringstall", "open_access", "kilde_url", "kilde_kode")
+
+
 def hent(paper_id: str, *, db_path: Path = DB) -> dict | None:
-    """Slår opp et cachet papirs pmid+kilde_kode — det citation_gap.py trenger for å
-    kalle Europe PMC /references. Ærlig None hvis ikke cachet, ikke en feil."""
+    """Fullt cachet papir (alle felt) — ærlig None hvis ikke cachet, ikke en feil."""
     db = _db(db_path)
     rad = db.execute(
-        "SELECT id, tittel, pmid, kilde_kode FROM papers WHERE id=?", (paper_id,)).fetchone()
+        f"SELECT {','.join(_PAPER_KOLONNER)} FROM papers WHERE id=?", (paper_id,)).fetchone()
     db.close()
     if not rad:
         return None
-    return {"id": rad[0], "tittel": rad[1], "pmid": rad[2], "kilde_kode": rad[3]}
+    d = dict(zip(_PAPER_KOLONNER, rad))
+    d["open_access"] = bool(d["open_access"])
+    return d
+
+
+def lagre_sitat(paper_id: str, tekst: str, kommentar: str = "", *, db_path: Path = DB) -> dict:
+    """Lagrer en sitert seksjon (+ valgfri kommentar) direkte fra leseflaten. Krever at
+    papiret alt er cachet (paper_id må finnes i `papers`) — sitering av noe verktøyet
+    ikke selv har hentet ville vært en gjettet kildehenvisning."""
+    import time
+    if not hent(paper_id, db_path=db_path):
+        raise ValueError(f"{paper_id} er ikke cachet — søk det opp først")
+    db = _db(db_path)
+    ts = time.time()
+    cur = db.execute(
+        "INSERT INTO sitater(paper_id, tekst, kommentar, opprettet) VALUES (?,?,?,?)",
+        (paper_id, tekst, kommentar, ts))
+    db.commit()
+    sid = cur.lastrowid
+    db.close()
+    return {"id": sid, "paper_id": paper_id, "tekst": tekst, "kommentar": kommentar, "opprettet": ts}
+
+
+def oppdater_sitat(sitat_id: int, kommentar: str, *, db_path: Path = DB) -> bool:
+    db = _db(db_path)
+    cur = db.execute("UPDATE sitater SET kommentar=? WHERE id=?", (kommentar, sitat_id))
+    db.commit()
+    endret = cur.rowcount > 0
+    db.close()
+    return endret
+
+
+def hent_sitater(paper_id: str | None = None, *, db_path: Path = DB) -> list[dict]:
+    """Alle lagrede sitater, nyeste først — filtrert på ett papir hvis oppgitt, ellers
+    hele notat-loggen (Notater-fanen på tvers av alt som er lest)."""
+    db = _db(db_path)
+    if paper_id:
+        rows = db.execute(
+            """SELECT s.id, s.paper_id, s.tekst, s.kommentar, s.opprettet, p.tittel, p.doi
+               FROM sitater s JOIN papers p ON p.id = s.paper_id
+               WHERE s.paper_id=? ORDER BY s.opprettet DESC""", (paper_id,)).fetchall()
+    else:
+        rows = db.execute(
+            """SELECT s.id, s.paper_id, s.tekst, s.kommentar, s.opprettet, p.tittel, p.doi
+               FROM sitater s JOIN papers p ON p.id = s.paper_id
+               ORDER BY s.opprettet DESC""").fetchall()
+    db.close()
+    return [{"id": r[0], "paper_id": r[1], "tekst": r[2], "kommentar": r[3],
+             "opprettet": r[4], "paper_tittel": r[5], "paper_doi": r[6]} for r in rows]
 
 
 def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:

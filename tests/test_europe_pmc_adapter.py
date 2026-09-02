@@ -51,6 +51,27 @@ def test_parser_mapper_ekte_felt(tmp_path):
     assert "urocystolithiasis" in p.tittel.lower()
 
 
+def test_markup_strippes_fra_tittel_og_abstract(tmp_path):
+    """Ekte bug fanget live 2026-09-02: to former av markup så i faktiske Europe PMC-svar
+    — rå XML (<title>Abstract</title> som forspalte + <italic>) og HTML-escaped
+    (&lt;i&gt;…&lt;/i&gt;, sett i en artstittel) — rendret som rå tagger i leseflaten
+    før dette var fikset."""
+    db = tmp_path / "cache.db"
+    data = {"resultList": {"result": [{
+        "pmid": "1", "doi": "10.1/x",
+        "title": "Review of Pathogens (&lt;i&gt;Oncorhynchus&lt;/i&gt; spp.)",
+        "authorString": "A B", "journalInfo": {"journal": {"title": "X"}}, "pubYear": "2024",
+        "abstractText": "<title>Abstract</title> <p>Four <italic>CYP24A1</italic> variants.</p>",
+        "citedByCount": 0, "isOpenAccess": "N", "source": "MED",
+    }]}}
+    with patch("adapters.europe_pmc.httpx.get", return_value=_mock_httpx_get(json_data=data)):
+        ut = sok("x", db_path=db)
+    assert "<" not in ut[0].tittel and "&lt;" not in ut[0].tittel
+    assert ut[0].tittel == "Review of Pathogens ( Oncorhynchus spp.)"  # tagger -> mellomrom, ikke perfekt sammenslått
+    assert "<" not in ut[0].abstract
+    assert ut[0].abstract == "Abstract Four CYP24A1 variants."
+
+
 def test_ttl_cache_unngaar_nytt_http_kall(tmp_path):
     db = tmp_path / "cache.db"
     with patch("adapters.europe_pmc.httpx.get", return_value=_mock_httpx_get()) as m:

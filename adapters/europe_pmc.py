@@ -11,6 +11,7 @@ En feil fra kilden skal ALDRI se ut som «ingen forskning finnes» — samme læ
 bøker/hoster.py sin `_arxiv_get` (struping så ut som lisensgate; her ville en feil se ut
 som et ekte, ærlig fravær). Derfor: RuntimeError på feil, aldri en stille tom liste.
 """
+import html
 import json
 import re
 import sqlite3
@@ -66,6 +67,16 @@ def sok(query: str, page_size: int = 20, *, tving_fersk: bool = False,
     return _parse(data)
 
 
+def _rens(tekst: str) -> str:
+    """Europe PMC sin abstractText/title bærer ofte innebygd XML-markup — enten rå
+    (<p>, <italic>, <title>Abstract</title> som forspalte) eller HTML-escaped
+    (&lt;i&gt;…&lt;/i&gt;, sett i artstitler). Fanget live 2026-09-02 på to ulike papirer
+    som rendret rå/escaped tagger i leseflaten. Escape først (så begge formene blir like
+    tagger), strip deretter — aldri vist urenset."""
+    t = html.unescape(tekst or "")
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t)).strip()
+
+
 def _parse(data: dict) -> list[PaperDossier]:
     ut = []
     for r in data.get("resultList", {}).get("result", []):
@@ -74,11 +85,11 @@ def _parse(data: dict) -> list[PaperDossier]:
         ut.append(PaperDossier(
             pmid=pmid,
             doi=r.get("doi"),
-            tittel=re.sub(r"\s+", " ", r.get("title", "")).strip(),
+            tittel=_rens(r.get("title", "")),
             forfattere=r.get("authorString", ""),
             tidsskrift=((r.get("journalInfo") or {}).get("journal") or {}).get("title", ""),
             aar=int(aar_raw) if aar_raw.isdigit() else None,
-            abstract=r.get("abstractText", ""),
+            abstract=_rens(r.get("abstractText", "")),
             siteringstall=r.get("citedByCount"),
             open_access=(r.get("isOpenAccess") == "Y"),
             kilde_url=f"https://europepmc.org/article/{r.get('source', 'MED')}/{pmid or r.get('id', '')}",
