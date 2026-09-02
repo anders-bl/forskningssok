@@ -6,14 +6,17 @@ laget serialiserer og feilhåndterer for HTTP.
 
 Kjør: venv/bin/uvicorn api:app --reload --port 8420
 """
+import time
 from dataclasses import asdict
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import bank
 from adapters import openalex
+from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
 from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer
@@ -21,12 +24,56 @@ from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer
 app = FastAPI(title="forskningssok API")
 
 
+def _kilde_naabar(url: str, *, timeout: float = 4.0) -> bool:
+    """Rask nåbarhets-sjekk, IKKE et søk — HEAD først (billigst), GET som fallback
+    for verter som ikke svarer på HEAD. Aldri en 500 herfra: en nede kilde er data,
+    ikke en feil i statusendepunktet selv."""
+    try:
+        r = httpx.head(url, timeout=timeout, follow_redirects=True)
+        if r.status_code < 500:
+            return True
+    except httpx.HTTPError:
+        pass
+    try:
+        r = httpx.get(url, timeout=timeout)
+        return r.status_code < 500
+    except httpx.HTTPError:
+        return False
+
+
 @app.get("/api/status")
 def api_status():
-    db = bank._db()
-    n = db.execute("SELECT count(*) FROM papers").fetchone()[0]
+    """Helse-/kommandosenter-flate: tenkt som en pluggbar sjekk for
+    silverbullet/ops/kommandosenter.py (koblet ikke inn selv i kveld — den filen
+    hadde ucommittede endringer hos en søsterinstans, se wiki/log 2026-09-02).
+    Kilde-nåbarhet er en fersk PING (millisekunder), ikke resultatet av siste søk —
+    en nede-kilde her betyr «akkurat nå», ikke «var nede sist noen søkte»."""
+    # CACHE_DB gis eksplisitt (ikke bank._db()s modul-default) — default-argumentet der
+    # bindes ved import, så en monkeypatch av bank.DB i tester ville aldri truffet det.
+    db = bank._db(CACHE_DB)
+    n_papirer = db.execute("SELECT count(*) FROM papers").fetchone()[0]
+    n_sitater = db.execute("SELECT count(*) FROM sitater").fetchone()[0]
+    # query_cache eies av adapters/europe_pmc.py sin _db(), ikke bank.py sin — på en
+    # HELT fersk cache.db (aldri søkt i) finnes tabellen ikke ennå. Fanget ved
+    # testskriving: uten dette hadde /api/status krasjet med "no such table" på et
+    # blankt oppsett, nøyaktig når status-sjekken hadde mest verdi (rett etter install).
+    db.execute("CREATE TABLE IF NOT EXISTS query_cache(query TEXT PRIMARY KEY, hentet_ved REAL, respons TEXT)")
+    siste_sok = db.execute(
+        "SELECT query, hentet_ved FROM query_cache ORDER BY hentet_ved DESC LIMIT 1").fetchone()
     db.close()
-    return {"papirer_cachet": n}
+
+    return {
+        "papirer_cachet": n_papirer,
+        "sitater_lagret": n_sitater,
+        "cache_db": str(CACHE_DB),
+        "cache_db_kb": round(CACHE_DB.stat().st_size / 1024, 1) if CACHE_DB.exists() else 0,
+        "siste_sok": {"query": siste_sok[0], "for_sekunder_siden": round(time.time() - siste_sok[1])}
+        if siste_sok else None,
+        "kilder": {
+            "europe_pmc": _kilde_naabar("https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=test&pageSize=1"),
+            "openalex": _kilde_naabar("https://api.openalex.org/works/W2151543183"),
+        },
+    }
 
 
 @app.get("/api/sok")
