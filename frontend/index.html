@@ -95,11 +95,15 @@ button{ font:inherit; }
 }
 #search-form button:hover{ background:var(--accent-lt); }
 .search-meta{ font-size:.6875rem; color:var(--muted); display:flex; align-items:center; gap:.5rem; }
-.rapport-eksport{
+.rapport-eksport-gruppe{ display:inline-flex; align-items:center; gap:.3rem; font-size:.6875rem; color:var(--muted); }
+.rapport-eksport-gruppe.i-meta{ margin-left:auto; }
+.rapport-eksport-gruppe.blokk{ display:flex; margin-bottom:.7rem; }
+.rapport-btn{
   border:1px solid var(--border); background:none; color:var(--muted);
-  border-radius:99px; padding:.2rem .55rem; font-size:.6875rem; cursor:pointer; margin-left:auto;
+  border-radius:99px; padding:.2rem .55rem; font-size:.6875rem; cursor:pointer;
 }
-.rapport-eksport:hover{ color:var(--text); border-color:var(--accent); }
+.rapport-btn:hover{ color:var(--text); border-color:var(--accent); }
+.rapport-btn:disabled{ opacity:.5; cursor:default; }
 .utforsk-forslag{
   border:1px dashed var(--accent); background:var(--surface-2); color:var(--accent);
   border-radius:99px; padding:.3rem .7rem; font-size:.6875rem; font-weight:600; cursor:pointer;
@@ -201,7 +205,9 @@ svg text{ font-family:system-ui,sans-serif; }
         <button type="submit">Søk</button>
       </form>
       <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
-        <button class="rapport-eksport" id="btn-eksporter-kildesamling" title="Last ned utvalget som Markdown-rapport" hidden>📄 Eksporter kildesamling</button>
+        <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
+          📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+        </span>
       </div>
       <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
     </div>
@@ -235,7 +241,12 @@ svg text{ font-family:system-ui,sans-serif; }
       <div class="tabpanel active" id="tab-lignende"><div class="hint">Åpne et papir for å se semantiske naboer i cachen.</div></div>
       <div class="tabpanel" id="tab-kart"><div class="hint">Åpne et papir for å se relasjonskartet.</div></div>
       <div class="tabpanel" id="tab-gap"><div class="hint">Åpne et papir for å kjøre citation-gap-testen.</div></div>
-      <div class="tabpanel" id="tab-notater"><div class="hint">Ingen sitater lagret ennå. Merk tekst i leseflaten og trykk «Sitér».</div></div>
+      <div class="tabpanel" id="tab-notater">
+        <span class="rapport-eksport-gruppe blokk" id="eksport-sitatnotater">
+          📄 Eksporter alle notater: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+        </span>
+        <div id="notater-liste"><div class="hint">Ingen sitater lagret ennå. Merk tekst i leseflaten og trykk «Sitér».</div></div>
+      </div>
     </div>
   </div>
 </div>
@@ -272,6 +283,9 @@ svg text{ font-family:system-ui,sans-serif; }
       </div>
       <div class="tabpanel" id="tab-omfang">
         <div class="hint" style="margin-bottom:.7rem">Hvor mye av det du har skrevet berører hver akse — til scoping, ikke en fasit.</div>
+        <span class="rapport-eksport-gruppe blokk" id="eksport-omfang">
+          📄 Eksporter omfang-rapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+        </span>
         <div class="axis-row" id="axis-row"></div>
         <div class="hint">Tynn dekning betyr at du ikke har skrevet/søkt om det ennå — ikke at forskningen mangler.</div>
       </div>
@@ -311,7 +325,7 @@ $('#search-form').addEventListener('submit', async (e) => {
   $('#result-list').innerHTML = '';
   $('#cache-echo').hidden = true;
   $('#utforsk-forslag').classList.remove('vis');
-  $('#btn-eksporter-kildesamling').hidden = true;
+  $('#eksport-kildesamling').hidden = true;
   try {
     const data = await api(`/api/sok?q=${encodeURIComponent(q)}&n=20`);
     $('#result-status').textContent = '';
@@ -381,42 +395,65 @@ function renderResults(papirer, eksaktId) {
   }
 }
 
-// ---------- Kildesamling-rapport (idébank #29 §Gul hatt-gjennomgang) ----------
-function settResultatForEksport(papirer, tittel) {
-  state.sisteResultat = { ids: papirer.map(p => p.id), tittel };
-  $('#btn-eksporter-kildesamling').hidden = papirer.length === 0;
+// ---------- Rapport-eksport (idébank #29 §Gul hatt-gjennomgang) — delt av alle fire
+// maler: kildesamling, sitatnotater, citation-gap, omfang. Markdown OG PDF fra samme
+// endepunkt (Anders/Ulven ba om PDF 2026-09-02) — se rapport.py for hvorfor formatet
+// avgjøres server-side (én Blokk-liste, to renderere), ikke ved å konvertere i JS. ----------
+function slugFilnavn(s) {
+  return (s || 'rapport').replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
 }
 
-$('#btn-eksporter-kildesamling').addEventListener('click', async () => {
-  const { ids, tittel } = state.sisteResultat;
-  if (!ids.length) return;
-  const btn = $('#btn-eksporter-kildesamling');
-  const opprinneligTekst = btn.textContent;
-  btn.textContent = 'Genererer…';
+async function lastNedRapport(baseUrl, filnavnStem, format, btn) {
+  const opprinnelig = btn.textContent;
   btn.disabled = true;
+  btn.textContent = format === 'pdf' ? 'Genererer PDF…' : 'Genererer…';
   try {
-    const url = `/api/rapport/kildesamling?ids=${encodeURIComponent(ids.join(','))}&tittel=${encodeURIComponent(tittel)}`;
-    const r = await fetch(url);
+    const sep = baseUrl.includes('?') ? '&' : '?';
+    const r = await fetch(`${baseUrl}${sep}format=${format}`);
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
     const blob = await r.blob();
     const lenke = document.createElement('a');
     lenke.href = URL.createObjectURL(blob);
-    lenke.download = tittel.replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() + '.md';
+    lenke.download = `${slugFilnavn(filnavnStem)}.${format === 'pdf' ? 'pdf' : 'md'}`;
     lenke.click();
     URL.revokeObjectURL(lenke.href);
   } catch (err) {
     alert('Kunne ikke generere rapporten: ' + err.message);
   } finally {
-    btn.textContent = opprinneligTekst;
     btn.disabled = false;
+    btn.textContent = opprinnelig;
   }
-});
+}
+
+// Kildesamling — knyttet til gjeldende søk/Utforskning-resultat.
+function settResultatForEksport(papirer, tittel) {
+  state.sisteResultat = { ids: papirer.map(p => p.id), tittel };
+  $('#eksport-kildesamling').hidden = papirer.length === 0;
+}
+$$('#eksport-kildesamling .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
+  const { ids, tittel } = state.sisteResultat;
+  if (!ids.length) return;
+  lastNedRapport(`/api/rapport/kildesamling?ids=${encodeURIComponent(ids.join(','))}&tittel=${encodeURIComponent(tittel)}`,
+                  tittel, btn.dataset.format, btn);
+}));
+
+// Sitatnotater — hele leseloggen, uavhengig av hvilket papir som er åpent.
+$$('#eksport-sitatnotater .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
+  lastNedRapport('/api/rapport/sitatnotater', 'Sitatnotater', btn.dataset.format, btn);
+}));
+
+// Omfang — teksten som faktisk står i utkastet akkurat nå.
+$$('#eksport-omfang .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
+  const tekst = $('#skriv-editor').textContent || '';
+  if (tekst.trim().length < 20) { alert('Skriv litt mer først — for kort tekst å vurdere omfang på.'); return; }
+  lastNedRapport(`/api/rapport/omfang?tekst=${encodeURIComponent(tekst)}`, 'Omfang-rapport', btn.dataset.format, btn);
+}));
 
 // ---------- Utforskning (søk-doktrinens tredje modus — vet domenet, ikke termen) ----------
 async function utforskEmne(emneId, emneNavn) {
   $('#result-status').textContent = 'utforsker…';
   $('#result-list').innerHTML = '';
-  $('#btn-eksporter-kildesamling').hidden = true;
+  $('#eksport-kildesamling').hidden = true;
   try {
     const data = await api(`/api/emne/${encodeURIComponent(emneId)}?navn=${encodeURIComponent(emneNavn)}&n=20`);
     $('#result-status').textContent = '';
@@ -561,7 +598,7 @@ function renderKart(id) {
 
 // ---------- Notater ----------
 async function loadNotater(id) {
-  const el = $('#tab-notater');
+  const el = $('#notater-liste');
   try {
     const sitater = await api(`/api/sitater?paper_id=${encodeURIComponent(id)}`);
     $('#c-notater').textContent = sitater.length || '';

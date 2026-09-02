@@ -3,3 +3,4 @@ httpx
 sqlite-vec
 fastapi
 uvicorn
+reportlab

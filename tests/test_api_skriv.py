@@ -111,6 +111,67 @@ def test_rapport_kildesamling_tom_ids_gir_400():
     assert r.status_code == 400
 
 
+def test_rapport_kildesamling_pdf_format_gir_pdf_content_type():
+    papir = {"id": "1", "tittel": "T", "forfattere": "", "tidsskrift": "", "aar": 2026,
+             "doi": None, "abstract": "", "siteringstall": 0, "open_access": False, "kilde_url": "u"}
+    with patch("api.bank.hent", return_value=papir):
+        r = client.get("/api/rapport/kildesamling", params={"ids": "1", "format": "pdf"})
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/pdf"
+    assert r.content.startswith(b"%PDF")
+    assert "attachment" in r.headers["content-disposition"]
+
+
+def test_rapport_sitatnotater_returnerer_markdown():
+    sitater = [{"id": 1, "paper_id": "p1", "tekst": "sitat", "kommentar": "", "opprettet": 1.0,
+                "paper_tittel": "P", "paper_doi": None}]
+    with patch("api.bank.hent_sitater", return_value=sitater) as m:
+        r = client.get("/api/rapport/sitatnotater")
+    assert r.status_code == 200
+    assert "# Sitatnotater" in r.text
+    assert "sitat" in r.text
+    m.assert_called_once_with()
+
+
+def test_rapport_gap_papir_ikke_cachet_gir_404():
+    with patch("api.bank.hent", return_value=None):
+        r = client.get("/api/rapport/gap/ukjent")
+    assert r.status_code == 404
+
+
+def test_rapport_gap_mangler_pmid_og_doi_gir_422():
+    papir = {"pmid": None, "doi": None, "tittel": "T", "kilde_kode": "MED"}
+    with patch("api.bank.hent", return_value=papir):
+        r = client.get("/api/rapport/gap/x")
+    assert r.status_code == 422
+
+
+def test_rapport_gap_returnerer_markdown():
+    papir = {"pmid": "1", "doi": None, "tittel": "Kildepapir", "kilde_kode": "MED"}
+    resultat = {"siterte_antall": 1, "referanse_kilde": "europe_pmc",
+                "naboer": [{"id": "a", "tittel": "Nabo", "tidsskrift": "X", "aar": 2020,
+                            "kilde_url": "u", "avstand": 0.1}],
+                "gap": [{"id": "a", "tittel": "Nabo", "tidsskrift": "X", "aar": 2020,
+                         "kilde_url": "u", "avstand": 0.1}]}
+    with patch("api.bank.hent", return_value=papir), patch("api.gap_kandidater", return_value=resultat):
+        r = client.get("/api/rapport/gap/1")
+    assert r.status_code == 200
+    assert "Citation-gap: Kildepapir" in r.text
+    assert "Nabo" in r.text
+
+
+def test_rapport_omfang_returnerer_markdown_med_forslag():
+    akser = {"Lever": 0.0, "Faser": 1.0}
+    kandidat = [{"tittel": "Leverfunn", "aar": 2023, "tidsskrift": "X"}]
+    with patch("api.scoping.akse_dekning", return_value=akser), \
+         patch("api.bank.lignende_tekst", return_value=kandidat):
+        r = client.get("/api/rapport/omfang", params={"tekst": "noe tekst"})
+    assert r.status_code == 200
+    assert "Lever — 0 %" in r.text
+    assert "Leverfunn" in r.text
+    assert "Faser — 100 %" in r.text
+
+
 def test_omfang_returnerer_akser():
     akser = {"Lever": 1.0, "Faser": 0.0}
     with patch("api.scoping.akse_dekning", return_value=akser):

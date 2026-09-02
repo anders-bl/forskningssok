@@ -6,12 +6,13 @@ laget serialiserer og feilhåndterer for HTTP.
 
 Kjør: venv/bin/uvicorn api:app --reload --port 8420
 """
+import re
 import time
 from dataclasses import asdict
 
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import bank
@@ -24,6 +25,21 @@ from cli import sok_og_ranger
 from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer, ranger
 
 app = FastAPI(title="forskningssok API")
+
+
+def _slug(tekst: str) -> str:
+    return re.sub(r"^-+|-+$", "", re.sub(r"[^a-z0-9æøå]+", "-", tekst.lower()))
+
+
+def _rapport_svar(blokker: list[rapport.Blokk], format: str, filnavn_stem: str, tittel: str = ""):
+    """Delt av alle fire rapport-endepunktene — se rapport.py sin moduldocstring for
+    hvorfor Blokk-listen er det eneste malene bygger, og hvorfor formatvalget bor HER
+    (ett sted som vet om HTTP/nedlasting) og ikke i rapport.py (som forblir ren)."""
+    if format == "pdf":
+        pdf = rapport.til_pdf_bytes(blokker, tittel=tittel)
+        return Response(pdf, media_type="application/pdf",
+                         headers={"Content-Disposition": f'attachment; filename="{_slug(filnavn_stem)}.pdf"'})
+    return PlainTextResponse(rapport.til_markdown(blokker), media_type="text/markdown; charset=utf-8")
 
 
 def _kilde_naabar(url: str, *, timeout: float = 4.0) -> bool:
@@ -222,19 +238,64 @@ def api_relevans(tekst: str, k: int = 4):
 
 
 @app.get("/api/rapport/kildesamling")
-def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling"):
-    """Markdown-eksport av et papirutvalg — se rapport.py. `ids` = kommaseparerte
-    cache-id-er (typisk et helt søkeresultat, sendt fra frontend). Ukjente/ikke-cachede
-    id-er droppes ærlig (samme prinsipp som ellers), ALDRI en feil for én manglende blant
-    mange gyldige — kun tom hvis INGEN av dem var cachet."""
+def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str = "md"):
+    """Eksport av et papirutvalg (Markdown eller PDF, se rapport.py). `ids` =
+    kommaseparerte cache-id-er (typisk et helt søkeresultat, sendt fra frontend).
+    Ukjente/ikke-cachede id-er droppes ærlig (samme prinsipp som ellers), ALDRI en feil
+    for én manglende blant mange gyldige — kun tom hvis INGEN av dem var cachet."""
     id_liste = [i.strip() for i in ids.split(",") if i.strip()]
     if not id_liste:
         raise HTTPException(400, "ingen id-er oppgitt")
     papirer = [p for p in (bank.hent(i) for i in id_liste) if p]
     if not papirer:
         raise HTTPException(404, "ingen av de oppgitte id-ene er cachet")
-    md = rapport.kildesamling(papirer, tittel=tittel)
-    return PlainTextResponse(md, media_type="text/markdown; charset=utf-8")
+    blokker = rapport.kildesamling_blokker(papirer, tittel=tittel)
+    return _rapport_svar(blokker, format, tittel, tittel)
+
+
+@app.get("/api/rapport/sitatnotater")
+def api_rapport_sitatnotater(tittel: str = "Sitatnotater", format: str = "md"):
+    """Hele leseloggen (ALLE lagrede sitater, ikke filtrert på ett papir) som ett
+    dokument — se rapport.py:sitatnotater_blokker."""
+    sitater = bank.hent_sitater()
+    blokker = rapport.sitatnotater_blokker(sitater, tittel=tittel)
+    return _rapport_svar(blokker, format, tittel, tittel)
+
+
+@app.get("/api/rapport/gap/{paper_id:path}")
+def api_rapport_gap(paper_id: str, format: str = "md", k: int = 10):
+    """Delbar versjon av citation-gap-testen (Aaron Tay-proben) for ett papir — samme
+    422/502-disiplin som /api/gap, se den for hvorfor PMID ikke lenger er påkrevd."""
+    papir = bank.hent(paper_id)
+    if not papir:
+        raise HTTPException(404, f"{paper_id} er ikke cachet — søk det opp først")
+    if not papir["pmid"] and not papir["doi"]:
+        raise HTTPException(422, "papiret mangler både PMID og DOI — ingen referanse-kilde tilgjengelig")
+    try:
+        resultat = gap_kandidater(paper_id, papir["kilde_kode"] or "MED", papir["pmid"], k=k)
+    except RuntimeError as e:
+        raise HTTPException(502, str(e)) from e
+    tittel = f"Citation-gap: {papir['tittel']}"
+    blokker = rapport.gap_rapport_blokker(papir, resultat, tittel=tittel)
+    return _rapport_svar(blokker, format, tittel, tittel)
+
+
+@app.get("/api/rapport/omfang")
+def api_rapport_omfang(tekst: str, tittel: str = "Omfang-rapport", format: str = "md"):
+    """Akse-dekning + kandidater FRA EGEN CACHE for tynt dekkede akser (ingen nye
+    eksterne kall — samme ADR-004-disiplin, gjenbruker bank.lignende_tekst() på et
+    syntetisk søk bygget av aksens eget nøkkelordsett)."""
+    akser = scoping.akse_dekning(tekst)
+    forslag = {}
+    for akse, dekning in akser.items():
+        if dekning >= 1.0:
+            continue
+        synonym_tekst = akse + " " + " ".join(scoping.AKSER[akse])
+        kandidater = bank.lignende_tekst(synonym_tekst, k=3)
+        if kandidater:
+            forslag[akse] = kandidater
+    blokker = rapport.omfang_rapport_blokker(akser, forslag, tittel=tittel)
+    return _rapport_svar(blokker, format, tittel, tittel)
 
 
 @app.get("/api/omfang")
