@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from rapport import (  # noqa: E402
     Blokk, gap_rapport, kildesamling, kildesamling_blokker, omfang_rapport,
-    sitatnotater, til_pdf_bytes,
+    sitatnotater, til_bibtex, til_pdf_bytes, til_ris,
 )
 
 
@@ -150,3 +150,59 @@ def test_omfang_rapport_tynn_dekning_lister_forslag():
     ut = omfang_rapport({"Lever": 0.0}, forslag)
     assert "Lever — 0 %" in ut
     assert "Kandidat om lever" in ut
+
+
+# ---------- sitasjonseksport: BibTeX/RIS ----------
+
+def test_bibtex_inneholder_forfatter_tittel_aar_doi():
+    p = _p("1", "Nephrocalcinosis in salmon", forfattere="Dalum AS, Alarcon M", doi="10.1/x")
+    ut = til_bibtex([p])
+    assert ut.startswith("@article{dalum2026,")
+    assert "author = {Dalum AS and Alarcon M}" in ut
+    assert "title = {Nephrocalcinosis in salmon}" in ut
+    assert "doi = {10.1/x}" in ut
+
+
+def test_bibtex_nokler_deduplisert_ved_kollisjon():
+    a = _p("1", "Første", forfattere="Dalum AS")
+    b = _p("2", "Andre", forfattere="Dalum AS")  # samme forfatter+år → samme nøkkel-base
+    ut = til_bibtex([a, b])
+    assert "@article{dalum2026," in ut
+    assert "@article{dalum20262," in ut
+
+
+def test_bibtex_tomt_utvalg_gir_tom_streng():
+    assert til_bibtex([]) == ""
+
+
+def test_bibtex_semikolon_separerte_forfattere_openalex_form():
+    p = _p("1", "T", forfattere="A. Forfatter; B. Medforfatter")
+    ut = til_bibtex([p])
+    assert "author = {A. Forfatter and B. Medforfatter}" in ut
+
+
+def test_ris_har_riktig_tag_struktur():
+    p = _p("1", "Nephrocalcinosis i laks", forfattere="Dalum AS, Alarcon M",
+           tidsskrift="Journal of fish diseases", doi="10.1/x")
+    ut = til_ris([p])
+    linjer = ut.rstrip("\n").split("\n")
+    assert linjer[0] == "TY  - JOUR"
+    assert "AU  - Dalum AS" in linjer
+    assert "AU  - Alarcon M" in linjer
+    assert "TI  - Nephrocalcinosis i laks" in linjer
+    assert "JO  - Journal of fish diseases" in linjer
+    assert "PY  - 2026" in linjer
+    assert "DO  - 10.1/x" in linjer
+    assert linjer[-1] == "ER  - "
+
+
+def test_ris_flere_papirer_separert_med_tomlinje():
+    a = _p("1", "Første")
+    b = _p("2", "Andre")
+    ut = til_ris([a, b])
+    assert ut.count("TY  - JOUR") == 2
+    assert "\n\n" in ut
+
+
+def test_ris_tomt_utvalg_gir_tom_streng():
+    assert til_ris([]) == ""

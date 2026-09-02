@@ -122,6 +122,30 @@ def test_rapport_kildesamling_pdf_format_gir_pdf_content_type():
     assert "attachment" in r.headers["content-disposition"]
 
 
+def test_rapport_kildesamling_bib_format():
+    papir = {"id": "1", "tittel": "Nephrocalcinosis i laks", "forfattere": "Dalum AS",
+             "tidsskrift": "Journal of fish diseases", "aar": 2026, "doi": "10.1/x",
+             "abstract": "", "siteringstall": 0, "open_access": False, "kilde_url": "u"}
+    with patch("api.bank.hent", return_value=papir):
+        r = client.get("/api/rapport/kildesamling", params={"ids": "1", "format": "bib"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/x-bibtex")
+    assert "@article{dalum2026," in r.text
+    assert ".bib" in r.headers["content-disposition"]
+
+
+def test_rapport_kildesamling_ris_format():
+    papir = {"id": "1", "tittel": "Nephrocalcinosis i laks", "forfattere": "Dalum AS",
+             "tidsskrift": "Journal of fish diseases", "aar": 2026, "doi": "10.1/x",
+             "abstract": "", "siteringstall": 0, "open_access": False, "kilde_url": "u"}
+    with patch("api.bank.hent", return_value=papir):
+        r = client.get("/api/rapport/kildesamling", params={"ids": "1", "format": "ris"})
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/x-research-info-systems")
+    assert r.text.startswith("TY  - JOUR")
+    assert ".ris" in r.headers["content-disposition"]
+
+
 def test_rapport_sitatnotater_returnerer_markdown():
     sitater = [{"id": 1, "paper_id": "p1", "tekst": "sitat", "kommentar": "", "opprettet": 1.0,
                 "paper_tittel": "P", "paper_doi": None}]

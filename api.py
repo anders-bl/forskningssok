@@ -261,16 +261,25 @@ def api_relevans(tekst: str, k: int = 4):
 
 @app.get("/api/rapport/kildesamling")
 def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str = "md"):
-    """Eksport av et papirutvalg (Markdown eller PDF, se rapport.py). `ids` =
+    """Eksport av et papirutvalg (Markdown/PDF/BibTeX/RIS, se rapport.py). `ids` =
     kommaseparerte cache-id-er (typisk et helt søkeresultat, sendt fra frontend).
     Ukjente/ikke-cachede id-er droppes ærlig (samme prinsipp som ellers), ALDRI en feil
-    for én manglende blant mange gyldige — kun tom hvis INGEN av dem var cachet."""
+    for én manglende blant mange gyldige — kun tom hvis INGEN av dem var cachet.
+
+    format=bib/ris svarer på «sitasjonsformatering er fortsatt uløst» (Anders 2026-09-02):
+    ikke pen tekst til manuell liming, men en fil Zotero/EndNote leser NATIVT — se
+    rapport.py:til_bibtex/til_ris sin docstring."""
     id_liste = [i.strip() for i in ids.split(",") if i.strip()]
     if not id_liste:
         raise HTTPException(400, "ingen id-er oppgitt")
     papirer = [p for p in (bank.hent(i) for i in id_liste) if p]
     if not papirer:
         raise HTTPException(404, "ingen av de oppgitte id-ene er cachet")
+    if format in ("bib", "ris"):
+        tekst = rapport.til_bibtex(papirer) if format == "bib" else rapport.til_ris(papirer)
+        media = "application/x-bibtex" if format == "bib" else "application/x-research-info-systems"
+        return Response(tekst.encode("utf-8"), media_type=f"{media}; charset=utf-8",
+                         headers={"Content-Disposition": f'attachment; filename="{_slug(tittel)}.{format}"'})
     blokker = rapport.kildesamling_blokker(papirer, tittel=tittel)
     return _rapport_svar(blokker, format, tittel, tittel)
 

@@ -211,7 +211,7 @@ svg text{ font-family:system-ui,sans-serif; }
       </form>
       <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
         <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
-          📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+          📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
         </span>
       </div>
       <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
@@ -411,10 +411,12 @@ function slugFilnavn(s) {
   return (s || 'rapport').replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
 }
 
+const RAPPORT_EKSTENSJON = { pdf: 'pdf', bib: 'bib', ris: 'ris' };
+
 async function lastNedRapport(baseUrl, filnavnStem, format, btn) {
   const opprinnelig = btn.textContent;
   btn.disabled = true;
-  btn.textContent = format === 'pdf' ? 'Genererer PDF…' : 'Genererer…';
+  btn.textContent = format === 'md' ? 'Genererer…' : `Genererer ${format.toUpperCase()}…`;
   try {
     const sep = baseUrl.includes('?') ? '&' : '?';
     const r = await fetch(`${baseUrl}${sep}format=${format}`);
@@ -422,7 +424,7 @@ async function lastNedRapport(baseUrl, filnavnStem, format, btn) {
     const blob = await r.blob();
     const lenke = document.createElement('a');
     lenke.href = URL.createObjectURL(blob);
-    lenke.download = `${slugFilnavn(filnavnStem)}.${format === 'pdf' ? 'pdf' : 'md'}`;
+    lenke.download = `${slugFilnavn(filnavnStem)}.${RAPPORT_EKSTENSJON[format] || 'md'}`;
     lenke.click();
     URL.revokeObjectURL(lenke.href);
   } catch (err) {

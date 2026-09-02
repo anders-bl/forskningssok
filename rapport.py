@@ -14,6 +14,7 @@ separasjon som api.py alt bruker — bank.py/scoping.py henter, rapport.py forma
 Ærlighets-prinsippet gjelder alle malene: ingen rapport hevder å være uttømmende, kun
 hva verktøyet faktisk fant og når.
 """
+import re
 import time
 from dataclasses import dataclass
 from io import BytesIO
@@ -165,6 +166,80 @@ def kildesamling_blokker(papirer: list[dict], *, tittel: str = "Kildesamling") -
 def kildesamling(papirer: list[dict], *, tittel: str = "Kildesamling") -> str:
     """Bakoverkompatibel Markdown-shortcut — se kildesamling_blokker() for PDF-veien."""
     return til_markdown(kildesamling_blokker(papirer, tittel=tittel))
+
+
+# ---------- Sitasjonseksport: BibTeX/RIS — «hvordan får jeg dette inn i Zotero?» ----------
+#
+# Anders 2026-09-02: manuell sitasjonsformatering er fortsatt uløst selv med et
+# referanseverktøy i hånden (bekreftet i research-runden samme kveld). Svaret er IKKE å
+# formatere pen tekst Ulven likevel må lime inn manuelt — det er å gi ham en fil hans eget
+# verktøy (Zotero/EndNote — begge dominerer forskerlandskapet) leser NATIVT. RIS er formatet
+# begge er bygget rundt (Research Information Systems); BibTeX for LaTeX-arbeidsflyt. Ikke
+# Blokk-baserte som resten av rapport.py (ingen overskrift/avsnitt-struktur å gjenbruke) —
+# egen, flat gren, men samme prinsipp: rene data-transformasjoner, ingen IO her.
+
+def _forfatterliste(forfattere: str) -> list[str]:
+    """Kildene formaterer forfattere ulikt (Europe PMC: «Etternavn AB, Etternavn2 CD»
+    kommaseparert; OpenAlex: «Fornavn Etternavn; Fornavn2 Etternavn2» semikolon-separert)
+    — bevisst enkel: velger skilletegn ut fra hva som faktisk finnes, omformaterer ALDRI
+    navnerekkefølgen. Dokumentert begrensning, ikke skjult."""
+    forfattere = (forfattere or "").strip()
+    if not forfattere:
+        return []
+    sep = ";" if ";" in forfattere else ","
+    return [f.strip() for f in forfattere.split(sep) if f.strip()]
+
+
+def _bib_nokkel(p: dict, brukt: set[str]) -> str:
+    forfattere = _forfatterliste(p.get("forfattere", ""))
+    etternavn = re.sub(r"[^a-z0-9]", "", (forfattere[0].split()[0] if forfattere else "ukjent").lower())
+    base = f"{etternavn}{p.get('aar') or 'uaar'}"
+    nokkel, i = base, 2
+    while nokkel in brukt:
+        nokkel = f"{base}{i}"
+        i += 1
+    brukt.add(nokkel)
+    return nokkel
+
+
+def _bib_escape(s) -> str:
+    """Minimal, ikke uttømmende — unngår å KNEKKE .bib-syntaksen (ubalanserte klammer),
+    ikke en full LaTeX-spesialtegn-escaper."""
+    return str(s or "").replace("{", "").replace("}", "")
+
+
+def til_bibtex(papirer: list[dict]) -> str:
+    brukt: set[str] = set()
+    poster = []
+    for p in papirer:
+        nokkel = _bib_nokkel(p, brukt)
+        felt = [
+            ("author", " and ".join(_forfatterliste(p.get("forfattere", "")))),
+            ("title", p.get("tittel", "")),
+            ("journal", p.get("tidsskrift", "")),
+            ("year", str(p.get("aar") or "")),
+            ("doi", p.get("doi") or ""),
+            ("url", p.get("kilde_url") or ""),
+        ]
+        linjer = ",\n".join(f"  {navn} = {{{_bib_escape(verdi)}}}" for navn, verdi in felt if verdi)
+        poster.append(f"@article{{{nokkel},\n{linjer}\n}}")
+    return "\n\n".join(poster) + ("\n" if poster else "")
+
+
+def _ris_post(p: dict) -> str:
+    linjer = ["TY  - JOUR"]
+    linjer += [f"AU  - {f}" for f in _forfatterliste(p.get("forfattere", ""))]
+    for tag, felt in (("TI", "tittel"), ("JO", "tidsskrift"), ("PY", "aar"),
+                       ("DO", "doi"), ("UR", "kilde_url"), ("AB", "abstract")):
+        verdi = p.get(felt)
+        if verdi:
+            linjer.append(f"{tag}  - {verdi}")
+    linjer.append("ER  - ")
+    return "\n".join(linjer)
+
+
+def til_ris(papirer: list[dict]) -> str:
+    return "\n\n".join(_ris_post(p) for p in papirer) + ("\n" if papirer else "")
 
 
 # ---------- Mal 2: sitatnotater — hele leseloggen som ett dokument ----------
