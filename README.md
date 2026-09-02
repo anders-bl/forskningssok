@@ -13,8 +13,28 @@ Full scoping, domenepresisering og «hvorfor akkurat disse valgene»: plattformw
 python3 -m venv venv && venv/bin/pip install -r requirements.txt
 venv/bin/python cli.py "nephrocalcinosis smolt seawater transfer" -n 10
 venv/bin/python cli.py --lignende 10.1111/jfd.70099   # relasjonelt: nærmeste i cachen
+venv/bin/python cli.py --gap 10.1111/jfd.70099        # citation-gap-testen, se under
 venv/bin/python -m pytest -q
 ```
+
+## Citation-gap-testen (`citation_gap.py`)
+
+Aaron Tays fleksibilitets-probe (idébank #29): *«finn papirer som burde vært sitert av X,
+men ikke er det.»* Spesialiserte forskningsverktøy (Elicit, Consensus, Undermind, AI2
+Paperfinder) feilet denne testen systematisk i uavhengige tester — den skiller ekte
+relasjonelt søk fra et pent rangert ekko av det som uansett siteres. `--gap ID` henter
+papirets faktiske referanseliste (Europe PMC `/references`) og viser hvilke av `bank.py`s
+semantiske naboer som IKKE står der — kandidater for menneskelig vurdering, ikke en dom
+(samme ærlighets-prinsipp som resten av verktøyet).
+
+⚠ **`/references`-delressursen er IKKE live-verifisert mot ekte data ennå** — EBIs
+endepunkt var i et vedlikeholdsvindu («temporarily unavailable due to maintenance», 503)
+under hele byggingen 2026-09-02 14:34–14:38 UTC, bekreftet live gjentatte ganger, mens
+`/search` var oppe hele tiden. `RuntimeError`-disiplinen ble likevel live-verifisert:
+kjøring mot ekte 503 gir en tydelig feilmelding, ikke et stille «0 gap» som ville sett ut
+som «alt er sitert». Parsingen følger EBIs dokumenterte reference-schema (se
+`adapters/europe_pmc.py:referanser` sin docstring) — kjør `--gap` på nytt når
+vedlikeholdsvinduet er over for å bekrefte feltene faktisk stemmer.
 
 ## Arkitektur — de fire trinnene
 
@@ -95,8 +115,10 @@ uten-gjetning-prinsippet betyr at verktøyet ikke stille legger til artsfilter d
 
 ## Testet
 
-15/15 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+22/22 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
 README-en. Dekker: parsing av ekte Europe PMC-felt, TTL-cache (ingen dobbelt HTTP-kall),
-kilde-feil ≠ stille tomt resultat, ADR-013-banding (ferskt+domenenært slår
-eldre+høyt-sitert+urelatert), embed-cache er idempotent og skiller nær fra fjern
-(`--lignende`), og at en emnesøk-med-treff aldri feilrapporteres som «ingen treff».
+kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503 live), ADR-013-
+banding (ferskt+domenenært slår eldre+høyt-sitert+urelatert), embed-cache er idempotent og
+skiller nær fra fjern (`--lignende`), citation-gap-matching (DOI- og tittel-match ekskluderer
+korrekt, whitespace/tegnsetting-robust), og at en emnesøk-med-treff aldri feilrapporteres
+som «ingen treff».

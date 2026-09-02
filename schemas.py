@@ -15,6 +15,7 @@ class PaperDossier:
     open_access: bool
     kilde_url: str
     kilde: str = "europe_pmc"
+    kilde_kode: str = "MED"  # Europe PMC sin egen kildekode (MED/PPR/PMC …) — trengs for /references
 
     @property
     def id(self) -> str:

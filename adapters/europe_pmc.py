@@ -22,6 +22,7 @@ import httpx
 from schemas import PaperDossier
 
 BASE = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
+REST = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 UA = "Mozilla/5.0 (research; lauvasdata; kontakt@lauvasdata.no)"
 DB = Path(__file__).resolve().parent.parent / "cache.db"
 TTL_SEKUNDER = 24 * 3600  # papirmetadata endrer seg sjelden — 1 dags TTL er rikelig
@@ -81,5 +82,42 @@ def _parse(data: dict) -> list[PaperDossier]:
             siteringstall=r.get("citedByCount"),
             open_access=(r.get("isOpenAccess") == "Y"),
             kilde_url=f"https://europepmc.org/article/{r.get('source', 'MED')}/{pmid or r.get('id', '')}",
+            kilde_kode=r.get("source", "MED"),
         ))
     return ut
+
+
+def referanser(kilde_kode: str, ekte_id: str, page_size: int = 200, *,
+                tving_fersk: bool = False, db_path: Path = DB) -> list[dict]:
+    """Hva ETT papir selv siterer (Europe PMC /references) — grunnlaget for
+    citation_gap.py. IKKE live-verifisert mot ekte respons ennå: EBIs `/references`-
+    delressurs var i vedlikeholdsvindu («temporarily unavailable due to maintenance»,
+    503, målt 2026-09-02 14:34 UTC) mens dette ble bygget — kun `/search` var oppe
+    samtidig. Parsingen under følger EBIs DOKUMENTERTE reference-schema (id/source/
+    title/authorString/pubYear/doi — doi er ofte FRAVÆRENDE i referanselister, derfor
+    matcher citation_gap.py primært på tittel), men er en gjetning om FELTENE til det
+    er kjørt live én gang. RuntimeError på feil, samme disiplin som `sok()` — en 503
+    her skal ALDRI se ut som «dette papiret siterer ingenting»."""
+    key = f"refs::{kilde_kode}::{ekte_id}::{page_size}"
+    db = _db(db_path)
+    if not tving_fersk:
+        rad = db.execute(
+            "SELECT hentet_ved, respons FROM query_cache WHERE query=?", (key,)).fetchone()
+        if rad and (time.time() - rad[0]) < TTL_SEKUNDER:
+            db.close()
+            return json.loads(rad[1])
+    try:
+        r = httpx.get(f"{REST}/{kilde_kode}/{ekte_id}/references",
+                       params={"format": "json", "pageSize": page_size},
+                       headers={"User-Agent": UA}, timeout=30)
+        r.raise_for_status()
+    except (httpx.HTTPError, httpx.TimeoutException) as e:
+        db.close()
+        raise RuntimeError(f"Europe PMC /references utilgjengelig: {e}") from e
+    data = r.json()
+    rader = (data.get("referenceList") or {}).get("reference", [])
+    db.execute("INSERT OR REPLACE INTO query_cache(query, hentet_ved, respons) VALUES (?,?,?)",
+               (key, time.time(), json.dumps(rader)))
+    db.commit()
+    db.close()
+    return rader

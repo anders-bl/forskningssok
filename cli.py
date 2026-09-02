@@ -8,12 +8,14 @@ gjetter aldri.
 Kjør:
   python3 cli.py "nephrocalcinosis smolt seawater transfer"
   python3 cli.py --lignende 10.1111/jfd.70099
+  python3 cli.py --gap 10.1111/jfd.70099   # citation-gap-testen, se citation_gap.py
 """
 import argparse
 import sys
 
 from adapters.europe_pmc import sok
-from bank import lagre, lignende
+from bank import hent, lagre, lignende
+from citation_gap import gap_kandidater
 from ranking import domene_naer, ranger
 from resolve import resolve
 from schemas import PaperDossier
@@ -59,7 +61,30 @@ def main():
     ap.add_argument("query", nargs="*", help="søkestreng, f.eks. 'nephrocalcinosis smolt seawater transfer'")
     ap.add_argument("-n", "--antall", type=int, default=10, help="maks treff å vise")
     ap.add_argument("--lignende", metavar="ID", help="vis cachede papirer semantisk nærmest DOI/PMID")
+    ap.add_argument("--gap", metavar="ID", help="citation-gap-testen: cachede naboer IKKE i papirets egen referanseliste")
     a = ap.parse_args()
+
+    if a.gap:
+        papir = hent(a.gap)
+        if not papir:
+            print(f"{a.gap} er ikke cachet ennå — søk det opp først (--lignende krever samme).")
+            return
+        if not papir["pmid"]:
+            print(f"{a.gap} mangler PMID i cachen — /references krever det (kun MED-kilden er testet).")
+            return
+        try:
+            resultat = gap_kandidater(a.gap, papir["kilde_kode"] or "MED", papir["pmid"], k=a.antall)
+        except RuntimeError as e:
+            print(f"Feil mot Europe PMC /references: {e}", file=sys.stderr)
+            sys.exit(1)
+        print(f"«{papir['tittel']}» siterer {resultat['siterte_antall']} kilder selv.")
+        print(f"{len(resultat['naboer'])} semantiske naboer i cachen, "
+              f"{len(resultat['gap'])} av dem IKKE i referanselisten (kandidater, ikke en dom):\n")
+        for g in resultat["gap"]:
+            print(f"[{g['avstand']:.3f}] {g['aar'] or '?'} · {g['tidsskrift']}")
+            print(f"    {g['tittel']}")
+            print(f"    {g['kilde_url']}\n")
+        return
 
     if a.lignende:
         naboer = lignende(a.lignende, k=a.antall)

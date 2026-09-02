@@ -43,7 +43,12 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     db.execute("""CREATE TABLE IF NOT EXISTS papers(
         id TEXT PRIMARY KEY, tittel TEXT, forfattere TEXT, tidsskrift TEXT, aar INTEGER,
         doi TEXT, pmid TEXT, abstract TEXT, siteringstall INTEGER, open_access INTEGER,
-        kilde_url TEXT)""")
+        kilde_url TEXT, kilde_kode TEXT)""")
+    try:  # migrasjon for cache.db skrevet før dette feltet fantes — idempotent
+        db.execute("ALTER TABLE papers ADD COLUMN kilde_kode TEXT")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass  # kolonnen finnes alt (ny db, eller migrasjonen alt kjørt)
     db.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS paper_vec
         USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])""")
     return db
@@ -64,14 +69,26 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
     for p, emb in zip(nye, embeddinger):
         cur = db.execute(
             """INSERT INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
-               siteringstall,open_access,kilde_url) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+               siteringstall,open_access,kilde_url,kilde_kode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (p.id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid, p.abstract,
-             p.siteringstall, int(p.open_access), p.kilde_url))
+             p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode))
         db.execute("INSERT INTO paper_vec(chunk_id, embedding) VALUES (?,?)",
                    (cur.lastrowid, sqlite_vec.serialize_float32(emb)))
     db.commit()
     db.close()
     return len(nye)
+
+
+def hent(paper_id: str, *, db_path: Path = DB) -> dict | None:
+    """Slår opp et cachet papirs pmid+kilde_kode — det citation_gap.py trenger for å
+    kalle Europe PMC /references. Ærlig None hvis ikke cachet, ikke en feil."""
+    db = _db(db_path)
+    rad = db.execute(
+        "SELECT id, tittel, pmid, kilde_kode FROM papers WHERE id=?", (paper_id,)).fetchone()
+    db.close()
+    if not rad:
+        return None
+    return {"id": rad[0], "tittel": rad[1], "pmid": rad[2], "kilde_kode": rad[3]}
 
 
 def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
@@ -89,10 +106,10 @@ def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
         db.close()
         return []
     rows = db.execute("""
-        SELECT p.tittel, p.tidsskrift, p.aar, p.kilde_url, v.distance
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
         ORDER BY v.distance""", (qvec[0], k + 1, rad[0])).fetchall()
     db.close()
-    return [{"tittel": r[0], "tidsskrift": r[1], "aar": r[2], "kilde_url": r[3], "avstand": r[4]}
-            for r in rows][:k]
+    return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
+             "kilde_url": r[5], "avstand": r[6]} for r in rows][:k]
