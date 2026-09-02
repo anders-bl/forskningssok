@@ -1,13 +1,21 @@
-# nefrokalsinose-sok
+# forskningssok
 
-Entitet-sentrisk litteratursøk for oppdrettsfisk-patologi — vertikal #4 av samme mal som
-`bruktmarked` / `teknisk-enhets-sok` / `rollesok` (skjelettet: `vertikal-sok-mal`). Bygget
-for Ulven (marinbiolog, firma skanner 500 fisk/t med ultralyd) — svimmel av støy i eget
-litteratursøk, ville ha hard empiri, tverrfaglig, om nefrokalsinose hos oppdrettsfisk:
+Entitet-sentrisk litteratursøk — vertikal #4 av samme mal som `bruktmarked` /
+`teknisk-enhets-sok` / `rollesok` (skjelettet: `vertikal-sok-mal`). Omdøpt 2026-09-02 fra
+`nefrokalsinose-sok`: arkitekturen var alt ~90 % domeneagnostisk (kun `ranking.py`s
+domeneliste er fiskespesifikk — se [[prosjekt/idebank/29-forskningssok-rammeverk]]), navnet
+løy om det. **Denne INSTANSEN er fortsatt fiskehelse-scopet** — domeneprofilen er ikke
+trukket ut som egen injiserbar fil ennå (§Neste steg), så repoet er generisk i navn før det
+er generisk i kode. Ikke et løfte om at andre fagfelt fungerer i dag.
+
+Bygget for Ulven (marinbiolog, firma skanner 500 fisk/t med ultralyd) — svimmel av støy i
+eget litteratursøk, ville ha hard empiri, tverrfaglig, om nefrokalsinose hos oppdrettsfisk:
 faser, miljøfaktorer, regenerasjon etter sjøsetting, livsløp.
 
-Full scoping, domenepresisering og «hvorfor akkurat disse valgene»: plattformwikien,
-`prosjekt/idebank/28-nefrokalsinose-litteratursok`.
+Full scoping, domenepresisering og «hvorfor akkurat disse valgene»:
+plattformwikien, `prosjekt/idebank/28-nefrokalsinose-litteratursok` (opprinnelig scope) og
+`prosjekt/idebank/29-forskningssok-rammeverk` (generaliseringen, denne omdøpingen, og
+kildevalgene under).
 
 ```bash
 python3 -m venv venv && venv/bin/pip install -r requirements.txt

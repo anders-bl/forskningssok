@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cli.py — nefrokalsinose-sok: entitet-sentrisk litteratursøk for oppdrettsfisk-patologi.
+"""cli.py — forskningssok: entitet-sentrisk litteratursøk for oppdrettsfisk-patologi.
 
 Vertikal #4 (prosjekt/idebank/28-nefrokalsinose-litteratursok), samme mal som
 bruktsøk/teknisk-enhets-søk/rollesøk. Ærlig tomt-prinsipp: ingen treff → sier det,

@@ -87,6 +87,8 @@ button{ font:inherit; }
 .reader-kicker{ font-size:.6875rem; color:var(--muted); display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem; }
 .reader-title{ font-size:1.375rem; font-weight:700; line-height:1.3; margin:0 0 .4rem; }
 .reader-authors{ font-size:.8125rem; color:var(--muted); }
+.emner{ display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.6rem; }
+.emne-chip{ background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:99px; padding:.15rem .55rem; font-size:.6875rem; }
 .reader-body{ padding:1.3rem 2rem 3rem; }
 .reader-grid{ display:grid; grid-template-columns:20px 1fr; column-gap:.9rem; max-width:640px; }
 .gutter-dot{ display:flex; justify-content:center; padding-top:.5rem; }
@@ -135,7 +137,7 @@ svg text{ font-family:system-ui,sans-serif; }
 <body>
 
 <div class="topbar">
-  <div class="wordmark">Litteratursøk <small>av Lauvasdata · nefrokalsinose-sok</small></div>
+  <div class="wordmark">Litteratursøk <small>av Lauvasdata · forskningssok</small></div>
   <div class="topbar-meta">
     <span id="cache-meta">bank.db · —</span>
   </div>
@@ -158,6 +160,7 @@ svg text{ font-family:system-ui,sans-serif; }
       <div class="reader-kicker" id="reader-kicker"></div>
       <div class="reader-title" id="reader-title"></div>
       <div class="reader-authors" id="reader-authors"></div>
+      <div class="emner" id="reader-emner"></div>
     </div>
     <div class="pane-scroll">
       <div id="empty-reader">Søk til venstre, velg et papir for å lese abstractet her.</div>
@@ -267,6 +270,13 @@ async function openPaper(id) {
     body.innerHTML = `<div class="hint">Ingen abstract hentet for dette papiret.</div>`;
   }
 
+  $('#reader-emner').innerHTML = '';
+  if (id.startsWith('10.')) {
+    api(`/api/emner/${encodeURIComponent(id)}`).then(d => {
+      $('#reader-emner').innerHTML = d.emner.map(e => `<span class="emne-chip">${escapeHtml(e)}</span>`).join('');
+    }).catch(()=>{}); // emner er en bonus, aldri blokkerende — stille feil er OK KUN her
+  }
+
   loadLignende(id);
   loadNotater(id);
   loadGapLazy = true; // gap hentes når fanen faktisk åpnes (unngå unødig EBI-kall)
@@ -309,7 +319,9 @@ async function loadGap(id) {
   el.innerHTML = '<div class="hint">Kjører citation-gap-testen…</div>';
   try {
     const data = await api(`/api/gap/${encodeURIComponent(id)}?k=10`);
-    el.innerHTML = `<div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
+    const kildeMerknad = data.referanse_kilde && data.referanse_kilde.startsWith('openalex')
+      ? ` <span style="color:var(--warn)">(kilde: OpenAlex — Europe PMC var utilgjengelig)</span>` : '';
+    el.innerHTML = `<div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv${kildeMerknad}. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
       (data.gap.length ? data.gap.map(g => `
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
           <div class="neighbor-row1"><span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span></div>

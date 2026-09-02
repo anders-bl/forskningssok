@@ -13,11 +13,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import bank
+from adapters import openalex
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
 from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer
 
-app = FastAPI(title="nefrokalsinose-sok API")
+app = FastAPI(title="forskningssok API")
 
 
 @app.get("/api/status")
@@ -71,6 +72,17 @@ def api_gap(paper_id: str, k: int = 10):
     except RuntimeError as e:
         # e er allerede "Europe PMC /references utilgjengelig: …" fra citation_gap.py —
         # ikke pakk inn på nytt (ekte dobbelt/trippel-prefiks-bug fanget live 2026-09-02).
+        raise HTTPException(502, str(e)) from e
+
+
+@app.get("/api/emner/{paper_id:path}")
+def api_emner(paper_id: str):
+    """OpenAlex-emnetagger — kun for papirer med DOI (OpenAlex slår opp på DOI)."""
+    if not paper_id.startswith("10."):
+        return {"emner": []}
+    try:
+        return {"emner": openalex.konsepter(paper_id)}
+    except RuntimeError as e:
         raise HTTPException(502, str(e)) from e
 
 
