@@ -49,7 +49,7 @@ vedlikeholdsvinduet er over for å bekrefte feltene faktisk stemmer.
 | Trinn | Modul | Kilde |
 |---|---|---|
 | Resolve | `resolve.py` (kopi, uændret) — brukt KUN for eksakt-tittel-flagg, se under | `vertikal-sok-mal` |
-| Aggreger | `adapters/europe_pmc.py` — spørretid + 24t TTL-cache | Europe PMC (EU, EMBL-EBI) |
+| Aggreger | `adapters/europe_pmc.py` (påkrevd) + `adapters/core.py` (tilleggskilde, se under) — spørretid + 24t TTL-cache | Europe PMC (EU, EMBL-EBI) + CORE |
 | Ranger | `ranking.py` — domene-nærhet-bånd + (ferskhet, siteringer) | `rank.py` (kopi, uendret) |
 | Strukturer | `schemas.py:PaperDossier` | — |
 
@@ -93,6 +93,18 @@ OpenAlex-siteringsberikelsen (spec'et som «andreklipp») er derfor IKKE bygget 
 var overflødig. Live-verifisert 2026-09-02: `"nephrocalcinosis salmon"` → 201 treff,
 inkl. Pharmaq Analytiq / Journal of Fish Diseases-funn direkte relevante for domenet.
 
+## Tredje kilde — CORE (institusjonsarkiv/gråtekst)
+
+`adapters/core.py` — institusjonelle open-access-repositorier (masteroppgaver, ph.d.-
+avhandlinger), den klassen norsk gråtekst Europe PMC aldri indekserer. Slått sammen med
+Europe PMC i selve søket (`cli.py:sok_og_ranger`, lagt til 2026-09-02 — adapteren var
+bygget og live-verifisert en økt tidligere, men sto ubrukt inntil da). Europe PMC er
+PÅKREVD kilde (feil der stanser søket); CORE er en TILLEGGSKILDE — en CORE-feil
+degraderer synlig via `kilder`-feltet i `/api/sok`-responsen, tar aldri ned et ellers
+fungerende søk. `dedup.py` fjerner dubletter på tvers av kildene (DOI FØRST, normalisert
+tittel som fallback — samme funn kan finnes både Europe PMC-indeksert og som
+institusjonsarkiv-kopi).
+
 ## Ranking — ADR-013s pending-prinsipp på et nytt korpus
 
 Se `ranking.py`-docstringen. Kort: `arkitektur/adr-013-rangering-konfidens-ferskhet`s
@@ -123,10 +135,12 @@ uten-gjetning-prinsippet betyr at verktøyet ikke stille legger til artsfilter d
 
 ## Testet
 
-22/22 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
-README-en. Dekker: parsing av ekte Europe PMC-felt, TTL-cache (ingen dobbelt HTTP-kall),
-kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503 live), ADR-013-
-banding (ferskt+domenenært slår eldre+høyt-sitert+urelatert), embed-cache er idempotent og
-skiller nær fra fjern (`--lignende`), citation-gap-matching (DOI- og tittel-match ekskluderer
-korrekt, whitespace/tegnsetting-robust), og at en emnesøk-med-treff aldri feilrapporteres
-som «ingen treff».
+77/77 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+README-en. Dekker: parsing av ekte Europe PMC/OpenAlex/CORE-felt, TTL-cache (ingen dobbelt
+HTTP-kall), kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503
+live for alle tre kilder), fler-kilde-dedup (DOI/tittel på tvers av Europe PMC+CORE),
+ADR-013-banding (ferskt+domenenært slår eldre+høyt-sitert+urelatert), embed-cache er
+idempotent og skiller nær fra fjern (`--lignende`), citation-gap-matching (DOI- og
+tittel-match ekskluderer korrekt, whitespace/tegnsetting-robust, PMID-løse DOI-papirer
+faller korrekt til OpenAlex uten unødvendig 422), emnesøk-med-treff feilrapporteres aldri
+som «ingen treff», og slett av sitater/utkast gir ærlig 404 på ukjent id.
