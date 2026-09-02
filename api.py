@@ -20,7 +20,7 @@ from adapters import openalex
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
-from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer
+from ranking import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, domene_naer, ranger
 
 app = FastAPI(title="forskningssok API")
 
@@ -132,6 +132,22 @@ def api_emner(paper_id: str):
         return {"emner": openalex.konsepter(paper_id)}
     except RuntimeError as e:
         raise HTTPException(502, str(e)) from e
+
+
+@app.get("/api/emne/{emne_id}")
+def api_emne_utforsk(emne_id: str, navn: str = "", n: int = 20):
+    """Søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen). Alle
+    OpenAlex-verk under ETT emne, rangert med samme ADR-013-logikk (domene-nærhet FØR
+    rå siteringstall) som resten av appen — ikke OpenAlex sin egen citation-sortering
+    urørt, som ville gitt de samme gamle kanoniske artiklene uansett emne."""
+    try:
+        papirer = openalex.verk_for_emne(emne_id, limit=n)
+    except RuntimeError as e:
+        raise HTTPException(502, str(e)) from e
+    rangert = ranger(papirer)
+    bank.lagre(rangert)  # samme cache/embed-sti som vanlig søk — emne-funn blir del av korpuset
+    return {"emne_id": emne_id, "emne_navn": navn,
+            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p)} for p in rangert[:n]]}
 
 
 @app.get("/api/sitater")

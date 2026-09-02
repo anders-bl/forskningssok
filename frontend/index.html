@@ -113,7 +113,10 @@ button{ font:inherit; }
 .reader-title{ font-size:1.375rem; font-weight:700; line-height:1.3; margin:0 0 .4rem; }
 .reader-authors{ font-size:.8125rem; color:var(--muted); }
 .emner{ display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.6rem; }
-.emne-chip{ background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:99px; padding:.15rem .55rem; font-size:.6875rem; }
+.emne-chip{ background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:99px; padding:.15rem .55rem; font-size:.6875rem; cursor:pointer; }
+.emne-chip:hover{ border-color:var(--accent); color:var(--accent); }
+.utforsk-banner{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; background:var(--surface-2); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; font-size:.75rem; }
+.utforsk-banner button{ border:0; background:none; color:var(--accent); font-weight:600; cursor:pointer; font-size:.6875rem; }
 .reader-body{ padding:1.3rem 2rem 3rem; }
 .reader-grid{ display:grid; grid-template-columns:20px 1fr; column-gap:.9rem; max-width:640px; }
 .gutter-dot{ display:flex; justify-content:center; padding-top:.5rem; }
@@ -311,6 +314,27 @@ function renderResults(papirer, eksaktId) {
   }
 }
 
+// ---------- Utforskning (søk-doktrinens tredje modus — vet domenet, ikke termen) ----------
+async function utforskEmne(emneId, emneNavn) {
+  $('#result-status').textContent = 'utforsker…';
+  $('#result-list').innerHTML = '';
+  try {
+    const data = await api(`/api/emne/${encodeURIComponent(emneId)}?navn=${encodeURIComponent(emneNavn)}&n=20`);
+    $('#result-status').textContent = '';
+    $('#result-count').textContent = `${data.papirer.length} verk i emnet`;
+    for (const p of data.papirer) state.papers[p.id] = p;
+    renderResults(data.papirer, null);
+    const banner = document.createElement('div');
+    banner.className = 'utforsk-banner';
+    banner.innerHTML = `<span>Utforsker: <b>${escapeHtml(emneNavn)}</b></span><button id="btn-avslutt-utforsk">← tilbake til søk</button>`;
+    $('#result-list').prepend(banner);
+    $('#btn-avslutt-utforsk').addEventListener('click', () => $('#search-form').dispatchEvent(new Event('submit')));
+    if (data.papirer.length) openPaper(data.papirer[0].id);
+  } catch (err) {
+    $('#result-status').textContent = 'Feil: ' + err.message;
+  }
+}
+
 function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ---------- Leseflate ----------
@@ -341,7 +365,10 @@ async function openPaper(id) {
   $('#reader-emner').innerHTML = '';
   if (id.startsWith('10.')) {
     api(`/api/emner/${encodeURIComponent(id)}`).then(d => {
-      $('#reader-emner').innerHTML = d.emner.map(e => `<span class="emne-chip">${escapeHtml(e)}</span>`).join('');
+      $('#reader-emner').innerHTML = d.emner.map(e =>
+        `<button class="emne-chip" data-emne-id="${escapeHtml(e.id)}" data-emne-navn="${escapeHtml(e.navn)}" title="Utforsk dette emnet">${escapeHtml(e.navn)}</button>`).join('');
+      $$('.emne-chip', $('#reader-emner')).forEach(chip => chip.addEventListener('click', () =>
+        utforskEmne(chip.dataset.emneId, chip.dataset.emneNavn)));
     }).catch(()=>{}); // emner er en bonus, aldri blokkerende — stille feil er OK KUN her
   }
 

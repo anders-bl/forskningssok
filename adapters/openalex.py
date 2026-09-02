@@ -61,9 +61,66 @@ def _verk(doi: str, *, db_path: Path = DB) -> dict:
     return _hent(f"verk::{doi}", f"{BASE}/works/https://doi.org/{doi}", None, db_path=db_path)
 
 
-def konsepter(doi: str, *, db_path: Path = DB) -> list[str]:
-    """Emne-tagger for ett papir (OpenAlex sine «topics», ikke de eldre «concepts»)."""
-    return [t["display_name"] for t in _verk(doi, db_path=db_path).get("topics", [])]
+def konsepter(doi: str, *, db_path: Path = DB) -> list[dict]:
+    """Emne-tagger for ett papir (OpenAlex sine «topics», ikke de eldre «concepts») —
+    {id, navn} per emne. Id-en er den korte formen («T10506», ikke full URL) — det er
+    formen `verk_for_emne()`s filter og frontendens lenke bruker."""
+    return [{"id": t["id"].rsplit("/", 1)[-1], "navn": t["display_name"]}
+            for t in _verk(doi, db_path=db_path).get("topics", [])]
+
+
+def _rekonstruer_abstract(inv_idx: dict | None) -> str:
+    """OpenAlex leverer abstract som en invertert indeks (ord → posisjonsliste), ikke
+    løpende tekst — juridisk/lisens-motivert format fra deres side, ikke noe å gjette
+    seg rundt. Rekonstruerer ordrett rekkefølge fra posisjonene."""
+    if not inv_idx:
+        return ""
+    posisjoner: dict[int, str] = {}
+    for ord, idxer in inv_idx.items():
+        for i in idxer:
+            posisjoner[i] = ord
+    return " ".join(posisjoner[i] for i in sorted(posisjoner))
+
+
+def verk_for_emne(emne_id: str, limit: int = 20, *, db_path: Path = DB) -> list:
+    """FDR: søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen).
+    Alle OpenAlex-verk under ett emne, nyeste/mest siterte først (OpenAlex sin egen
+    sortering — vår egen ranking.ranger() domene-vekting påføres i api.py, ikke her,
+    siden den regner på PaperDossier-objekter og denne funksjonen returnerer dem).
+    Live-verifisert 2026-09-02: emne T10506 («Aquaculture disease management and
+    microbiota») → 218 630 treff i OpenAlex — et EMNE er et bredt FELT (kontrollert
+    taksonomi, ~4500 emner totalt), ikke et smalt tema. Forventet: eldre, kanoniske,
+    høyt siterte artikler dominerer råresultatet uten videre rangering — derfor
+    komponeres denne funksjonen alltid med ranking.ranger() i api.py."""
+    from schemas import PaperDossier
+    data = _hent(f"emne::{emne_id}::{limit}", f"{BASE}/works", {
+        "filter": f"topics.id:{emne_id}",
+        "sort": "cited_by_count:desc",
+        "per_page": limit,
+        "select": "id,title,publication_year,doi,cited_by_count,open_access,"
+                  "authorships,primary_location,abstract_inverted_index",
+    }, db_path=db_path)
+    ut = []
+    for w in data.get("results", []):
+        forfattere = "; ".join(
+            a.get("author", {}).get("display_name", "") for a in (w.get("authorships") or []))
+        kilde = ((w.get("primary_location") or {}).get("source") or {}).get("display_name", "")
+        doi_raw = (w.get("doi") or "").replace("https://doi.org/", "") or None
+        ut.append(PaperDossier(
+            pmid=None,
+            doi=doi_raw,
+            tittel=(w.get("title") or "").strip(),
+            forfattere=forfattere,
+            tidsskrift=kilde,
+            aar=w.get("publication_year"),
+            abstract=_rekonstruer_abstract(w.get("abstract_inverted_index")),
+            siteringstall=w.get("cited_by_count"),
+            open_access=bool((w.get("open_access") or {}).get("is_oa")),
+            kilde_url=w.get("id", ""),
+            kilde="openalex",
+            kilde_kode="OpenAlex",
+        ))
+    return ut
 
 
 def referanser(doi: str, *, db_path: Path = DB) -> list[dict]:
