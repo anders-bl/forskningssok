@@ -12,14 +12,27 @@ bevisst IKKE er bygget her ennå — samme datamangel-felle (få eksempler mot 1
 som DisCoCat-operatoren selv fant på wiki-grafen. Dette laget er ren distribusjonell
 likhet (embeddings), første søyle, ikke tredje.
 
-Deler husets bge-m3-embedder (silverbullet/ops/semantisk_sok.py:embed) read-only, samme
-kontrakt multisok bruker — ingen ny modell, ingen nytt embedding-rom.
+**To embed-veier, aldri blandet i samme cache.db** (lagt til 2026-09-04, Dokploy-
+deploy-forberedelse): lokalt (Anders' Mac) deler dette fortsatt husets bge-m3-embedder
+(silverbullet/ops/semantisk_sok.py:embed) read-only, samme kontrakt multisok bruker.
+Men den modulen kaller til slutt en Ollama-instans på `localhost`/hjemme-flåtenoden —
+nåbar på din Mac, IKKE fra en Dokploy-container på Netcup (ingen VPN/mesh dit funnet).
+`AI_PROXY_URL` (satt kun i Dokploy-miljøet) bytter derfor til `ai-proxy`s `/embed`
+(mistral-embed, EU-direkte, `dokploy-network`-internt — samme mønster smartsok/wiki
+alt bruker, se `integrasjoner/dokploy`-wikisiden). Begge er 1024-dim (ingen
+skjema-endring), men er IKKE samme vektor-rom — bge-m3 og mistral-embed er MÅLT ulike
+fordelinger (se lauvasdatas `app/config.py`s kalibreringsnotater). Derfor: cache.db må
+være embed-modell-REN. Lokal utvikling og prod-volumet er allerede strukturelt atskilt
+(cache.db er gitignored, prod starter med et tomt volum) — ALDRI kopier en lokal
+cache.db inn i prod-volumet, det ville blandet to inkompatible rom stille.
 """
+import os
 import sqlite3
 import sys
 import time
 from pathlib import Path
 
+import httpx
 import sqlite_vec
 
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
@@ -29,7 +42,19 @@ HJEM = Path.home() / "prosjekter"
 DB = Path(__file__).resolve().parent / "cache.db"
 
 
+def _ai_proxy_embed(texts: list[str]) -> list[list[float]]:
+    """mistral-embed via ai-proxy /embed — se moduldocstring for hvorfor dette KUN
+    brukes når AI_PROXY_URL er satt (Dokploy), aldri som stille lokal fallback."""
+    url = os.environ["AI_PROXY_URL"].rstrip("/") + "/embed"
+    wiki_id = os.environ.get("AI_PROXY_WIKI_ID", "forskningssok")
+    r = httpx.post(url, json={"wiki_id": wiki_id, "input": texts}, timeout=120)
+    r.raise_for_status()
+    return r.json()["embeddings"]
+
+
 def _hus_embed():
+    if os.environ.get("AI_PROXY_URL"):
+        return _ai_proxy_embed
     sys.path.insert(0, str(HJEM / "silverbullet" / "ops"))
     try:
         from semantisk_sok import embed as hus_embed  # offentlig alias (samme som multisok bruker)

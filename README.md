@@ -61,6 +61,25 @@ sin CC-lisens-gate, som løser et annet problem (permanent redistribuerbar korpu
 `bank.py` er en privat, TTL-ånds cache av API-metadata (abstract, ikke fulltekst) for
 ett verktøys søk — samme juridiske klasse som ADR-004, ikke bok-banken.
 
+### Embedder — lokalt vs. Dokploy (lagt til 2026-09-04)
+
+`bank.py`s embedder er miljø-avhengig, ikke ett fast valg: **lokalt** (Anders' Mac)
+brukes fortsatt husets delte bge-m3-embedder (`silverbullet/ops/semantisk_sok.py`) via
+en `sys.path`-import — den kaller til slutt en Ollama-instans på `localhost`/hjemme-
+flåtenoden, uoppnåelig fra en Dokploy-container på Netcup. **Sett `AI_PROXY_URL`**
+(kun i Dokploy-miljøet) og `bank.py` bytter i stedet til `ai-proxy`s `/embed`
+(mistral-embed, EU-direkte, nås internt på `dokploy-network` — samme mønster
+smartsok/wiki allerede bruker der). `AI_PROXY_WIKI_ID` (default `"forskningssok"`)
+brukes kun til kost-attribusjon i ai-proxy, ikke autentisering — nettverksisolasjon
+(kun containere på `dokploy-network` når endepunktet) ER auth-grensen.
+
+**Begge er 1024-dim (ingen skjema-endring), men IKKE samme vektor-rom** — bge-m3 og
+mistral-embed er målt ulike fordelinger. `cache.db` må derfor være embed-modell-REN:
+ALDRI kopiere en lokal `cache.db` inn i prod-volumet (de er allerede strukturelt
+atskilt — lokal fil er gitignored, prod starter tomt). Prod-deploy koster småbeløp i
+ekte Mistral-API-bruk (mistral-embed er billig — se `ai-proxy/main.py`s prisliste),
+ikke lenger gratis som lokal Ollama.
+
 ### Hvorfor `resolve.py` IKKE styrer hovedsøket
 
 `resolve.py` sin kandidat-gren matcher på SUBSTRENG — riktig for et navn («Ola Hansen»),
@@ -190,8 +209,9 @@ Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke f
 
 ## Testet
 
-144/144 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
-README-en. Dekker: parsing av ekte Europe PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
+148/148 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+README-en. Dekker: embedder-valget (AI_PROXY_URL → ai-proxy, ellers lokal bge-m3 — se
+§Embedder), parsing av ekte Europe PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
 TTL-cache (ingen dobbelt HTTP-kall — `tilgang()` og `konsepter()` deler cache-nøkkel),
 kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503 live for alle
 tre kilder), fler-kilde-dedup (DOI/tittel på tvers av Europe PMC+CORE), ADR-013-banding
