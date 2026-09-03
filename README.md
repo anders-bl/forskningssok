@@ -123,10 +123,18 @@ ikke deployet») — `docker inspect` viste kun Basic Auth-labelen, ingen
   Traefik spør `/api/auth/forward` FØR proxy, samme endepunkt ADR-042 bruker for
   wiki-instanser. Ingen credentials for en innlogget, grantet bruker. Krever en
   ekte portal-konto med `app_access="forskningssok"` — Ulvens Basic Auth-lenke
-  slutter å virke for ham inntil invitasjonen hans faktisk er fullført. Ingen
-  annen app i huset har dette live i kode ennå (kun én aspirasjonell
-  wiki-kommentar hos `stromkontrol`) — verifiser grundig rett etter bytte i
-  Domains-fanen, rull tilbake ved minste tvil.
+  slutter å virke for ham inntil invitasjonen hans faktisk er fullført.
+
+  **En kjent felle traff oss live ved første bytte** (`konsepter/kjente-feller`
+  §Auth/ForwardAuth, dokumentert allerede 2026-06-22): `address` MÅ peke internt
+  på backend-containeren (`http://lauvasdata-portal-xaxnqv-backend-1:8000/...`),
+  ALDRI på det offentlige `api.lauvasdata.no`. Peker den offentlig, ruter Traefik
+  forespørselen gjennom seg selv på nytt, og det andre hoppet overskriver
+  `X-Forwarded-Host` til `api.lauvasdata.no` — endepunktet finner da ingen app og
+  svarer 403 «Ukjent app-host». Fikset til intern adresse, live-verifisert
+  etterpå. **Restrisiko:** containernavnets Dokploy-suffiks (`xaxnqv`) kan endre
+  seg ved en full gjenskaping av portal-appen — samme feil dukker opp igjen om
+  det skjer, sjekk `docker ps | grep backend` på nytt da.
 
 ### Hvorfor `resolve.py` IKKE styrer hovedsøket
 

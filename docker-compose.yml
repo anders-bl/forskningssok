@@ -16,10 +16,20 @@
 #     Traefiks default beregner X-Forwarded-Host fra selve ruter-treffet
 #     (forskningssok.lauvasdata.no), setter det aldri klienten selv sende inn.
 #     ⚠ Krever en ekte portal-konto — Ulvens Basic Auth-lenke slutter å virke for
-#     ham til invitasjonen faktisk er fullført. Ingen kode i huset har hittil
-#     brukt denne koblingen live (kun én aspirasjonell wiki-kommentar) — verifiser
-#     grundig rett etter bytte, rull tilbake til forskningssok-auth@docker i
-#     Domains-fanen ved minste tvil.
+#     ham til invitasjonen faktisk er fullført.
+#
+#     ⚠ address peker INTERNT (lauvasdata-portal-xaxnqv-backend-1), ALDRI mot
+#     api.lauvasdata.no. Dette er en KJENT felle (konsepter/kjente-feller §Auth/
+#     ForwardAuth, 2026-06-22): peker address mot det offentlige domenet, ruter
+#     Traefik forespørselen gjennom SEG SELV på nytt — det andre hoppet
+#     overskriver X-Forwarded-Host til api.lauvasdata.no (sitt eget domene) FØR
+#     forward_auth() ser den, som da ikke finner noen app og svarer 403 «Ukjent
+#     app-host» (rammet oss live 2026-09-04, samme feilmelding som i 2026-06-22-
+#     hendelsen). Internadressen har ETT hopp — X-Forwarded-Host forblir riktig.
+#     Restrisiko (samme som den opprinnelige fiksen dokumenterte): containernavnet
+#     bærer et Dokploy-generert suffiks («xaxnqv») som KAN endre seg ved en full
+#     gjenskaping av lauvasdata-portal-appen — sjekk `docker ps | grep backend`
+#     på nytt hvis ForwardAuth plutselig gir 403 «Ukjent app-host» igjen.
 services:
   forskningssok:
     build:
@@ -36,7 +46,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.forskningssok-auth.basicauth.users=ulven:$$apr1$$7O6jJI49$$Fg55OoIABGWc3bH3sOIiV0"
-      - "traefik.http.middlewares.forskningssok-forwardauth.forwardauth.address=https://api.lauvasdata.no/api/auth/forward"
+      - "traefik.http.middlewares.forskningssok-forwardauth.forwardauth.address=http://lauvasdata-portal-xaxnqv-backend-1:8000/api/auth/forward"
     environment:
       # Volum-sti — se paths.py for hvorfor ALLE fire cache-moduler må dele denne
       # (ellers "halvveis persistert" cache som mister deler av dataen ved redeploy).
