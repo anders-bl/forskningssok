@@ -386,9 +386,7 @@ function fmtCite(p) {
 // ---------- Søk — tre modi fra ETT søk (søk-doktrinen: Oppslag+Oppdagelse alltid
 // sammen — begge billige; Utforskning tilbys som ett synlig klikk, aldri automatisk
 // (henter+embedder 20 nye dokumenter, for tungt å kjøre på hvert tastetrykk-søk). ----------
-$('#search-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const q = $('#search-input').value.trim();
+async function utforSok(q) {
   if (!q) return;
   $('#result-status').textContent = 'søker…';
   $('#result-list').innerHTML = '';
@@ -413,6 +411,11 @@ $('#search-form').addEventListener('submit', async (e) => {
   } catch (err) {
     $('#result-status').textContent = 'Feil: ' + err.message;
   }
+}
+
+$('#search-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  utforSok($('#search-input').value.trim());
 });
 
 async function visCacheEko(q, alleredeViste) {
@@ -901,8 +904,18 @@ $('#om-overlay').addEventListener('click', e => { if (e.target.id === 'om-overla
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#om-overlay').hidden) lukkOmPanel(); });
 
 // ---------- Første last ----------
+// IKKE dispatchEvent(new Event('submit')) her — Firefox kan la en slik "ikke-klarert"
+// submit-hendelse falle gjennom til NATIV skjemainnsending (GET mot inneværende URL,
+// siden <form id="search-form"> mangler action/method), selv om handleren kaller
+// e.preventDefault(). Skjemaet har ingen name= på inputen, så det innsendte skjemaet
+// serialiserer INGEN query-params — akkurat det tomme "forskningssok.lauvasdata.no/?"
+// vi så igjen og igjen. Resultatet var en selvforsynt reload-løkke: hver ny sidelast
+// kjørte dette skriptet på nytt, som dispatchet samme hendelse på nytt. Reprodusert
+// live 2026-09-04 (Network-fanen viste 4600+ identiske GET /?-reloads over en time,
+// helt uavhengig av server/nettverk/VPN — alt utelukket først). Direkte funksjonskall
+// unngår hele skjema-innsendingsmekanismen.
 api('/api/status').then(s => $('#cache-meta').textContent = `bank.db · ${s.papirer_cachet} papirer cachet`).catch(()=>{});
-$('#search-form').dispatchEvent(new Event('submit'));
+utforSok($('#search-input').value.trim());
 </script>
 </body>
 </html>
