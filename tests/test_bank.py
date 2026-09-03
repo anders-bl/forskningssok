@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from bank import (  # noqa: E402
-    hent_sitater, hent_utkast, lagre, lagre_sitat, lagre_utkast, lignende, lignende_tekst,
-    liste_utkast, slett_sitat, slett_utkast,
+    hent, hent_sitater, hent_utkast, lagre, lagre_sitat, lagre_utkast, lignende,
+    lignende_tekst, liste_utkast, slett_sitat, slett_utkast,
 )
 from schemas import PaperDossier  # noqa: E402
 
@@ -49,6 +49,24 @@ def test_idempotent_lagring_dobbeltlagrer_ikke(tmp_path):
     lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)
     n2 = lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)
     assert n2 == 0
+
+
+def test_samtidig_lagring_krasjer_ikke_paa_kappløp(tmp_path):
+    """Reprodusert live 2026-09-04: to overlappende søk på samme uncachede spørring ser
+    BEGGE raden som fraværende (SELECT-sjekken og INSERT-en er ikke atomisk), fordi
+    embed_fn (opptil 120s ekte AI-proxy-kall) gir et vindu der en samtidig lagre() rekker
+    å fullføre. embed_fn her simulerer nettopp det vinduet ved å skrive konkurrentens rad
+    FØR den returnerer embeddingen — ren INSERT ga sqlite3.IntegrityError (ufanget i
+    api.py, rått 500 til klienten); INSERT OR IGNORE skal ikke kaste."""
+    db = tmp_path / "cache.db"
+
+    def embed_med_konkurrent(texts):
+        lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)  # "vant kappløpet"
+        return _fake_embed(texts)
+
+    n = lagre([_p("1", "Atittel")], embed_fn=embed_med_konkurrent, db_path=db)
+    assert n == 0  # denne kallet tapte kappløpet, ingen dobbel skriving
+    assert hent("1", db_path=db) is not None  # konkurrentens rad står, ikke krasjet vekk
 
 
 def test_lignende_finner_naert_papir_ikke_fjernt(tmp_path):

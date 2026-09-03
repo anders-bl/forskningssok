@@ -99,17 +99,28 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
         db.close()
         return 0
     embeddinger = embed_fn([f"{p.tittel}. {p.abstract}" for p in nye])
+    lagret = 0
     for p, emb in zip(nye, embeddinger):
+        # OR IGNORE, ikke ren INSERT: SELECT-sjekken over og denne INSERT-en er IKKE én
+        # atomisk operasjon — to overlappende søk på samme uncachede spørring (f.eks. en
+        # bruker som reloader mens embed_fn (opptil 120s, se _ai_proxy_embed) fortsatt
+        # kjører server-side) kan begge se raden som fraværende og begge forsøke å skrive
+        # den. Rein INSERT ga da sqlite3.IntegrityError: UNIQUE constraint failed —
+        # ufanget i api.py (kun RuntimeError fanges), altså et rått 500 til klienten.
+        # Reprodusert live 2026-09-04 (8 samtidige identiske /api/sok-kall).
         cur = db.execute(
-            """INSERT INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
+            """INSERT OR IGNORE INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
                siteringstall,open_access,kilde_url,kilde_kode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (p.id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid, p.abstract,
              p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode))
+        if cur.rowcount == 0:
+            continue  # en samtidig lagre() vant kappløpet — dens paper_vec-rad dekker oss
         db.execute("INSERT INTO paper_vec(chunk_id, embedding) VALUES (?,?)",
                    (cur.lastrowid, sqlite_vec.serialize_float32(emb)))
+        lagret += 1
     db.commit()
     db.close()
-    return len(nye)
+    return lagret
 
 
 _PAPER_KOLONNER = ("id", "tittel", "forfattere", "tidsskrift", "aar", "doi", "pmid",
