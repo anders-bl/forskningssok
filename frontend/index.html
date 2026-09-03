@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Litteratursøk — nefrokalsinose</title>
+<!-- Inline favicon (2026-09-04) — uten denne gjør nettleseren et IMPLISITT
+     /favicon.ico-kall på hver sidelast, som treffer samme Traefik-auth-gate som
+     resten av domenet og feiler (401/302, ikke et bilde). Firefox sin
+     OpaqueResponseBlocking flagger det da som en nettverksfeil — den faktiske
+     kilden til «NetworkError when attempting to fetch resource»-kaskaden en
+     u-innlogget/utløpt-token-besøkende ser, adskilt fra selve auth-utfallet.
+     data:-URI trenger aldri nettverket, uansett auth-tilstand. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%232E5C47'/%3E%3C/svg%3E">
 <style>
 /* Fjordstein 2.0 (designsystem/fjordstein-2 i plattformwikien) — IKKE en oppfunnet
    palett. System-font-stack er et bevisst Fjordstein-valg (null webfont-LCP-kost),
