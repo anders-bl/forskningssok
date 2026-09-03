@@ -1,3 +1,12 @@
+# Basic Auth-middleware, definert her (docker-provideren) i stedet for den delte
+# middlewares.yml (plattform-SPOF, se integrasjoner/dokploy) — blast-radius holdes
+# til KUN denne appen. Samme mønster som frempek (Traefik-labels er ÉN
+# compose-interpolasjonspassering, "$$"-escaping virker normalt her — IKKE samme
+# fallgruve som Dokploy-panelets env-felt, se integrasjoner/dokploy for hvorfor).
+# Referer middlewaren i Dokploys Domains-fane, feltet "Middlewares":
+#   forskningssok-auth@docker
+# Passord er IKKE i denne fila (kun hashen) — gitt til Anders direkte, ikke skrevet
+# til fil/commit/minne (se feedback_hemmeligheter-er-midlertidige).
 services:
   forskningssok:
     build:
@@ -11,6 +20,9 @@ services:
         max-file: "3"
     expose:
       - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.forskningssok-auth.basicauth.users=ulven:$$apr1$$7O6jJI49$$Fg55OoIABGWc3bH3sOIiV0"
     environment:
       # Volum-sti — se paths.py for hvorfor ALLE fire cache-moduler må dele denne
       # (ellers "halvveis persistert" cache som mister deler av dataen ved redeploy).
