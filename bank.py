@@ -36,10 +36,10 @@ import httpx
 import sqlite_vec
 
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
+from paths import DB
 from schemas import PaperDossier
 
 HJEM = Path.home() / "prosjekter"
-DB = Path(__file__).resolve().parent / "cache.db"
 
 
 def _ai_proxy_embed(texts: list[str]) -> list[list[float]]:

@@ -20,12 +20,12 @@ from pathlib import Path
 
 import httpx
 
+from paths import DB
 from schemas import PaperDossier
 
 BASE = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 REST = "https://www.ebi.ac.uk/europepmc/webservices/rest"
 UA = "Mozilla/5.0 (research; lauvasdata; kontakt@lauvasdata.no)"
-DB = Path(__file__).resolve().parent.parent / "cache.db"
 TTL_SEKUNDER = 24 * 3600  # papirmetadata endrer seg sjelden — 1 dags TTL er rikelig
 
 

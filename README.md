@@ -80,6 +80,39 @@ atskilt — lokal fil er gitignored, prod starter tomt). Prod-deploy koster små
 ekte Mistral-API-bruk (mistral-embed er billig — se `ai-proxy/main.py`s prisliste),
 ikke lenger gratis som lokal Ollama.
 
+### Deploy — Dockerfile + docker-compose.yml (lagt til 2026-09-04)
+
+Samme mønster som `stromkontrol` (privat-pilot-app på Dokploy): `Dockerfile`
+(`python:3.14-slim`, `uvicorn api:app`), `docker-compose.yml` (volum `/data`,
+`dokploy-network: external`, ingen Traefik-labels i fila — Domains-fanen i
+Dokploy-UI-et står for ruting/middleware). `.dockerignore` utelater `venv/`/`.git/`
+(uten den kopierte `COPY . .` inn en hel Mac-kompilert venv og full git-historikk —
+fanget under bygging, bildet gikk fra å dra med seg venv til en ren 72 MB).
+
+**`paths.py`** samler `cache.db`-stien ETT sted (`FORSKNINGSSOK_DB`-env, default
+uendret repo-rot-sti) — `bank.py` og alle tre `adapters/*.py` beregnet denne
+uavhengig av hverandre før dette, en reell fare for en "halvveis persistert" cache
+ved Dokploy-volum (noen treff overlever redeploy, andre forsvinner stille).
+
+**Live-verifisert med ekte `docker build`/`docker run`, ikke bare lest kode:**
+bygget for både `linux/arm64` (min Mac) og `linux/amd64` (Netcup-noden er AMD EPYC).
+Kjørte containeren med et volum montert på `/data` og en mock ai-proxy-server på
+verten (`host.docker.internal`) — et ekte søk mot Europe PMC/CORE returnerte 3
+papirer, embeddet via mock-en (verifiserte `wiki_id="forskningssok"` i requesten),
+cachet til det monterte volumet (37 papirer, 4.5 MB), og overlevde en `/api/status`-
+sjekk etterpå. Full kjede fra container til ekte kilder til (mocket) embed til disk,
+ikke bare «bildet bygger».
+
+DNS er allerede satt (Anders, deSEC) — `forskningssok.lauvasdata.no` → `159.195.20.82`,
+verifisert identisk med `stromkontrol.lauvasdata.no`.
+
+**Gjenstår** (Dokploy-panel, ikke kode): ny Compose-app registrert mot dette repoet,
+Domains-fanens domene + middleware-referanse (ForwardAuth-gating — ingen kode-eksempel
+funnet å kopiere, sett trolig direkte i UI-et hos `stromkontrol` også), og
+`AI_PROXY_URL`/`AI_PROXY_WIKI_ID` i Dokploy-panelets Environment (compose-fila har
+defaults, men ekte prod-verdi må uansett stå i BÅDE panel og compose per husets egen
+`integrasjoner/dokploy`-fallgruve).
+
 ### Hvorfor `resolve.py` IKKE styrer hovedsøket
 
 `resolve.py` sin kandidat-gren matcher på SUBSTRENG — riktig for et navn («Ola Hansen»),
@@ -209,9 +242,10 @@ Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke f
 
 ## Testet
 
-148/148 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+151/151 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
 README-en. Dekker: embedder-valget (AI_PROXY_URL → ai-proxy, ellers lokal bge-m3 — se
-§Embedder), parsing av ekte Europe PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
+§Embedder), delt DB-sti på tvers av bank.py/adapters (§Deploy), parsing av ekte Europe
+PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
 TTL-cache (ingen dobbelt HTTP-kall — `tilgang()` og `konsepter()` deler cache-nøkkel),
 kilde-feil ≠ stille tomt resultat (verifisert BÅDE mocket og mot en ekte 503 live for alle
 tre kilder), fler-kilde-dedup (DOI/tittel på tvers av Europe PMC+CORE), ADR-013-banding

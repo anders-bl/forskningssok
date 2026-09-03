@@ -1,0 +1,33 @@
+services:
+  forskningssok:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    expose:
+      - "8000"
+    environment:
+      # Volum-sti — se paths.py for hvorfor ALLE fire cache-moduler må dele denne
+      # (ellers "halvveis persistert" cache som mister deler av dataen ved redeploy).
+      FORSKNINGSSOK_DB: ${FORSKNINGSSOK_DB:-/data/cache.db}
+      # Satt = ai-proxy/embed (mistral-embed, EU-direkte, dokploy-network-internt).
+      # Usatt = ville falt til lokal Ollama (uoppnåelig herfra) — MÅ stå her i prod.
+      # Se bank.py sin moduldocstring for hele resonnementet.
+      AI_PROXY_URL: ${AI_PROXY_URL:-http://ai-proxy:8000}
+      AI_PROXY_WIKI_ID: ${AI_PROXY_WIKI_ID:-forskningssok}
+    volumes:
+      - forskningssok_data:/data
+    networks:
+      - dokploy-network
+
+volumes:
+  forskningssok_data:
+
+networks:
+  dokploy-network:
+    external: true

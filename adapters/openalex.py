@@ -21,11 +21,12 @@ from pathlib import Path
 
 import httpx
 
+from paths import DB
+
 BASE = "https://api.openalex.org"
 # "Polite pool" — OpenAlex prioriterer/stabiliserer trafikk med e-post i UA, samme
 # høflighets-prinsipp som Europe PMC-adapteren og hoster.py sin arXiv-UA.
 UA = "lauvasdata-research (mailto:kontakt@lauvasdata.no)"
-DB = Path(__file__).resolve().parent.parent / "cache.db"
 TTL_SEKUNDER = 24 * 3600
 
 

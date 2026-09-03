@@ -27,11 +27,11 @@ from pathlib import Path
 
 import httpx
 
+from paths import DB
 from schemas import PaperDossier
 
 BASE = "https://api.core.ac.uk/v3/search/works"
 UA = "lauvasdata-research (kontakt@lauvasdata.no)"
-DB = Path(__file__).resolve().parent.parent / "cache.db"
 TTL_SEKUNDER = 24 * 3600
 
 
