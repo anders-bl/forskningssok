@@ -541,7 +541,9 @@ async function utforskEmne(emneId, emneNavn) {
     banner.className = 'utforsk-banner';
     banner.innerHTML = `<span>Utforsker: <b>${escapeHtml(emneNavn)}</b></span><button id="btn-avslutt-utforsk">← tilbake til søk</button>`;
     $('#result-list').prepend(banner);
-    $('#btn-avslutt-utforsk').addEventListener('click', () => $('#search-form').dispatchEvent(new Event('submit')));
+    // Direkte funksjonskall, IKKE dispatchEvent(new Event('submit')) — se 2026-09-04-
+    // notatet ved bunn-kallet av utforSok() for hvorfor: samme mønster, samme feller.
+    $('#btn-avslutt-utforsk').addEventListener('click', () => utforSok($('#search-input').value.trim()));
     if (data.papirer.length) openPaper(data.papirer[0].id);
   } catch (err) {
     $('#result-status').textContent = 'Feil: ' + err.message;
