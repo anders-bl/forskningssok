@@ -46,3 +46,20 @@ def test_emne_utforsk_tomt_treffsett_er_200_med_tom_liste():
         r = client.get("/api/emne/T99999")
     assert r.status_code == 200
     assert r.json()["papirer"] == []
+
+
+def test_emne_utforsk_svarer_selv_om_lagre_feiler():
+    """Samme klasse bug som /api/sok (2026-09-04): bank.lagre() må kjøre som BackgroundTask,
+    ikke synkront — en treg/feilende cache-skriving skal ALDRI forsinke eller velte selve
+    emne-responsen. Funnet ved Six-Hats-sveip av api.py etter /api/sok-fiksen, ikke ved
+    gjentatt symptom — denne ruta ble oversett i den første fiksen."""
+    treff = [_p("Emne-funn", 2026, 0)]
+
+    def lagre_som_krasjer(papirer, **kw):
+        raise RuntimeError("simulert feilende cache-skriving")
+
+    with patch("api.openalex.verk_for_emne", return_value=treff), \
+         patch("api.bank.lagre", side_effect=lagre_som_krasjer):
+        r = client.get("/api/emne/T10506", params={"navn": "Test-emne"})
+    assert r.status_code == 200
+    assert r.json()["papirer"][0]["tittel"] == "Emne-funn"

@@ -196,7 +196,7 @@ def api_tilgang(paper_id: str):
 
 
 @app.get("/api/emne/{emne_id}")
-def api_emne_utforsk(emne_id: str, navn: str = "", n: int = 20):
+def api_emne_utforsk(emne_id: str, background_tasks: BackgroundTasks, navn: str = "", n: int = 20):
     """Søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen). Alle
     OpenAlex-verk under ETT emne, rangert med samme ADR-013-logikk (domene-nærhet FØR
     rå siteringstall) som resten av appen — ikke OpenAlex sin egen citation-sortering
@@ -206,7 +206,11 @@ def api_emne_utforsk(emne_id: str, navn: str = "", n: int = 20):
     except RuntimeError as e:
         raise HTTPException(502, str(e)) from e
     rangert = ranger(papirer)
-    bank.lagre(rangert)  # samme cache/embed-sti som vanlig søk — emne-funn blir del av korpuset
+    # BackgroundTask, ikke synkront — SAMME 2026-09-04-fiks som /api/sok (se _lagre_bakgrunn):
+    # bank.lagre() sitt embed_fn kan ta opptil 120s, og emne-funnene trenger den ALDRI for å
+    # vises. Denne ruta ble oversett da fiksen først landet på /api/sok — funnet ved en
+    # Six-Hats-sveip av hele filen etter samme mønster, ikke ved gjentatt symptom.
+    background_tasks.add_task(_lagre_bakgrunn, rangert)
     return {"emne_id": emne_id, "emne_navn": navn,
             "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), "evidensniva": evidensniva(p.tittel, p.abstract)} for p in rangert[:n]]}
 
