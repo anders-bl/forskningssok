@@ -106,12 +106,27 @@ ikke bare «bildet bygger».
 DNS er allerede satt (Anders, deSEC) — `forskningssok.lauvasdata.no` → `159.195.20.82`,
 verifisert identisk med `stromkontrol.lauvasdata.no`.
 
-**Gjenstår** (Dokploy-panel, ikke kode): ny Compose-app registrert mot dette repoet,
-Domains-fanens domene + middleware-referanse (ForwardAuth-gating — ingen kode-eksempel
-funnet å kopiere, sett trolig direkte i UI-et hos `stromkontrol` også), og
-`AI_PROXY_URL`/`AI_PROXY_WIKI_ID` i Dokploy-panelets Environment (compose-fila har
-defaults, men ekte prod-verdi må uansett stå i BÅDE panel og compose per husets egen
-`integrasjoner/dokploy`-fallgruve).
+**Live siden 2026-09-04.** Deployet, DNS + TLS + ruting verifisert med ekte
+Let's Encrypt-sertifikat (`ops/autorisering_smoketest.py --dry-run` i lauvasdata:
+9 ok, 0 feil). Ett reelt driftsfunn underveis: Domains-fanens innstillinger var
+lagret i Dokploy-panelet men aldri skrevet til den kjørende containeren («lagret,
+ikke deployet») — `docker inspect` viste kun Basic Auth-labelen, ingen
+`traefik.http.routers.*` — løst med en eksplisitt redeploy.
+
+### To tilgangsmiddlewares, kun én aktiv om gangen
+
+`docker-compose.yml` definerer BEGGE, Dokploys Domains-fane refererer kun den ene:
+
+- **`forskningssok-auth@docker`** (Basic Auth, delt statisk credential) — live nå.
+  Fungerer uten portal-konto, for enhver som har credentialet.
+- **`forskningssok-forwardauth@docker`** (ekte portal-SSO, lagt til 2026-09-04) —
+  Traefik spør `/api/auth/forward` FØR proxy, samme endepunkt ADR-042 bruker for
+  wiki-instanser. Ingen credentials for en innlogget, grantet bruker. Krever en
+  ekte portal-konto med `app_access="forskningssok"` — Ulvens Basic Auth-lenke
+  slutter å virke for ham inntil invitasjonen hans faktisk er fullført. Ingen
+  annen app i huset har dette live i kode ennå (kun én aspirasjonell
+  wiki-kommentar hos `stromkontrol`) — verifiser grundig rett etter bytte i
+  Domains-fanen, rull tilbake ved minste tvil.
 
 ### Hvorfor `resolve.py` IKKE styrer hovedsøket
 

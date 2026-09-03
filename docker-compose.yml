@@ -1,12 +1,25 @@
-# Basic Auth-middleware, definert her (docker-provideren) i stedet for den delte
-# middlewares.yml (plattform-SPOF, se integrasjoner/dokploy) — blast-radius holdes
-# til KUN denne appen. Samme mønster som frempek (Traefik-labels er ÉN
-# compose-interpolasjonspassering, "$$"-escaping virker normalt her — IKKE samme
-# fallgruve som Dokploy-panelets env-felt, se integrasjoner/dokploy for hvorfor).
-# Referer middlewaren i Dokploys Domains-fane, feltet "Middlewares":
-#   forskningssok-auth@docker
-# Passord er IKKE i denne fila (kun hashen) — gitt til Anders direkte, ikke skrevet
-# til fil/commit/minne (se feedback_hemmeligheter-er-midlertidige).
+# To alternative Traefik-middlewares, begge definert her (docker-provideren, ikke
+# den delte middlewares.yml-plattform-SPOF-en — se integrasjoner/dokploy). Kun ÉN
+# refereres om gangen i Dokploys Domains-fane, feltet "Middlewares":
+#
+#   forskningssok-auth@docker         — Basic Auth, delt statisk credential.
+#     Passordet er IKKE i denne fila (kun hashen) — gitt til Anders direkte, aldri
+#     skrevet til fil/commit/minne (se feedback_hemmeligheter-er-midlertidige).
+#     Fungerer for ALLE som har credentialet, uten portal-konto.
+#
+#   forskningssok-forwardauth@docker  — ekte portal-SSO (2026-09-04). Traefik
+#     spør /api/auth/forward FØR proxy — samme endepunkt ADR-042 bruker for
+#     wiki-instanser (get_current_user leser den delte .lauvasdata.no-cookien,
+#     forward_auth() sjekker app_access mot X-Forwarded-Host). Ingen credentials
+#     noensinne for en innlogget, grantet bruker (Anders ELLER en scopet Ulven
+#     med app_access="forskningssok"). trustForwardHeader er BEVISST utelatt —
+#     Traefiks default beregner X-Forwarded-Host fra selve ruter-treffet
+#     (forskningssok.lauvasdata.no), setter det aldri klienten selv sende inn.
+#     ⚠ Krever en ekte portal-konto — Ulvens Basic Auth-lenke slutter å virke for
+#     ham til invitasjonen faktisk er fullført. Ingen kode i huset har hittil
+#     brukt denne koblingen live (kun én aspirasjonell wiki-kommentar) — verifiser
+#     grundig rett etter bytte, rull tilbake til forskningssok-auth@docker i
+#     Domains-fanen ved minste tvil.
 services:
   forskningssok:
     build:
@@ -23,6 +36,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.middlewares.forskningssok-auth.basicauth.users=ulven:$$apr1$$7O6jJI49$$Fg55OoIABGWc3bH3sOIiV0"
+      - "traefik.http.middlewares.forskningssok-forwardauth.forwardauth.address=https://api.lauvasdata.no/api/auth/forward"
     environment:
       # Volum-sti — se paths.py for hvorfor ALLE fire cache-moduler må dele denne
       # (ellers "halvveis persistert" cache som mister deler av dataen ved redeploy).
