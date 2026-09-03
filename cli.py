@@ -36,7 +36,15 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     CORE er en TILLEGGSKILDE (institusjonsarkiv/gråtekst Europe PMC ikke indekserer,
     se adapters/core.py) — en CORE-feil skal ikke ta ned et ellers fungerende søk, men
     skal heller ikke skjules: returnerte `kilder`-dict rapporterer om den lyktes, samme
-    transparens-prinsipp som citation_gap.py sin `referanse_kilde`."""
+    transparens-prinsipp som citation_gap.py sin `referanse_kilde`.
+
+    Kaller IKKE `lagre()` selv — cache/embed for fremtidig --lignende-søk er kallerens
+    ansvar (synkront i CLI-en, som en fire-and-forget BackgroundTask i api.py). Denne
+    funksjonen kalte lagre() synkront FØR return til 2026-09-04: embed_fn kan ta opptil
+    120s (ekte AI-proxy-kall), så HVER fersk /api/sok-request satt og ventet på en
+    caching-bivirkning ingen bruker faktisk trengte for å se resultatet sitt — reell
+    årsak til at søk så ut som de hang, og til at overlappende (reload-utløste) søk
+    kappløp mot samme cache-rader (se bank.py sin lagre()-fiks samme kveld)."""
     kandidater = sok(query, page_size=page_size)
     kilder = {"europe_pmc": True, "core": True}
     try:
@@ -45,7 +53,6 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
         kilder["core"] = False
     kandidater = dedupliser(kandidater)
     rangert = ranger(kandidater)
-    lagre(rangert)  # cache/embed for fremtidig --lignende-søk, feiler stille aldri kritisk
     resultat = resolve(query, rangert, tekst=lambda p: p.tittel)
     eksakt_id = resultat.eksakt.id if resultat.eksakt else None
     return rangert, eksakt_id, kilder
@@ -121,6 +128,7 @@ def main():
     except RuntimeError as e:
         print(f"Feil mot Europe PMC: {e}", file=sys.stderr)
         sys.exit(1)
+    lagre(papirer)  # cache/embed for fremtidig --lignende-søk — CLI-en kan trygt vente
     if not kilder["core"]:
         print("(CORE utilgjengelig akkurat nå — viser kun Europe PMC-treff)\n", file=sys.stderr)
     _print_papirer(papirer, a.antall, query, eksakt_id)

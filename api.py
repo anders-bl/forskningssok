@@ -6,12 +6,13 @@ laget serialiserer og feilhåndterer for HTTP.
 
 Kjør: venv/bin/uvicorn api:app --reload --port 8420
 """
+import logging
 import re
 import time
 from dataclasses import asdict
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -27,6 +28,19 @@ from evidensniva import evidensniva
 from ranking import arts_naer, domene_naer, ranger
 
 app = FastAPI(title="forskningssok API")
+logger = logging.getLogger("forskningssok")
+
+
+def _lagre_bakgrunn(papirer: list) -> None:
+    """Wrapper rundt bank.lagre for BackgroundTasks — fanger ALT. lagre() sin egen
+    docstring lover «feiler stille aldri kritisk», men en ufanget exception i en
+    BackgroundTask propagerer likevel opp til ASGI-serveren (uvicorn logger den som en
+    krasjet request, selv om klienten alt har fått sitt 200-svar) — dette gjør løftet
+    ekte, ikke bare en kommentar."""
+    try:
+        bank.lagre(papirer)
+    except Exception:
+        logger.warning("bakgrunns-lagre() feilet (søkeresultatet er alt levert)", exc_info=True)
 
 
 def _slug(tekst: str) -> str:
@@ -98,13 +112,20 @@ def api_status():
 
 
 @app.get("/api/sok")
-def api_sok(q: str, n: int = 20):
+def api_sok(q: str, background_tasks: BackgroundTasks, n: int = 20):
     if not q.strip():
         raise HTTPException(400, "tom spørring")
     try:
         papirer, eksakt_id, kilder = sok_og_ranger(q, page_size=max(n, 20))
     except RuntimeError as e:
         raise HTTPException(502, f"Europe PMC utilgjengelig: {e}") from e
+    # lagre() (cache/embed for fremtidig --lignende-søk) kjører ETTER at responsen er
+    # sendt, ikke før — embed_fn kan ta opptil 120s (ekte AI-proxy-kall), og brukeren
+    # trenger ALDRI den bivirkningen for å se søkeresultatet sitt. Å blokkere responsen
+    # på den var reell årsak til at ferske søk så ut som de hang (målt live 2026-09-04),
+    # og til at et utålmodig reload rakk å starte et kappløpende, dupliserende søk mot
+    # samme cache-rader (se bank.py sin lagre()-fiks samme kveld).
+    background_tasks.add_task(_lagre_bakgrunn, papirer)
     # asdict() dropper .id — det er en @property (utledet doi/pmid-fallback), ikke et
     # dataclass-felt. Fanget som ekte bug live 2026-09-02: uten dette fikk hvert papir
     # id:undefined i frontend, og «siste skrevet vinner»-kollisjonen åpnet alltid det
