@@ -248,23 +248,22 @@ button{ font:inherit; }
   border-radius:8px; padding:.3rem .5rem; font-size:.75rem; max-width:15rem;
 }
 .skuff-verktoy{ margin-left:auto; display:flex; align-items:center; gap:.3rem; flex-wrap:wrap; }
-.skuff-kropp{ flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 320px; }
+.skuff-kropp{ flex:1; min-height:0; display:grid; grid-template-columns:320px minmax(0,1fr); }
+.bank-liste{ border-right:1px solid var(--border); padding:.6rem .5rem 2rem; background:var(--bg); }
+.bank-detalj{ padding:.85rem 1.2rem 2rem; }
+.bankpapir{ width:100%; text-align:left; background:none; border:1px solid transparent;
+  border-radius:8px; padding:.55rem .6rem; cursor:pointer; display:block; }
+.bankpapir:hover{ background:var(--surface-2); }
+.bankpapir.active{ background:var(--surface-2); border-color:var(--accent); }
+.bankpapir .t{ font-size:.8125rem; line-height:1.35; }
+.bankpapir .m{ font-size:.6875rem; color:var(--muted); margin-top:.2rem; display:flex; gap:.4rem; }
+.bank-antall{ background:var(--accent); color:var(--surface); border-radius:99px;
+  font-size:.625rem; font-weight:700; padding:0 .35rem; }
+.rel-kort{ border:1px solid var(--border); border-radius:8px; padding:.5rem .6rem;
+  margin-bottom:.4rem; cursor:pointer; }
+.rel-kort:hover{ border-color:var(--accent); }
 .skuff-kropp > *{ min-width:0; min-height:0; overflow-y:auto; }
-.skuff-skriv{ padding:.9rem 1.6rem 2rem; }
-.skuff-sidespalte{ border-left:1px solid var(--border); padding:.85rem .9rem 2rem; background:var(--bg); }
-.dok-tittel{
-  font-size:1.0625rem; font-weight:700; border:0; background:none; color:var(--text);
-  width:100%; max-width:44rem; margin-bottom:.5rem; padding:0;
-}
-.dok-editor{
-  max-width:44rem; font-size:1rem; line-height:1.7; color:var(--text); outline:none; min-height:6rem;
-}
-.dok-editor:empty::before{ content:attr(data-placeholder); color:var(--muted); }
-.dok-lagret{ font-size:.6875rem; color:var(--muted); margin-top:1rem; }
 
-.segment{ display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:2px; gap:2px; margin-bottom:.7rem; }
-.segment button{ flex:1; font-size:.6875rem; font-weight:600; border:0; background:none; color:var(--muted); padding:.3rem .4rem; border-radius:99px; cursor:pointer; }
-.segment button.active{ background:var(--surface); color:var(--accent); box-shadow:var(--shadow); }
 
 .sitatkort{ border:1px solid var(--border); border-radius:10px; padding:.6rem .65rem; margin-bottom:.55rem; background:var(--surface); }
 .sitatkort.los{ border-style:dashed; }
@@ -277,11 +276,6 @@ button{ font:inherit; }
 .minibtn:hover{ color:var(--text); border-color:var(--accent); }
 .minibtn.fare:hover{ color:var(--warn); border-color:var(--warn); background:var(--warn-soft); }
 
-.axis-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:.5rem; }
-.axis-chip{ font-size:.65rem; font-weight:600; border-radius:99px; padding:.28rem .6rem; border:1px solid var(--border); color:var(--muted); display:flex; align-items:center; gap:5px; }
-.axis-chip .bar{ width:22px; height:4px; border-radius:2px; background:var(--border); overflow:hidden; }
-.axis-chip .bar i{ display:block; height:100%; background:var(--accent); }
-.axis-chip.thin{ border-color:var(--warn); color:var(--warn); }
 
 .varsel{
   position:fixed; left:50%; bottom:1.1rem; transform:translateX(-50%); z-index:70;
@@ -306,8 +300,8 @@ svg text{ font-family:system-ui,sans-serif; }
   <div class="wordmark">Litteratursøk <small id="wordmark-fag">av Lauvasdata · forskningssok</small></div>
   <div class="topbar-meta">
     <span id="cache-meta">bank.db · —</span>
-    <button class="pilleknapp" id="skuff-knapp" title="Dokumentet du skriver i — sitater lander her">
-      ✎ Dokument <span class="tall" id="dok-antall" hidden>0</span>
+    <button class="pilleknapp" id="skuff-knapp" title="Sitatbanken — alt du har sitert, og hva som henger sammen">
+      ✎ Sitatbank <span class="tall" id="dok-antall" hidden>0</span>
     </button>
     <button class="pilleknapp" id="om-knapp" title="Kilder, hva verktøyet ikke gjør, og hvor dataen din lever">ℹ️ Om</button>
   </div>
@@ -353,7 +347,7 @@ svg text{ font-family:system-ui,sans-serif; }
       fagfelt er å bytte den fila, ikke å endre logikk.</p>
 
     <h3>Hvor dataen din lever</h3>
-    <p>Alt (cachede papirer, sitater, dokumenter, varme) ligger i én lokal sqlite-fil på
+    <p>Alt (cachede papirer, sitater, varme) ligger i én lokal sqlite-fil på
       denne maskinen — ingenting sendes videre til tredjepart utover selve søketeksten
       til kildene over. Deling skjer ved at DU eksporterer en fil og sender den; verktøyet
       laster ingenting opp av seg selv.</p>
@@ -428,36 +422,19 @@ svg text{ font-family:system-ui,sans-serif; }
     <div class="skuff-linje">
       <button class="skuff-tittelknapp" id="skuff-toggle">
         <span class="skuff-pil" id="skuff-pil">▲</span>
-        <span id="skuff-navn">Dokument</span>
+        <span id="skuff-navn">Sitatbank</span>
       </button>
-      <select class="skuff-velger" id="dok-velger" title="Bytt dokument"></select>
-      <button class="minibtn" id="btn-nytt-dok">+ Nytt</button>
+      <span class="hint" id="bank-sammendrag" style="font-size:.6875rem"></span>
       <div class="skuff-verktoy">
         <span class="rapport-eksport-gruppe">
-          📄 <button class="rapport-btn" id="dok-md">Markdown</button><button class="rapport-btn" id="dok-pdf">PDF</button><button class="rapport-btn" id="dok-kopier" title="Legg hele dokumentet på utklippstavlen som Markdown">Kopier</button><button class="rapport-btn" id="dok-del" title="Del filen via systemets delingsmeny">Del</button>
+          📄 Hele banken: <button class="rapport-btn" data-bank="md">Markdown</button><button class="rapport-btn" data-bank="pdf">PDF</button><button class="rapport-btn" data-bank="csl" title="CSL-JSON — inn i Zotero, Pandoc eller en hvilken som helst citeproc for APA/Vancouver/tidsskriftstil">CSL-JSON</button><button class="rapport-btn" data-bank="ris">RIS</button><button class="rapport-btn" data-bank="bib">BibTeX</button>
         </span>
-        <button class="minibtn fare" id="btn-slett-dok" title="Slett dette dokumentet">Slett</button>
       </div>
     </div>
     <div class="skuff-kropp">
-      <div class="skuff-skriv">
-        <input class="dok-tittel" id="dok-tittel" placeholder="Uten tittel">
-        <div class="dok-editor" id="dok-editor" contenteditable="true" data-placeholder="Skriv her — relevanspanelet til høyre varmes opp av det du skriver."></div>
-        <div class="dok-lagret" id="dok-lagret">Lagres lokalt automatisk når du tar en pause.</div>
-      </div>
-      <div class="skuff-sidespalte">
-        <div class="segment" id="sitat-segment">
-          <button class="active" data-linse="dokument">I dokumentet</button>
-          <button data-linse="lose">Løse</button>
-          <button data-linse="alle">Alle</button>
-        </div>
-        <div id="sitat-liste"></div>
-        <div class="seksjonstittel" style="margin-top:1.2rem">Omfang</div>
-        <div class="hint">Hvor mye av det du har skrevet berører hver akse. Tynn dekning betyr at du ikke har skrevet om det ennå — ikke at forskningen mangler.</div>
-        <div class="axis-row" id="axis-row"></div>
-        <span class="rapport-eksport-gruppe" style="margin-top:.6rem">
-          📄 Omfang: <button class="rapport-btn" data-omfang="md">Markdown</button><button class="rapport-btn" data-omfang="pdf">PDF</button>
-        </span>
+      <div class="bank-liste" id="bank-liste"></div>
+      <div class="bank-detalj" id="bank-detalj">
+        <div class="hint">Velg et papir til venstre for å se sitatene dine og de relasjonelle naboene.</div>
       </div>
     </div>
   </div>
@@ -799,7 +776,11 @@ function varmeFarge(andel) {
 async function lastVarme({tvungen = true} = {}) {
   const el = $('#tab-varmt');
   try {
-    const tekst = $('#dok-editor').textContent || '';
+    // «Nå»-laget fulgte editorteksten. Editoren er borte (banken erstattet skuffen), så
+    // det følger nå SITATENE dine — det er en bedre kilde uansett: et sitat er noe du
+    // aktivt plukket ut, mens et utkast også inneholder tenking som ikke er en påstand
+    // om litteraturen. Tom bank = tomt «nå»-lag, ærlig og uten kall.
+    const tekst = bankTekst();
     if (!tvungen && tekst === state.sisteVarmeTekst) return;
     state.sisteVarmeTekst = tekst;
     const data = await api(`/api/varme?k=12&tekst=${encodeURIComponent(tekst)}`);
@@ -929,15 +910,17 @@ $('#btn-siter').addEventListener('click', async () => {
   toolbar.hidden = true;
   try {
     // Hybriden: er et dokument åpent, festes sitatet til det med én gang. Er det ikke,
-    // lagres det løst — aldri tapt, aldri dyttet inn i et dokument du ikke valgte.
+    // Ingen utkast_id: sitatet går rett i banken. Kolonnen finnes fortsatt i skjemaet
+    // (migrasjonen er ikke reversert), men flaten bruker den ikke — banken grupperer på
+    // PAPIR, og relasjonen mellom sitater er semantisk, ikke en mappe du la dem i.
     await api('/api/sitater', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({paper_id: state.paperId, tekst, utkast_id: dok.id})});
+      body: JSON.stringify({paper_id: state.paperId, tekst})});
     const p = $('#abstract-p');
     if (p && p.textContent.includes(tekst)) $('#gutter-0').innerHTML = '<i></i>';
     apneSkuff();
-    if (!dok.id) state.sitatLinse = 'lose';
-    settLinse(state.sitatLinse);
-    si(dok.id ? 'Sitat lagt i dokumentet' : 'Sitat lagret løst — velg et dokument for å feste det');
+    bank.valgt = state.paperId;
+    await lastBank();
+    si('Sitat lagt i banken');
     lastVarme();
   } catch (err) { si('Kunne ikke lagre: ' + err.message); }
 });
@@ -986,139 +969,109 @@ let skuffHoyde = 0;
   });
 })();
 
-// ---------- Dokumentet ----------
-async function lastDokListe(velgId) {
-  const liste = await api('/api/utkast').catch(() => []);
-  const velger = $('#dok-velger');
-  velger.innerHTML = liste.length
-    ? liste.map(u => `<option value="${u.id}">${escapeHtml(u.tittel)}</option>`).join('')
-    : '<option value="">(ingen dokumenter)</option>';
-  const maal = velgId ?? dok.id;
-  if (maal && liste.some(u => u.id === maal)) velger.value = String(maal);
-  return liste;
-}
+// ---------- Sitatbanken — erstattet dokumentskuffen 2026-09-04 ----------
+// Skuffen var «ett dokument du skriver i». Banken er «alt du har sitert, og hva som henger
+// sammen». Zotero, EndNote og Mendeley er arkivskap som ikke aner at to sitater handler om
+// det samme; vi har embeddingene, så nabolaget er gratis. Skrivingen skjer i den GENERERTE
+// fila (boilerplate), ikke i verktøyet — det er derfor editoren er borte.
+const bank = { valgt: null, papirer: [], tekst: '' };
 
-async function apneDok(id) {
-  const u = await api(`/api/utkast/${id}`).catch(() => null);
-  if (!u) return;
-  dok.id = u.id;
-  dok.tittel = u.tittel;
-  $('#dok-tittel').value = u.tittel === 'Uten tittel' ? '' : u.tittel;
-  $('#dok-editor').textContent = u.innhold;
-  $('#skuff-navn').textContent = u.tittel;
-  $('#dok-lagret').textContent = 'Lagret ' + new Date(u.oppdatert * 1000).toLocaleTimeString('no-NO', {hour:'2-digit', minute:'2-digit'});
-  await lastDokListe(u.id);
-  await settLinse(state.sitatLinse);
-  oppdaterOmfang(u.innhold);
-}
+// Samlet tekst av alt du har sitert. Kilden til varmens «nå»-lag etter at editoren
+// forsvant. Caches i bank.tekst og oppdateres av lastBank(), så varme-panelet aldri
+// utløser et ekstra rundetur bare for å finne ut hva du har samlet.
+function bankTekst() { return bank.tekst; }
 
-$('#dok-velger').addEventListener('change', (e) => { if (e.target.value) apneDok(Number(e.target.value)); });
-
-$('#btn-nytt-dok').addEventListener('click', async () => {
-  const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({tittel:'', innhold:''})});
-  await lastDokListe(u.id);
-  await apneDok(u.id);
-  apneSkuff();
-  $('#dok-tittel').focus();
-});
-
-$('#btn-slett-dok').addEventListener('click', async () => {
-  if (!dok.id) return;
-  // Sitatene overlever: DELETE /api/utkast rører ikke sitater-tabellen, og de som var
-  // festet blir løse igjen ved neste «Løse»-oppslag (utkast_id peker på et borte
-  // dokument). Advarselen sier det, slik at ingen tror de sletter kildearbeidet sitt.
-  if (!confirm(`Slette «${dok.tittel}»? Sitatene du har lagret blir liggende som løse.`)) return;
-  await api(`/api/utkast/${dok.id}`, {method:'DELETE'});
-  dok.id = null; dok.tittel = '';
-  $('#dok-tittel').value = ''; $('#dok-editor').textContent = '';
-  $('#skuff-navn').textContent = 'Dokument';
-  $('#axis-row').innerHTML = '';
-  const liste = await lastDokListe(null);
-  if (liste.length) await apneDok(liste[0].id); else settLinse('lose');
-});
-
-function lagreDokDebounced() {
-  clearTimeout(dok.lagreTimer);
-  $('#dok-lagret').textContent = 'endret …';
-  dok.lagreTimer = setTimeout(async () => {
-    const tittel = $('#dok-tittel').value;
-    const innhold = $('#dok-editor').textContent;
-    const kropp = dok.id ? {id: dok.id, tittel, innhold} : {tittel, innhold};
-    const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(kropp)}).catch(() => null);
-    if (!u) { $('#dok-lagret').textContent = 'kunne ikke lagre — teksten står fortsatt her'; return; }
-    dok.id = u.id; dok.tittel = u.tittel;
-    $('#skuff-navn').textContent = u.tittel;
-    $('#dok-lagret').textContent = 'Lagret ' + new Date().toLocaleTimeString('no-NO', {hour:'2-digit', minute:'2-digit'});
-    await lastDokListe(u.id);
-    oppdaterOmfang(innhold);
-    lastVarme({tvungen: false}); // «nå»-laget følger teksten — samme pause som lagringen
-  }, 1200); // debounce ved PAUSE, ikke tastetrykk — FDR-038s eget krav
-}
-$('#dok-tittel').addEventListener('input', lagreDokDebounced);
-$('#dok-editor').addEventListener('input', lagreDokDebounced);
-
-// ---------- Sitatene i skuffen: tre linser på ETT lager ----------
-$$('#sitat-segment button').forEach(b => b.addEventListener('click', () => settLinse(b.dataset.linse)));
-
-async function settLinse(linse) {
-  state.sitatLinse = linse;
-  $$('#sitat-segment button').forEach(b => b.classList.toggle('active', b.dataset.linse === linse));
-  const el = $('#sitat-liste');
-  let url = '/api/sitater';
-  if (linse === 'dokument') {
-    if (!dok.id) {
-      el.innerHTML = '<div class="hint">Ingen dokument åpent. Trykk «+ Nytt» — eller siter noe nå, så havner det under «Løse» til du fester det.</div>';
-      $('#dok-antall').hidden = true;
-      return;
-    }
-    url += `?utkast_id=${dok.id}`;
-  } else if (linse === 'lose') {
-    url += '?kun_lose=true';
-  }
+async function lastBank(behold = true) {
   try {
-    const sitater = await api(url);
-    oppdaterDokMerke();
-    if (!sitater.length) {
-      el.innerHTML = `<div class="hint">${linse === 'lose'
-        ? 'Ingen løse sitater — alt du har sitert er festet til et dokument.'
-        : 'Ingen sitater her ennå. Merk tekst i leseflaten over og trykk «Sitér».'}</div>`;
+    const d = await api('/api/sitatbank');
+    bank.papirer = d.papirer;
+    const totalt = d.papirer.reduce((n, p) => n + p.antall, 0);
+    const alle = await api('/api/sitater').catch(() => []);
+    bank.tekst = alle.map(s => s.tekst).join(' ').slice(0, 4000);
+    $('#bank-sammendrag').textContent = totalt
+      ? `${totalt} sitat over ${d.papirer.length} papir`
+      : 'tom — merk tekst i leseflaten og trykk «Sitér»';
+    $('#dok-antall').hidden = totalt === 0;
+    $('#dok-antall').textContent = totalt;
+
+    const el = $('#bank-liste');
+    if (!d.papirer.length) {
+      el.innerHTML = '<div class="hint">Ingen sitater ennå. Merk tekst i abstractet over og trykk «Sitér» — det havner her.</div>';
+      $('#bank-detalj').innerHTML = '<div class="hint">Banken er tom.</div>';
       return;
     }
-    el.innerHTML = sitater.map(s => tegnSitat(s)).join('');
-    koblSitatHandlinger(el);
-  } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
+    el.innerHTML = d.papirer.map(p => `
+      <button class="bankpapir${p.paper_id === bank.valgt ? ' active' : ''}" data-id="${escapeHtml(p.paper_id)}">
+        <div class="t">${escapeHtml(p.tittel)}</div>
+        <div class="m"><span class="bank-antall">${p.antall}</span><span>${p.aar || '?'} · ${escapeHtml(p.tidsskrift || '')}</span></div>
+      </button>`).join('');
+    $$('.bankpapir', el).forEach(b => b.addEventListener('click', () => visBankPapir(b.dataset.id)));
+
+    if (behold && bank.valgt && d.papirer.some(p => p.paper_id === bank.valgt)) visBankPapir(bank.valgt);
+    else if (!bank.valgt) visBankPapir(d.papirer[0].paper_id);
+    else visBankPapir(d.papirer[0].paper_id);
+  } catch (err) {
+    $('#bank-liste').innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
-// Telleren i toppbaren viser ALLTID dokumentets antall, uansett hvilken linse som er
-// valgt i skuffen. Den ble tidligere satt som en bivirkning av «I dokumentet»-linsen, så
-// den frøs — eller ble stående skjult — så snart du byttet til «Løse» og siterte derfra.
-async function oppdaterDokMerke() {
-  const merke = $('#dok-antall');
-  if (!dok.id) { merke.hidden = true; return; }
-  const sitater = await api(`/api/sitater?utkast_id=${dok.id}`).catch(() => null);
-  if (!sitater) return;
-  merke.hidden = sitater.length === 0;
-  merke.textContent = sitater.length;
+async function visBankPapir(paperId) {
+  bank.valgt = paperId;
+  $$('.bankpapir').forEach(b => b.classList.toggle('active', b.dataset.id === paperId));
+  const el = $('#bank-detalj');
+  el.innerHTML = '<div class="hint">Laster …</div>';
+  try {
+    const [sitater, rel] = await Promise.all([
+      api(`/api/sitater?paper_id=${encodeURIComponent(paperId)}`),
+      api(`/api/relaterte/${encodeURIComponent(paperId)}?k=5`).catch(() => ({relaterte: []})),
+    ]);
+    const p = bank.papirer.find(x => x.paper_id === paperId) || {};
+    const bp = `/api/rapport/boilerplate/${encodeURIComponent(paperId)}`;
+    el.innerHTML = `
+      <div style="display:flex; align-items:flex-start; gap:.6rem; margin-bottom:.7rem">
+        <div style="flex:1; min-width:0">
+          <div style="font-weight:700; font-size:.875rem; line-height:1.35">${escapeHtml(p.tittel || paperId)}</div>
+          <div class="hint">${escapeHtml(p.forfattere || '')} ${p.aar ? '(' + p.aar + ')' : ''}</div>
+        </div>
+        <span class="rapport-eksport-gruppe">
+          📄 Åpne samlet: <button class="rapport-btn" data-bp="md">Markdown</button><button class="rapport-btn" data-bp="pdf">PDF</button>
+        </span>
+      </div>
+      <div class="seksjonstittel">Dine sitater (${sitater.length})</div>
+      <div id="bank-sitater"></div>
+      <div class="seksjonstittel" style="margin-top:1.1rem">Relasjonelle sitater</div>
+      ${rel.relaterte.length
+        ? '<div class="hint" style="margin-bottom:.5rem">Papirer du har SITERT som ligger semantisk nær dette. Avstand, ikke en faglig dom — «Åpne samlet» tar med disse.</div>'
+          + rel.relaterte.map(r => `
+            <div class="rel-kort" data-id="${escapeHtml(r.id)}">
+              <div class="neighbor-row1">${domeneMerke(r)}<span class="dist">${r.avstand.toFixed(3)}</span><span>${r.aar||'?'} · ${escapeHtml(r.tidsskrift||'')}</span>${artMerke(r)}</div>
+              <div class="neighbor-title">${escapeHtml(r.tittel)}</div>
+            </div>`).join('')
+        : '<div class="hint">Ingen andre siterte papirer ligger nær dette ennå. Nabolaget vokser når du siterer mer — det leter bare blant papirer du FAKTISK har sitert, ikke i hele cachen.</div>'}`;
+    $('#bank-sitater').innerHTML = sitater.length
+      ? sitater.map(s => tegnSitat(s)).join('')
+      : '<div class="hint">Ingen sitater på dette papiret.</div>';
+    koblSitatHandlinger($('#bank-sitater'));
+    $$('.rel-kort', el).forEach(k => k.addEventListener('click', () => visBankPapir(k.dataset.id)));
+    $$('[data-bp]', el).forEach(b => b.addEventListener('click', () =>
+      lastNedRapport(bp, `Arbeidsnotat - ${p.tittel || paperId}`, b.dataset.bp, b)));
+  } catch (err) {
+    el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`;
+  }
 }
 
 function tegnSitat(s) {
-  const los = s.utkast_id == null;
   const forfatter = (s.paper_forfattere || '').split(',')[0] || '';
   const kilde = [forfatter && forfatter + (s.paper_forfattere.includes(',') ? ' et al.' : ''),
                  s.paper_aar && `(${s.paper_aar})`, s.paper_tittel]
                 .filter(Boolean).join(' ');
   return `
-    <div class="sitatkort${los ? ' los' : ''}" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}">
+    <div class="sitatkort" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}">
       <div class="sitat-tekst">«${escapeHtml(s.tekst)}»</div>
       <div class="sitat-kilde">${escapeHtml(kilde)}${s.paper_doi ? ' · doi:' + escapeHtml(s.paper_doi) : ''}</div>
       <textarea class="sitat-kommentar" placeholder="Kommentar…" rows="1">${escapeHtml(s.kommentar||'')}</textarea>
       <div class="sitat-knapper">
         <button class="minibtn" data-handling="apne">Åpne papiret</button>
-        ${los
-          ? '<button class="minibtn" data-handling="fest">✚ Fest til dokumentet</button>'
-          : '<button class="minibtn" data-handling="losne">↩ Løsne</button>'}
         <button class="minibtn fare" data-handling="slett">Slett</button>
       </div>
     </div>`;
@@ -1132,85 +1085,28 @@ function koblSitatHandlinger(rot) {
   }));
   $$('.sitatkort .minibtn', rot).forEach(btn => btn.addEventListener('click', async () => {
     const kort = btn.closest('.sitatkort');
-    const id = Number(kort.dataset.id);
-    const handling = btn.dataset.handling;
     try {
-      if (handling === 'apne') { openPaper(kort.dataset.paper); return; }
-      if (handling === 'fest') {
-        if (!dok.id) { si('Ingen dokument åpent — trykk «+ Nytt» først'); return; }
-        await api(`/api/sitater/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({utkast_id: dok.id})});
-        si('Festet til «' + dok.tittel + '»');
-        lastVarme();
-      }
-      if (handling === 'losne') {
-        await api(`/api/sitater/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({utkast_id: null})});
-        si('Løsnet — sitatet ligger fortsatt under «Løse»');
-      }
-      if (handling === 'slett') {
-        if (!confirm('Slette dette sitatet for godt?')) return;
-        await api(`/api/sitater/${id}`, {method:'DELETE'});
-      }
-      settLinse(state.sitatLinse);
-      oppdaterDokMerke();
+      if (btn.dataset.handling === 'apne') { openPaper(kort.dataset.paper); return; }
+      if (!confirm('Slette dette sitatet for godt?')) return;
+      await api(`/api/sitater/${kort.dataset.id}`, {method:'DELETE'});
+      lastBank();
+      lastVarme();
     } catch (err) { si('Feil: ' + err.message); }
   }));
 }
 
-// ---------- Eksport og deling av dokumentet ----------
-function dokUrl() { return `/api/rapport/dokument?utkast_id=${dok.id}`; }
-function krevDok() {
-  if (!dok.id) { si('Ingen dokument åpent ennå'); return false; }
-  return true;
-}
-$('#dok-md').addEventListener('click', (e) => { if (krevDok()) lastNedRapport(dokUrl(), dok.tittel, 'md', e.target); });
-$('#dok-pdf').addEventListener('click', (e) => { if (krevDok()) lastNedRapport(dokUrl(), dok.tittel, 'pdf', e.target); });
-
-$('#dok-kopier').addEventListener('click', async () => {
-  if (!krevDok()) return;
-  try {
-    const md = await (await hentRapport(dokUrl(), 'md')).text();
-    await navigator.clipboard.writeText(md);
-    si('Dokumentet er kopiert som Markdown');
-  } catch (err) { si('Kunne ikke kopiere: ' + err.message); }
-});
-
-// Deling går gjennom systemets egen delingsmeny med FILEN — verktøyet laster ingenting
-// opp noe sted (se Om-panelet). navigator.share finnes ikke i alle nettlesere, og
-// canShare({files}) er en egen, strengere port: uten begge faller vi tilbake til
-// nedlasting, som er den ærlige «del den selv»-veien, ikke en feilmelding.
-$('#dok-del').addEventListener('click', async (e) => {
-  if (!krevDok()) return;
-  const btn = e.target;
-  try {
-    const blob = await hentRapport(dokUrl(), 'pdf');
-    const fil = new File([blob], `${slugFilnavn(dok.tittel)}.pdf`, {type: 'application/pdf'});
-    if (navigator.canShare && navigator.canShare({files: [fil]})) {
-      await navigator.share({files: [fil], title: dok.tittel});
-      return;
-    }
-    si('Nettleseren har ingen delingsmeny — laster ned PDF-en i stedet');
-    lastNedRapport(dokUrl(), dok.tittel, 'pdf', btn);
-  } catch (err) {
-    if (err.name !== 'AbortError') si('Deling feilet: ' + err.message);
+// Hele banken ut i ett format. Kildesamling-endepunktet tar en id-liste, så banken sender
+// sine egne papir-id-er — samme vei som søkeresultatet bruker.
+$$('[data-bank]').forEach(btn => btn.addEventListener('click', () => {
+  if (!bank.papirer.length) { si('Banken er tom'); return; }
+  const f = btn.dataset.bank;
+  if (f === 'md' || f === 'pdf') {
+    lastNedRapport('/api/rapport/sitatnotater', 'Sitatbank', f, btn);
+  } else {
+    const ids = bank.papirer.map(p => p.paper_id).join(',');
+    lastNedRapport(`/api/rapport/kildesamling?ids=${encodeURIComponent(ids)}&tittel=Sitatbank`,
+                    'Sitatbank', f, btn);
   }
-});
-
-// ---------- Omfang ----------
-async function oppdaterOmfang(tekst) {
-  const rad = $('#axis-row');
-  if (!tekst || tekst.trim().length < 20) { rad.innerHTML = '<div class="hint">Skriv litt til.</div>'; return; }
-  try {
-    const omf = await api(`/api/omfang?tekst=${encodeURIComponent(tekst)}`);
-    rad.innerHTML = Object.entries(omf.akser).map(([akse, verdi]) => `
-      <span class="axis-chip${verdi < 0.3 ? ' thin' : ''}">${escapeHtml(akse)}<span class="bar"><i style="width:${Math.round(verdi*100)}%"></i></span></span>`).join('');
-  } catch { rad.innerHTML = '<div class="hint">Kunne ikke måle omfang akkurat nå.</div>'; }
-}
-$$('[data-omfang]').forEach(btn => btn.addEventListener('click', () => {
-  const tekst = $('#dok-editor').textContent || '';
-  if (tekst.trim().length < 20) { si('Skriv litt mer først — for kort tekst å vurdere omfang på'); return; }
-  lastNedRapport(`/api/rapport/omfang?tekst=${encodeURIComponent(tekst)}`, 'Omfang-rapport', btn.dataset.omfang, btn);
 }));
 
 // ---------- Om-panel (metodikk/transparens) ----------
@@ -1240,7 +1136,7 @@ $('#om-overlay').addEventListener('click', e => { if (e.target.id === 'om-overla
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('#om-overlay').hidden) { lukkOmPanel(); return; }
-  if (skuffErApen() && !$('#dok-editor').contains(document.activeElement)) lukkSkuff();
+  if (skuffErApen() && document.activeElement.tagName !== 'TEXTAREA') lukkSkuff();
 });
 
 // ---------- Første last ----------
@@ -1282,8 +1178,7 @@ async function lastProfil() {
 
 (async () => {
   await lastProfil();
-  const liste = await lastDokListe(null);
-  if (liste.length) await apneDok(liste[0].id); else await settLinse('lose');
+  await lastBank();
   lastVarme();
   utforSok($('#search-input').value.trim());
 })();

@@ -368,8 +368,10 @@ def api_varme(tekst: str = "", k: int = 12):
 
     - `varig`: akkumulert bruk over tid (bank.varmeliste) — hukommelse, overlever
       dokumentbytte og omstart.
-    - `naa`: semantisk avstand mot teksten som står i dokumentet i dette øyeblikket
-      (bank.lignende_tekst) — glemmer alt straks du bytter dokument.
+    - `naa`: semantisk avstand mot SITATENE dine samlet (bank.lignende_tekst). Fram til
+      2026-09-04 var kilden dokumenteditorens tekst; da sitatbanken erstattet skuffen ble
+      den sitatene, som er en bedre kilde uansett — et sitat er noe du aktivt plukket ut,
+      mens et utkast også bærer tenking som ikke er en påstand om litteraturen.
 
     Hvert kort bærer BEGGE tallene, og `aarsaker` sier hvilke av dem som faktisk
     løftet det. Et papir som er varmt av gammel bruk, men fjernt fra det du skriver nå,
@@ -405,7 +407,11 @@ def api_varme(tekst: str = "", k: int = 12):
                                           "varig": 0.0, "aarsaker": []})
         rad["avstand"] = n["avstand"]
         rad["naa"] = naerhet[n["id"]]
-        rad["aarsaker"] = rad["aarsaker"] + ["nær det du skriver nå"]
+        # «det du har sitert», ikke «det du skriver nå». Teksten laget måles mot kom fra
+        # dokumenteditoren til 2026-09-04; da sitatbanken erstattet skuffen ble kilden
+        # sitatene dine, og årsaksstrengen ville ellers påstått noe om en flate som ikke
+        # finnes lenger. Et kort som navngir feil kilde er verre enn et uten årsak.
+        rad["aarsaker"] = rad["aarsaker"] + ["nær det du har sitert"]
 
     for rad in samlet.values():
         rad["varig_andel"] = round(rad["varig"] / maks_poeng, 3) if maks_poeng else 0.0

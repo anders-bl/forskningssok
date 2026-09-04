@@ -62,7 +62,7 @@ def test_to_lag_holdes_adskilt_paa_samme_kort():
     rad = d["papirer"][0]
     assert rad["varig_andel"] == 1.0            # varig: relativt til listas maks
     assert rad["naa_andel"] == 0.875            # nå: absolutt, 1 - 0.25/2
-    assert rad["aarsaker"] == ["du siterte det", "nær det du skriver nå"]
+    assert rad["aarsaker"] == ["du siterte det", "nær det du har sitert"]
     assert rad["avstand"] == 0.25
 
 
@@ -73,7 +73,7 @@ def test_papir_kun_i_naa_laget_har_null_varig():
     rader = {r["id"]: r for r in d["papirer"]}
     assert rader["B"]["varig_andel"] == 0.0 and rader["B"]["naa_andel"] == 0.95
     assert rader["A"]["naa_andel"] == 0.0
-    assert rader["B"]["aarsaker"] == ["nær det du skriver nå"]
+    assert rader["B"]["aarsaker"] == ["nær det du har sitert"]
 
 
 def test_naa_laget_er_absolutt_ikke_normalisert_mot_gruppen():
