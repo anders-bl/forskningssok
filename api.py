@@ -35,6 +35,11 @@ from ranking import arts_naer, domene_naer, ranger
 # Lokalt er variabelen aldri satt, så utvikling er upåvirket; i Dokploy settes den i
 # compose. traces_sample_rate=0: vi vil ha FEIL, ikke ytelsessporing — det siste ville
 # sendt hver eneste request til en tredjepart uten at noen ba om det.
+# Hvor mange kall på rad som må feile før en kilde regnes som nede. 3, ikke 1: et enkelt
+# timeout er vær. Tallet er UKALIBRERT og dokumentert som det — det er valgt for å være
+# tydelig lavt nok til å fange en ekte nedetid innen få søk, ikke målt mot en fordeling.
+_KILDE_TERSKEL = 3
+
 _GLITCHTIP_DSN = os.environ.get("GLITCHTIP_DSN", "")
 
 
@@ -212,9 +217,39 @@ def _helse_svar(payload: dict):
                         media_type=_HELSE_MEDIA)
 
 
+def _helse_kilder() -> dict:
+    """Kilde-nåbarhet fra PASSIV observasjon — ingen utgående kall.
+
+    WARN, aldri FAIL. En nede kilde er ikke vår nedetid: cachen svarer fortsatt, sitatbanken
+    virker, «Lignende» virker. Å la Europe PMC-nedetid gjøre /ready rød ville vekket Anders
+    for en annens driftsavbrudd — og EBI lå nede i DAGEVIS i september.
+
+    Tom tabell gir «pass», ikke «warn»: ingen søk kjørt ennå er ikke et tegn på at noe er
+    galt. Det er den tredje tilstanden, og den skal ikke leses som en av de to andre."""
+    tid = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    try:
+        status = bank.kilde_status()
+    except Exception:
+        # Kilde-leddet leser samme database som cache-leddet. Er den død, har cache-sjekken
+        # ALT meldt fail — dette leddet skal da si «kunne ikke måle», ikke kaste og gjøre
+        # en 503 om til en 500. Fanget av test_ready_er_503_naar_cachen_ikke_er_lesbar.
+        return {"componentType": "system", "status": "warn", "time": tid,
+                "output": "kunne ikke lese kilde-status (samme db som cachen)"}
+    nede = [k for k in status if k["feil_paa_rad"] >= _KILDE_TERSKEL]
+    if not nede:
+        return {"componentType": "system", "status": "pass", "time": tid}
+    return {"componentType": "system", "status": "warn", "time": tid,
+            "output": "; ".join(f"{k['kilde']}: {k['feil_paa_rad']} feil på rad "
+                                f"({(k['siste_feilmelding'] or '')[:60]})" for k in nede)}
+
+
 def _helse_bygg() -> dict:
     sjekk = _helse_sjekk()
-    return {"status": sjekk["status"], "checks": {"cache:innhold": [sjekk]}}
+    kilder = _helse_kilder()
+    statuser = {sjekk["status"], kilder["status"]}
+    samlet = "fail" if "fail" in statuser else ("warn" if "warn" in statuser else "pass")
+    return {"status": samlet,
+            "checks": {"cache:innhold": [sjekk], "kilder:naabarhet": [kilder]}}
 
 
 @app.get("/health/live")
@@ -312,7 +347,15 @@ def api_sok(q: str, background_tasks: BackgroundTasks, n: int = 20):
     try:
         papirer, eksakt_id, kilder = sok_og_ranger(q, page_size=max(n, 20))
     except RuntimeError as e:
+        # Bokfør at det EKTE kallet feilet, før vi svarer. Passiv observasjon: hvert søk
+        # et menneske gjør er allerede en prøve på om kilden lever, og den er gratis.
+        paa_rad = bank.registrer_kildekall("europe_pmc", False, str(e))
+        if paa_rad == _KILDE_TERSKEL:
+            # KANT, ikke nivå: rapporter når terskelen KRYSSES, ikke hver gang den
+            # vedvarer. En kilde som er nede i tre dager skal gi én hendelse, ikke tusen.
+            _rapporter_degradering(f"kilde europe_pmc nede ({paa_rad} feil på rad)")
         raise HTTPException(502, f"Europe PMC utilgjengelig: {e}") from e
+    bank.registrer_kildekall("europe_pmc", True)
     # lagre() (cache/embed for fremtidig --lignende-søk) kjører ETTER at responsen er
     # sendt, ikke før — embed_fn kan ta opptil 120s (ekte AI-proxy-kall), og brukeren
     # trenger ALDRI den bivirkningen for å se søkeresultatet sitt. Å blokkere responsen

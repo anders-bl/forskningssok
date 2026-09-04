@@ -483,11 +483,25 @@ ikke.
 
 ### Hva monitoren IKKE kan se — tre bevisste blindsoner
 
-1. **Kildene.** `/ready` sjekker at cachen har innhold, ikke at Europe PMC svarer. Ligger
-   EBI nede i dagevis (som i september), er monitoren **grønn** mens nye søk ikke gir noe.
-   Det er med vilje — alternativet var å pinge fire tredjeparter hvert 300. sekund for å
-   svare på et spørsmål om VÅR tjeneste. Kilde-nåbarhet hører i «Om»-panelet, som et
-   menneske åpner når det lurer.
+1. ~~**Kildene.**~~ **LUKKET 2026-09-04** — Anders godtok ikke blindsonen, og han hadde
+   rett: motsetningen jeg satte opp (enten polle fire tredjeparter, eller være blind) var
+   falsk. Det finnes en tredje vei: **registrer utfallet av de EKTE søkene**. Hvert søk et
+   menneske gjør er allerede en prøve på om kilden lever, og den er gratis.
+
+   `kilde_status`-tabellen bokfører `sist_ok`, `sist_feil` og **`feil_paa_rad`** per kilde.
+   Telleren på rad er det som gjør det ærlig: «sist_ok er tre dager gammel» kan bety at
+   kilden er nede ELLER at ingen har søkt på tre dager, mens en teller på rad bare kan
+   vokse når noen faktisk prøvde.
+
+   `/health/ready` melder da **`warn`, aldri `fail`** ved nede kilde — cachen svarer
+   fortsatt, sitatbanken virker, «Lignende» virker. Å la EBI-nedetid gjøre monitoren rød
+   ville vekket deg for en annens driftsavbrudd. Vil du VARSLES på det, sett en
+   Kuma-monitor av typen **Keyword** på `"status":"pass"` ved siden av statuskode-monitoren
+   — da skiller de to seg: én sier «tjenesten lever», den andre «alt den trenger virker».
+
+   Kryssing av terskelen (3 feil på rad) rapporteres dessuten til GlitchTip som degradering
+   — på KANTEN, ikke hver runde den vedvarer. En kilde nede i tre dager skal gi én
+   hendelse, ikke tusen.
 2. **Tom cache = rød, og det er riktig.** Prod starter med et TOMT volum (se §Embedder), så
    en fersk deploy eller et tapt volum gir 503 til noen har søkt første gang. En
    søketjeneste med tom cache kan ikke besvare noe, så «nede» er det ærlige svaret — men

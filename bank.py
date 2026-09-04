@@ -94,6 +94,9 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
         db.commit()
     except sqlite3.OperationalError:
         pass  # kolonnen finnes alt
+    db.execute("""CREATE TABLE IF NOT EXISTS kilde_status(
+        kilde TEXT PRIMARY KEY, sist_ok REAL, sist_feil REAL,
+        feil_paa_rad INTEGER NOT NULL DEFAULT 0, siste_feilmelding TEXT)""")
     db.execute("""CREATE TABLE IF NOT EXISTS varme(
         paper_id TEXT PRIMARY KEY, poeng REAL NOT NULL, sist_rort REAL NOT NULL,
         sterkeste_hendelse TEXT)""")
@@ -194,6 +197,49 @@ def varmeliste(k: int = 12, *, db_path: Path = DB) -> list[dict]:
              "sterkeste_hendelse": r[8],
              "domene_naer": domene_naer_tekst(f"{r[9]} {r[2]}"),
              "arts_naer": arts_naer_tekst(f"{r[1]} {r[10]}")} for r in rows]
+
+
+def registrer_kildekall(kilde: str, ok: bool, melding: str = "", *, db_path: Path = DB) -> int:
+    """Bokfør utfallet av et EKTE kall til en ekstern kilde. Returnerer feil-på-rad etterpå.
+
+    PASSIV observasjon, ikke aktiv sondering. Alternativet — å pinge Europe PMC, OpenAlex,
+    CORE og Crossref på timer for å vite om de lever — betyr fire tredjepartskall per
+    runde for å svare på et spørsmål om VÅR tjeneste, og det måler dessuten en syntetisk
+    sti ingen bruker går. Her måles den ekte: hvert søk et menneske gjør er allerede en
+    prøve, og den er gratis.
+
+    `feil_paa_rad` er nøkkelen til å skille to tilstander som ser like ut i et
+    tidsstempel: «sist_ok er tre dager gammel» kan bety at kilden er nede ELLER at ingen
+    har søkt på tre dager. En teller på rad kan bare vokse når noen faktisk prøvde."""
+    db = _db(db_path)
+    naa = time.time()
+    if ok:
+        db.execute("""INSERT INTO kilde_status(kilde, sist_ok, feil_paa_rad) VALUES (?,?,0)
+                      ON CONFLICT(kilde) DO UPDATE SET sist_ok=excluded.sist_ok,
+                      feil_paa_rad=0, siste_feilmelding=NULL""", (kilde, naa))
+        paa_rad = 0
+    else:
+        db.execute("""INSERT INTO kilde_status(kilde, sist_feil, feil_paa_rad, siste_feilmelding)
+                      VALUES (?,?,1,?)
+                      ON CONFLICT(kilde) DO UPDATE SET sist_feil=excluded.sist_feil,
+                      feil_paa_rad=kilde_status.feil_paa_rad+1,
+                      siste_feilmelding=excluded.siste_feilmelding""", (kilde, naa, melding[:200]))
+        paa_rad = db.execute("SELECT feil_paa_rad FROM kilde_status WHERE kilde=?",
+                             (kilde,)).fetchone()[0]
+    db.commit()
+    db.close()
+    return paa_rad
+
+
+def kilde_status(*, db_path: Path = DB) -> list[dict]:
+    """Sist kjente utfall per kilde. Tom liste = ingen søk er kjørt ennå, som er en ærlig
+    tredje tilstand og ikke «alt er bra»."""
+    db = _db(db_path)
+    rows = db.execute("""SELECT kilde, sist_ok, sist_feil, feil_paa_rad, siste_feilmelding
+                         FROM kilde_status ORDER BY kilde""").fetchall()
+    db.close()
+    return [{"kilde": r[0], "sist_ok": r[1], "sist_feil": r[2],
+             "feil_paa_rad": r[3], "siste_feilmelding": r[4]} for r in rows]
 
 
 def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> int:

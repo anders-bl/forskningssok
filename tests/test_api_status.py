@@ -188,3 +188,41 @@ def test_helse_gir_detalj_med_riktig_noekkel():
         r = TestClient(api.app).get("/health", headers={"X-Internal-Key": "hemmelig"})
     assert "checks" in r.json()
     assert r.json()["checks"]["cache:innhold"][0]["observedValue"]["papirer"] >= 0
+
+
+def test_nede_kilde_gir_WARN_ikke_FAIL():
+    """En nede kilde er ikke VÅR nedetid: cachen svarer, sitatbanken virker, «Lignende»
+    virker. Å la Europe PMC-nedetid gjøre /ready rød ville vekket Anders for en annens
+    driftsavbrudd — og EBI lå nede i DAGEVIS i september."""
+    import api
+    from fastapi.testclient import TestClient
+    nede = [{"kilde": "europe_pmc", "sist_ok": 1.0, "sist_feil": 2.0,
+             "feil_paa_rad": 5, "siste_feilmelding": "503"}]
+    with patch("api.bank.kilde_status", return_value=nede):
+        r = TestClient(api.app).get("/health/ready")
+    assert r.status_code == 200, "warn er ikke fail — tjenesten er oppe"
+    assert r.json()["status"] == "warn"
+
+
+def test_kilde_under_terskel_er_fortsatt_pass():
+    """Ett enkelt timeout er vær, ikke nedetid."""
+    import api
+    from fastapi.testclient import TestClient
+    with patch("api.bank.kilde_status", return_value=[
+            {"kilde": "europe_pmc", "sist_ok": 1.0, "sist_feil": 2.0,
+             "feil_paa_rad": 2, "siste_feilmelding": "timeout"}]):
+        r = TestClient(api.app).get("/health/ready")
+    assert r.json()["status"] == "pass"
+
+
+def test_kilde_detalj_navngir_kilden_bak_noekkel():
+    import os
+    import api
+    from fastapi.testclient import TestClient
+    with patch("api.bank.kilde_status", return_value=[
+            {"kilde": "europe_pmc", "sist_ok": 1.0, "sist_feil": 2.0,
+             "feil_paa_rad": 4, "siste_feilmelding": "503 maintenance"}]), \
+         patch.dict(os.environ, {"INTERNAL_API_KEY": "h"}, clear=False):
+        r = TestClient(api.app).get("/health", headers={"X-Internal-Key": "h"})
+    ut = r.json()["checks"]["kilder:naabarhet"][0]["output"]
+    assert "europe_pmc" in ut and "4 feil på rad" in ut
