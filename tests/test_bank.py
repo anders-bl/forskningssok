@@ -5,6 +5,8 @@ deterministisk vektor-par som gjør «lignende» geometrisk sjekkbar (to nære v
 """
 import math
 import sys
+
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -40,7 +42,11 @@ def _p(pid, tittel, abstract="noe abstract-tekst", forfattere="", tidsskrift="")
 def test_papir_uten_abstract_embeddes_aldri(tmp_path):
     db = tmp_path / "cache.db"
     n = lagre([_p("1", "Atittel", abstract="")], embed_fn=_fake_embed, db_path=db)
-    assert n == 0
+    # Papiret CACHES nå (n == 1) selv uten abstract — endret 2026-09-04 fordi det ellers
+    # aldri kunne siteres, permanent (se bank.lagre sin B-vei). Invarianten testen er
+    # oppkalt etter står uendret: ingen embedding, altså aldri en nabo.
+    assert n == 1
+    assert hent("1", db_path=db) is not None
     assert lignende("1", db_path=db) == []
 
 
@@ -65,8 +71,22 @@ def test_samtidig_lagring_krasjer_ikke_paa_kappløp(tmp_path):
         return _fake_embed(texts)
 
     n = lagre([_p("1", "Atittel")], embed_fn=embed_med_konkurrent, db_path=db)
-    assert n == 0  # denne kallet tapte kappløpet, ingen dobbel skriving
-    assert hent("1", db_path=db) is not None  # konkurrentens rad står, ikke krasjet vekk
+    # 2026-09-04: VINDUET denne testen simulerer er nå borte. Konkurrenten injiseres inne i
+    # embed_fn, men embeddingen skjer etter innsettingen — så vår rad står alt når
+    # konkurrenten kjører, og DENS insert er no-op. Derfor n == 1, ikke 0.
+    #
+    # Testen beholdes likevel, fordi invarianten den vokter er den samme og fortsatt kan
+    # brytes: to skrivere mot samme id skal ALDRI gi IntegrityError, og aldri to rader
+    # eller to vektorer. At vinduet krympet er fiksen, ikke en grunn til å slutte å måle.
+    assert n == 1
+    assert hent("1", db_path=db) is not None
+    # bank._db(), ikke sqlite3.connect(): paper_vec er en vec0-virtuell tabell, og en rå
+    # connect uten sqlite_vec.load() gir «no such module: vec0».
+    import bank as _bank
+    con = _bank._db(db)
+    assert con.execute("SELECT count(*) FROM papers WHERE id='1'").fetchone()[0] == 1
+    assert con.execute("SELECT count(*) FROM paper_vec").fetchone()[0] == 1
+    con.close()
 
 
 def test_lignende_finner_naert_papir_ikke_fjernt(tmp_path):
@@ -247,3 +267,49 @@ def test_slett_sitat(tmp_path):
 def test_slett_ukjent_sitat_gir_aerlig_false_ikke_feil(tmp_path):
     db = tmp_path / "cache.db"
     assert slett_sitat(999, db_path=db) is False
+
+
+def test_sitering_overlever_at_embedderen_feiler(tmp_path):
+    """Anders' feilrapport 2026-09-04 mot prod: «Kunne ikke lagre: 10.1111/jfd.70099 er
+    ikke cachet — søk det opp først», etter et helt vanlig søk.
+
+    Rotårsaken var rekkefølgen: lagre() embedde FØR den satte inn noe, så et feilende
+    eller tregt ai-proxy-kall (opptil 120 s over dokploy-network) etterlot NULL cachede
+    papirer. Rådet i meldingen var nytteløst — et nytt søk kjører samme bakgrunnsjobb mot
+    samme nedetid. Å sitere koster én rad; å embedde er en valgfri berikelse."""
+    db = tmp_path / "cache.db"
+
+    def embed_feiler(texts):
+        raise RuntimeError("ai-proxy timeout")
+
+    with pytest.raises(RuntimeError):
+        lagre([_p("1", "Atittel")], embed_fn=embed_feiler, db_path=db)
+
+    assert hent("1", db_path=db) is not None, "raden må stå selv om embeddingen falt"
+    lagre_sitat("1", "et utdrag", db_path=db)          # skal ikke kaste
+    assert len(hent_sitater("1", db_path=db)) == 1
+    assert lignende("1", db_path=db) == []             # ærlig tom, ingen oppdiktet vektor
+
+
+def test_etterslepet_tas_igjen_naar_embedderen_er_tilbake(tmp_path):
+    db = tmp_path / "cache.db"
+
+    def embed_feiler(texts):
+        raise RuntimeError("nede")
+
+    with pytest.raises(RuntimeError):
+        lagre([_p("1", "Atittel")], embed_fn=embed_feiler, db_path=db)
+    assert lignende("1", db_path=db) == []
+
+    from bank import embed_manglende
+    assert embed_manglende(embed_fn=_fake_embed, db_path=db) == 1
+    assert embed_manglende(embed_fn=_fake_embed, db_path=db) == 0   # idempotent
+
+
+def test_papir_uten_abstract_kan_siteres(tmp_path):
+    """B-veien i samme feilrapport: papirer uten abstract ble filtrert bort HELT, ikke
+    bare fra embeddingen, og kunne dermed aldri siteres — permanent, ikke en timing-sak."""
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel", abstract="")], embed_fn=_fake_embed, db_path=db)
+    lagre_sitat("1", "et utdrag", db_path=db)
+    assert len(hent_sitater("1", db_path=db)) == 1

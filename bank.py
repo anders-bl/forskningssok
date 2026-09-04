@@ -197,34 +197,81 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
     Lag-3-spec'en). Idempotent på id (doi foretrukket, pmid fallback)."""
     embed_fn = embed_fn or _hus_embed()
     db = _db(db_path)
-    nye = [p for p in papirer if p.abstract and not db.execute(
+    nye = [p for p in papirer if not db.execute(
         "SELECT 1 FROM papers WHERE id=?", (p.id,)).fetchone()]
     if not nye:
         db.close()
         return 0
-    embeddinger = embed_fn([f"{p.tittel}. {p.abstract}" for p in nye])
+
+    # RADENE FØRST, EMBEDDINGEN ETTERPÅ. Rekkefølgen er ikke kosmetisk — den var en ekte
+    # brukerfeil, rapportert av Anders 2026-09-04 mot prod: «Kunne ikke lagre:
+    # 10.1111/jfd.70099 er ikke cachet — søk det opp først».
+    #
+    # Før dette embedde lagre() FØR den satte inn noe. To veier til samme melding:
+    #   A) embed_fn feiler eller timer ut (i prod er det ai-proxy over dokploy-network,
+    #      opptil 120 s) → unntaket kastes før første INSERT → NULL papirer cachet, og
+    #      sitering er umulig. Rådet «søk det opp først» er da nytteløst: et nytt søk
+    #      kjører samme bakgrunnsjobb mot samme nedetid.
+    #   B) papirer uten abstract ble filtrert bort HELT, ikke bare fra embeddingen. De
+    #      kunne dermed aldri siteres, permanent.
+    #
+    # Å sitere er en kjernehandling som koster én rad; å embedde er en VALGFRI berikelse
+    # som gir `--lignende` og varme-panelet. En feilende berikelse skal aldri kunne blokkere
+    # kjernehandlingen. Papirer uten vektor er allerede håndtert overalt: lignende() slår opp
+    # paper_vec separat og returnerer ærlig tom liste, varmeliste() joiner kun papers.
     lagret = 0
-    for p, emb in zip(nye, embeddinger):
+    for p in nye:
         # OR IGNORE, ikke ren INSERT: SELECT-sjekken over og denne INSERT-en er IKKE én
         # atomisk operasjon — to overlappende søk på samme uncachede spørring (f.eks. en
-        # bruker som reloader mens embed_fn (opptil 120s, se _ai_proxy_embed) fortsatt
-        # kjører server-side) kan begge se raden som fraværende og begge forsøke å skrive
-        # den. Rein INSERT ga da sqlite3.IntegrityError: UNIQUE constraint failed —
-        # ufanget i api.py (kun RuntimeError fanges), altså et rått 500 til klienten.
+        # bruker som reloader mens embeddingen fortsatt kjører server-side) kan begge se
+        # raden som fraværende og begge forsøke å skrive den. Rein INSERT ga da
+        # sqlite3.IntegrityError: UNIQUE constraint failed — ufanget i api.py (kun
+        # RuntimeError fanges), altså et rått 500 til klienten.
         # Reprodusert live 2026-09-04 (8 samtidige identiske /api/sok-kall).
         cur = db.execute(
             """INSERT OR IGNORE INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
                siteringstall,open_access,kilde_url,kilde_kode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (p.id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid, p.abstract,
              p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode))
-        if cur.rowcount == 0:
-            continue  # en samtidig lagre() vant kappløpet — dens paper_vec-rad dekker oss
-        db.execute("INSERT INTO paper_vec(chunk_id, embedding) VALUES (?,?)",
-                   (cur.lastrowid, sqlite_vec.serialize_float32(emb)))
-        lagret += 1
+        if cur.rowcount:
+            lagret += 1
     db.commit()
     db.close()
+
+    # Embeddingen er nå et eget, feilbart steg. Feiler den, står radene igjen og
+    # embed_manglende() tar dem ved neste søk — selvhelbredende i stedet for tapt.
+    embed_manglende(embed_fn=embed_fn, db_path=db_path)
     return lagret
+
+
+def embed_manglende(*, embed_fn=None, db_path: Path = DB) -> int:
+    """Embedder cachede papirer som har abstract men mangler vektor. Idempotent.
+
+    Finnes fordi lagre() ikke lenger lar en feilende embedder velte hele cachingen: da
+    trengs en vei tilbake for radene som ble stående uten vektor. Kalles fra lagre() selv,
+    så et hvilket som helst senere søk tar igjen etterslepet uten at noen husker det."""
+    db = _db(db_path)
+    rader = db.execute("""
+        SELECT p.rowid, p.tittel, p.abstract FROM papers p
+        LEFT JOIN paper_vec v ON v.chunk_id = p.rowid
+        WHERE v.chunk_id IS NULL AND p.abstract IS NOT NULL AND p.abstract != ''""").fetchall()
+    if not rader:
+        db.close()
+        return 0
+    embed_fn = embed_fn or _hus_embed()
+    try:
+        embeddinger = embed_fn([f"{t}. {a}" for _, t, a in rader])
+    except Exception:
+        db.close()
+        raise
+    n = 0
+    for (rowid, _, _), emb in zip(rader, embeddinger):
+        db.execute("INSERT OR IGNORE INTO paper_vec(chunk_id, embedding) VALUES (?,?)",
+                   (rowid, sqlite_vec.serialize_float32(emb)))
+        n += 1
+    db.commit()
+    db.close()
+    return n
 
 
 _PAPER_KOLONNER = ("id", "tittel", "forfattere", "tidsskrift", "aar", "doi", "pmid",

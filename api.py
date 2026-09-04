@@ -41,7 +41,12 @@ def _lagre_bakgrunn(papirer: list) -> None:
     try:
         bank.lagre(papirer)
     except Exception:
-        logger.warning("bakgrunns-lagre() feilet (søkeresultatet er alt levert)", exc_info=True)
+        # Etter 2026-09-04 er dette IKKE lenger «papirene gikk tapt». lagre() setter inn
+        # radene FØR den embedder, så et unntak her betyr at embeddingen falt mens
+        # cachingen — og dermed siteringen — står. Neste søk tar etterslepet via
+        # embed_manglende(). Se bank.lagre for feilrapporten som drev fram delingen.
+        logger.warning("bakgrunns-embedding feilet (papirene ER cachet og kan siteres; "
+                       "etterslepet tas ved neste søk)", exc_info=True)
 
 
 def _slug(tekst: str) -> str:
