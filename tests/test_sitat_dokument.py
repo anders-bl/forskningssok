@@ -125,3 +125,41 @@ def test_sletting_rorer_ikke_andre_dokumenters_sitater(tmp_path):
     lagre_sitat("10.1/2", "det andres", "", annet, db_path=db)
     slett_utkast(uid, db_path=db)
     assert [s["tekst"] for s in hent_sitater(utkast_id=annet, db_path=db)] == ["det andres"]
+
+
+def test_migrasjon_fra_cache_uten_utkast_id(tmp_path):
+    """En cache.db skrevet FØR dokumentskuffen fantes har hverken utkast_id eller
+    varme-tabell. ALTER-migrasjonen i _db() må gjøre gamle sitater til løse sitater —
+    ikke til usynlige rader, og ikke til en krasj ved første oppslag."""
+    import sqlite3
+    db = tmp_path / "gammel.db"
+    c = sqlite3.connect(db)
+    c.execute("""CREATE TABLE papers(id TEXT PRIMARY KEY, tittel TEXT, forfattere TEXT,
+                 tidsskrift TEXT, aar INTEGER, doi TEXT, pmid TEXT, abstract TEXT,
+                 siteringstall INTEGER, open_access INTEGER, kilde_url TEXT)""")
+    c.execute("""CREATE TABLE sitater(id INTEGER PRIMARY KEY, paper_id TEXT NOT NULL,
+                 tekst TEXT NOT NULL, kommentar TEXT, opprettet REAL NOT NULL)""")
+    c.execute("INSERT INTO papers VALUES ('10.1/x','T','A','J',2020,'10.1/x',NULL,'abs',0,0,'u')")
+    c.execute("INSERT INTO sitater VALUES (1,'10.1/x','gammelt sitat','',1.0)")
+    c.commit()
+    c.close()
+
+    alle = hent_sitater(db_path=db)
+    assert [s["tekst"] for s in alle] == ["gammelt sitat"]
+    assert alle[0]["utkast_id"] is None
+    assert [s["id"] for s in hent_sitater(kun_lose=True, db_path=db)] == [1]
+
+    from bank import varm_opp, varmeliste
+    varm_opp("10.1/x", "apnet", db_path=db)
+    assert [r["id"] for r in varmeliste(db_path=db)] == ["10.1/x"]
+
+
+def test_fersk_installasjon_svarer_tomt_ikke_krasj(tmp_path):
+    """Tom fil, ingen tabeller. Alle lese-veiene må svare ærlig tomt — nøyaktig når
+    verktøyet har minst data og en krasj ville vært mest forvirrende."""
+    from bank import varmeliste
+    db = tmp_path / "fersk.db"
+    assert varmeliste(db_path=db) == []
+    assert hent_sitater(db_path=db) == []
+    assert hent_sitater(kun_lose=True, db_path=db) == []
+    assert hent_sitater(utkast_id=1, db_path=db) == []
