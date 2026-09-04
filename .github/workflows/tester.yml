@@ -1,0 +1,55 @@
+# Repoet hadde ingen CI før 2026-09-04: 226 tester som bare kjørte når noen husket det.
+#
+# Forutsetningen som gjør dette trygt å slå på er MÅLT, ikke antatt: hele suiten kjørte
+# grønt med HTTP_PROXY/HTTPS_PROXY/ALL_PROXY pekt på en død adresse (127.0.0.1:1), altså
+# ingen ekte nettverkskall igjen. Den forutsetningen var brutt så sent som samme dag —
+# Crossref-supplementet gjorde tre gap-tester nettverksavhengige uten at noe sa fra, og de
+# gikk grønt bare fordi maskinen hadde internett. Proxy-armen under er derfor ikke pynt:
+# den er det som hindrer at en flaky nettverkstest sniker seg inn igjen og gjør CI til
+# støy i stedet for et signal.
+name: tester
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # Samme versjon som Dockerfile (python:3.14-slim) og det lokale venv-et.
+          # .python-version er informativ, ikke håndhevet — se CLAUDE.md.
+          python-version: "3.14"
+
+      - name: Installer avhengigheter
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Kjør testene UTEN nettverk
+        # Den døde proxyen er selve poenget: en test som trenger internett skal feile her,
+        # ikke oppdages måneder senere som en tilfeldig rød kjøring.
+        env:
+          HTTP_PROXY: http://127.0.0.1:1
+          HTTPS_PROXY: http://127.0.0.1:1
+          ALL_PROXY: http://127.0.0.1:1
+          NO_PROXY: ""
+        run: python -m pytest -q
+
+      - name: Verifiser at imaget bygger og starter med profilen
+        # domeneprofil.py laster profiler/*.toml ved IMPORT. Ryker profiler/ ut av
+        # .dockerignore, krasjer containeren ved oppstart — en feil som ellers først
+        # ville vist seg i Dokploy, etter en push som ER en deploy.
+        run: |
+          docker build -t forskningssok-ci .
+          docker run -d --name ci-verify -p 8000:8000 forskningssok-ci
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8000/api/profil && break || sleep 1
+          done
+          curl -sf http://127.0.0.1:8000/api/profil | grep -q '"navn"'
+          docker rm -f ci-verify

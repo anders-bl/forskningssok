@@ -1,10 +1,11 @@
 # CLAUDE.md — AI-agent instrukser for forskningssok
 
 ## Stack
-- Python (venv/, se README for oppsett) — `.python-version` peker på 3.12.0, men
-  venv-et som faktisk kjøres her er 3.14 og ingen pyenv er installert på denne
-  maskinen; filen er per nå informativ, ikke håndhevet. Ikke la den overstyre det
-  ekte venv-et.
+- Python 3.14 hele veien: `.python-version` (3.14.7), venv-et som faktisk kjøres,
+  Dockerfile (`python:3.14-slim`) og CI sier alle det samme. Filen er informativ, ikke
+  håndhevet (ingen pyenv på denne maskinen) — kjør `venv/bin/python` direkte.
+  Denne linjen sa «.python-version peker på 3.12.0» til 2026-09-04; fila var rettet,
+  instruksen ikke. Sjekk `cat .python-version` framfor å tro på denne setningen.
 - FastAPI — handlers er BEVISST synkrone (`def`, ikke `async def`), og
   `adapters/*.py` bruker synkron `httpx.get()`, ikke `httpx.AsyncClient`. Samme
   ADR-004-disiplin (spørretid + TTL-cache) som resten av huset — ikke en mangel
@@ -34,5 +35,10 @@
 cd ~/prosjekter/forskningssok
 venv/bin/python -m pytest -q
 ```
+Suiten er NETTVERKSFRI, og det er en kontrakt, ikke en tilfeldighet: CI kjører den med
+HTTP_PROXY/HTTPS_PROXY pekt på en død adresse. Trenger en ny test en ekstern kilde, mock
+den — ellers blir CI rød på en maskin uten internett, og grønn på din, av grunner som
+ikke handler om koden. (Skjedde 2026-09-04: Crossref-supplementet gjorde tre gap-tester
+nettverksavhengige uten at noe sa fra.)
 `direnv allow` aktiverer venv/bin automatisk hvis .envrc er på plass, men er ikke
 påkrevd — `venv/bin/python`/`venv/bin/pytest` fungerer alltid direkte.

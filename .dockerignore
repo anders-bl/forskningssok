@@ -5,3 +5,6 @@ __pycache__/
 cache.db
 .git/
 .envrc
+# Testene kjøres aldri i containeren. profiler/ er IKKE her — den MÅ med,
+# domeneprofil.py laster den ved import og feiler høyt hvis den mangler.
+tests/
