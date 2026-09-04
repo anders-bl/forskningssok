@@ -1,0 +1,11 @@
+-r requirements.txt
+pytest
+# httpx2: kreves av starlette.testclient fra Starlette 1.3. Testklienten prøver
+# `import httpx2` FØRST og faller tilbake til httpx med en DeprecationWarning — men
+# fallbacken er en try/except rundt selve IMPORTEN, så den dagen den fjernes kaster
+# modulen RuntimeError og HELE API-testdelen faller ved innsamling, ikke én test av
+# gangen. Lagt inn 2026-09-04, før det skjedde.
+#
+# Kun her, ikke i requirements.txt: appen selv bruker httpx (seks moduler), aldri
+# httpx2 — den er utelukkende testklientens avhengighet og hører ikke hjemme i imaget.
+httpx2

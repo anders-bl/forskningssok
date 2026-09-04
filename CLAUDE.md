@@ -30,6 +30,12 @@
   valg ble tatt (ADR-013/ADR-004/FDR-038-referanser, live-verifiseringsresultater,
   tidligere feil), ikke støy å fjerne.
 
+## Avhengigheter
+`requirements.txt` = det appen trenger (går inn i imaget). `requirements-dev.txt` =
+testavhengighetene, som trekker inn den første med `-r`. Samme deling som `rollesok` og
+`ai-proxy`; forskningssok var husets avviker til 2026-09-04 og sendte pytest + httpx2 med
+til prod. Verifisert etter splitten: imaget har httpx og fastapi, ikke pytest og httpx2.
+
 ## Testing
 ```bash
 cd ~/prosjekter/forskningssok

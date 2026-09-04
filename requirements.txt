@@ -1,13 +1,5 @@
-pytest
-httpx
-# httpx2: kreves av starlette.testclient fra Starlette 1.6. Testklienten prøver
-# `import httpx2` FØRST og faller tilbake til httpx med en DeprecationWarning — men
-# fallbacken er en try/except rundt selve importen, så den dagen den fjernes kaster
-# modulen RuntimeError og HELE API-testdelen faller ved innsamling, ikke én test av
-# gangen. Lagt inn 2026-09-04, før det skjedde. Appen selv bruker fortsatt httpx (seks
-# moduler) — det er en separat, ikke-hastende migrasjon.
-httpx2
-sqlite-vec
 fastapi
 uvicorn
+httpx
+sqlite-vec
 reportlab
