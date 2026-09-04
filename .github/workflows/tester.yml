@@ -18,9 +18,9 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           # Samme versjon som Dockerfile (python:3.14-slim) og det lokale venv-et.
           # .python-version er informativ, ikke håndhevet — se CLAUDE.md.
