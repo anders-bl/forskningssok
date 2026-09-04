@@ -313,3 +313,45 @@ def test_papir_uten_abstract_kan_siteres(tmp_path):
     lagre([_p("1", "Atittel", abstract="")], embed_fn=_fake_embed, db_path=db)
     lagre_sitat("1", "et utdrag", db_path=db)
     assert len(hent_sitater("1", db_path=db)) == 1
+
+
+def test_berik_fyller_kun_tomme_felt_og_aldri_overskriver(tmp_path):
+    """Migrasjonen legger til kolonner; den kan ikke finne opp verdier. Berikelsen fyller
+    dem — men skal ALDRI kunne overskrive noe et ferskere søk alt har hentet."""
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)
+    con = _bank_db(db)
+    con.execute("UPDATE papers SET doi='10.1/x', volum=NULL, hefte='ALT-SATT' WHERE id='1'")
+    con.commit()
+    con.close()
+
+    from schemas import PaperDossier
+
+    def fake_sok(query, page_size=25):
+        assert 'DOI:"10.1/x"' in query, "skal batche på DOI"
+        return [PaperDossier(pmid=None, doi="10.1/x", tittel="T", forfattere="A",
+                             tidsskrift="J", aar=2026, abstract="a", siteringstall=0,
+                             open_access=False, kilde_url="u",
+                             volum="49", hefte="NY", sider="e1", issn="1234-5678")]
+
+    from bank import berik_sitasjonsfelt
+    assert berik_sitasjonsfelt(db_path=db, sok_fn=fake_sok) == 1
+    p = hent("1", db_path=db)
+    assert p["volum"] == "49" and p["sider"] == "e1"
+    assert p["hefte"] == "ALT-SATT", "en berikelse skal ikke overskrive eksisterende verdi"
+
+
+def test_berik_hopper_over_papirer_uten_doi(tmp_path):
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel")], embed_fn=_fake_embed, db_path=db)   # _p gir doi=None
+    from bank import berik_sitasjonsfelt
+
+    def skal_ikke_kalles(query, page_size=25):
+        raise AssertionError("ingen DOI å slå opp — skulle ikke spurt kilden")
+
+    assert berik_sitasjonsfelt(db_path=db, sok_fn=skal_ikke_kalles) == 0
+
+
+def _bank_db(path):
+    import bank as _b
+    return _b._db(path)

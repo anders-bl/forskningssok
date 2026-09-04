@@ -206,3 +206,40 @@ def test_ris_flere_papirer_separert_med_tomlinje():
 
 def test_ris_tomt_utvalg_gir_tom_streng():
     assert til_ris([]) == ""
+
+
+def test_csl_json_utelater_felt_vi_ikke_har():
+    """Et fraværende felt skal UTELATES, ikke settes til tom streng. En CSL-prosessor som
+    ser `"page": ""` renderer «s. » med et tomt tall; et fraværende felt får stilen til å
+    hoppe over leddet. Et fravær skal se ut som et fravær."""
+    import json
+    from rapport import til_csl_json
+    post = json.loads(til_csl_json([{
+        "id": "10.1/x", "tittel": "T", "forfattere": "Dalum AS, Alarcon M",
+        "tidsskrift": "J Fish Dis", "aar": 2026, "doi": "10.1/x",
+        "volum": "49", "hefte": None, "sider": None, "issn": None,
+    }]))[0]
+    assert post["volume"] == "49"
+    assert "issue" not in post and "page" not in post and "ISSN" not in post
+    assert post["issued"] == {"date-parts": [[2026]]}
+    assert post["type"] == "article-journal"
+    assert post["container-title"] == "J Fish Dis"
+
+
+def test_csl_json_splitter_forfattere_i_family_og_given():
+    """En stil som krever «Dalum, A. S.» kan ikke utlede det fra én streng."""
+    import json
+    from rapport import til_csl_json
+    post = json.loads(til_csl_json([{
+        "id": "1", "tittel": "T", "forfattere": "Dalum AS, Alarcon M", "aar": 2026,
+    }]))[0]
+    assert post["author"][0] == {"family": "Dalum", "given": "AS"}
+    assert post["author"][1] == {"family": "Alarcon", "given": "M"}
+
+
+def test_ris_baerer_de_nye_sitasjonsfeltene():
+    from rapport import til_ris
+    ris = til_ris([{"tittel": "T", "forfattere": "A B", "tidsskrift": "J", "aar": 2026,
+                    "volum": "49", "hefte": "5", "sider": "e70099", "issn": "0140-7775"}])
+    for tag in ("VL  - 49", "IS  - 5", "SP  - e70099", "SN  - 0140-7775"):
+        assert tag in ris

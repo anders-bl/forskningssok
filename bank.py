@@ -71,11 +71,12 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
         id TEXT PRIMARY KEY, tittel TEXT, forfattere TEXT, tidsskrift TEXT, aar INTEGER,
         doi TEXT, pmid TEXT, abstract TEXT, siteringstall INTEGER, open_access INTEGER,
         kilde_url TEXT, kilde_kode TEXT)""")
-    try:  # migrasjon for cache.db skrevet før dette feltet fantes — idempotent
-        db.execute("ALTER TABLE papers ADD COLUMN kilde_kode TEXT")
-        db.commit()
-    except sqlite3.OperationalError:
-        pass  # kolonnen finnes alt (ny db, eller migrasjonen alt kjørt)
+    for kolonne in ("kilde_kode TEXT", "volum TEXT", "hefte TEXT", "sider TEXT", "issn TEXT"):
+        try:  # migrasjon for cache.db skrevet før feltet fantes — idempotent
+            db.execute(f"ALTER TABLE papers ADD COLUMN {kolonne}")
+            db.commit()
+        except sqlite3.OperationalError:
+            pass  # kolonnen finnes alt (ny db, eller migrasjonen alt kjørt)
     db.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS paper_vec
         USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])""")
     db.execute("""CREATE TABLE IF NOT EXISTS sitater(
@@ -230,9 +231,11 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
         # Reprodusert live 2026-09-04 (8 samtidige identiske /api/sok-kall).
         cur = db.execute(
             """INSERT OR IGNORE INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
-               siteringstall,open_access,kilde_url,kilde_kode) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+               siteringstall,open_access,kilde_url,kilde_kode,volum,hefte,sider,issn)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (p.id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid, p.abstract,
-             p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode))
+             p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode,
+             p.volum, p.hefte, p.sider, p.issn))
         if cur.rowcount:
             lagret += 1
     db.commit()
@@ -275,7 +278,53 @@ def embed_manglende(*, embed_fn=None, db_path: Path = DB) -> int:
 
 
 _PAPER_KOLONNER = ("id", "tittel", "forfattere", "tidsskrift", "aar", "doi", "pmid",
-                   "abstract", "siteringstall", "open_access", "kilde_url", "kilde_kode")
+                   "abstract", "siteringstall", "open_access", "kilde_url", "kilde_kode",
+                   "volum", "hefte", "sider", "issn")
+
+
+def berik_sitasjonsfelt(*, db_path: Path = DB, batch: int = 20, sok_fn=None) -> int:
+    """Fyller volum/hefte/sider/issn på papirer som ble cachet FØR feltene fantes.
+
+    Nødvendig fordi migrasjonen bare legger til kolonner — den kan ikke finne opp verdier.
+    Alle 55 papirer i Anders' cache manglet dem 2026-09-04.
+
+    Batcher DOI-ene i ÉN Europe PMC-spørring per gruppe (`DOI:"a" OR DOI:"b" …`) i stedet
+    for ett kall per papir: 55 papirer blir 3 kall, ikke 55. Samme høflighets-disiplin som
+    adapternes polite-pool-UA.
+
+    Oppdaterer KUN felter som er NULL, aldri felter som alt har verdi — en berikelse skal
+    ikke kunne overskrive noe et ferskere søk har hentet. Papirer uten DOI hoppes over og
+    telles ikke som beriket; de har ingen nøkkel å slå opp på."""
+    from adapters.europe_pmc import sok as _sok
+    sok_fn = sok_fn or _sok
+    db = _db(db_path)
+    doier = [r[0] for r in db.execute(
+        "SELECT doi FROM papers WHERE doi IS NOT NULL AND doi != '' AND volum IS NULL")]
+    db.close()
+    if not doier:
+        return 0
+
+    beriket = 0
+    for i in range(0, len(doier), batch):
+        gruppe = doier[i:i + batch]
+        query = " OR ".join(f'DOI:"{d}"' for d in gruppe)
+        try:
+            treff = sok_fn(query, page_size=len(gruppe))
+        except RuntimeError:
+            continue  # kilden nede for DENNE gruppen — de andre gruppene skal ikke falle med
+        db = _db(db_path)
+        for p in treff:
+            if not (p.volum or p.hefte or p.sider or p.issn):
+                continue
+            cur = db.execute(
+                """UPDATE papers SET volum = COALESCE(volum, ?), hefte = COALESCE(hefte, ?),
+                   sider = COALESCE(sider, ?), issn = COALESCE(issn, ?)
+                   WHERE doi = ? AND volum IS NULL""",
+                (p.volum, p.hefte, p.sider, p.issn, p.doi))
+            beriket += cur.rowcount
+        db.commit()
+        db.close()
+    return beriket
 
 
 def hent(paper_id: str, *, db_path: Path = DB) -> dict | None:

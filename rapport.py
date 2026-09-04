@@ -15,6 +15,7 @@ separasjon som api.py alt bruker — bank.py/scoping.py henter, rapport.py forma
 hva verktøyet faktisk fant og når.
 """
 import re
+import json
 import time
 from dataclasses import dataclass
 from io import BytesIO
@@ -231,10 +232,60 @@ def til_bibtex(papirer: list[dict]) -> str:
     return "\n\n".join(poster) + ("\n" if poster else "")
 
 
+def til_csl_json(papirer: list[dict]) -> str:
+    """CSL-JSON — det formatet som faktisk gir «boilerplate som fyller ut mekanisk».
+
+    BibTeX og RIS er utvekslingsformater: de flytter data mellom programmer. CSL-JSON er
+    inngangen til Citation Style Language, som er MOTOREN Zotero, Mendeley, Paperpile og
+    Pandoc alle bruker for å RENDRE en referanse — med 10 000+ ferdige tidsskriftstiler
+    (APA, Vancouver, Harvard, per-tidsskrift). Å skrive vår egen malmotor ville vært en
+    dårligere kopi av tjue års korpus.
+
+    Feltnavnene er CSL-spesifikasjonens, ikke våre: `container-title` (ikke journal),
+    `page`, `volume`, `issue`, `issued.date-parts`. Forfattere splittes i family/given
+    fordi en stil som krever «Dalum, A. S.» ikke kan utlede det fra én streng.
+
+    Felter vi ikke har utelates HELT i stedet for å settes til tom streng: en CSL-prosessor
+    som ser `"page": ""` renderer «s. » med et tomt tall, mens et fraværende felt får
+    stilen til å hoppe over leddet. Samme ærlighets-prinsipp som resten av huset — et
+    fravær skal se ut som et fravær.
+    """
+    ut = []
+    for p in papirer:
+        post: dict = {
+            "id": p.get("id") or p.get("doi") or p.get("pmid") or "ukjent",
+            "type": "article-journal",
+            "title": p.get("tittel") or "",
+        }
+        forf = []
+        for navn in _forfatterliste(p.get("forfattere", "")):
+            # Europe PMC gir «Dalum AS» — etternavn først, initialer sist og uten punktum.
+            deler = navn.split()
+            if len(deler) >= 2:
+                forf.append({"family": " ".join(deler[:-1]), "given": deler[-1]})
+            elif deler:
+                forf.append({"literal": deler[0]})
+        if forf:
+            post["author"] = forf
+        for csl, felt in (("container-title", "tidsskrift"), ("volume", "volum"),
+                           ("issue", "hefte"), ("page", "sider"), ("DOI", "doi"),
+                           ("ISSN", "issn"), ("URL", "kilde_url"), ("abstract", "abstract")):
+            verdi = p.get(felt)
+            if verdi:
+                post[csl] = str(verdi)
+        if p.get("aar"):
+            post["issued"] = {"date-parts": [[int(p["aar"])]]}
+        if p.get("pmid"):
+            post["PMID"] = str(p["pmid"])
+        ut.append(post)
+    return json.dumps(ut, ensure_ascii=False, indent=2) + "\n"
+
+
 def _ris_post(p: dict) -> str:
     linjer = ["TY  - JOUR"]
     linjer += [f"AU  - {f}" for f in _forfatterliste(p.get("forfattere", ""))]
     for tag, felt in (("TI", "tittel"), ("JO", "tidsskrift"), ("PY", "aar"),
+                       ("VL", "volum"), ("IS", "hefte"), ("SP", "sider"), ("SN", "issn"),
                        ("DO", "doi"), ("UR", "kilde_url"), ("AB", "abstract")):
         verdi = p.get(felt)
         if verdi:

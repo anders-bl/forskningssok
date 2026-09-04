@@ -451,11 +451,19 @@ def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str
     papirer = [p for p in (bank.hent(i) for i in id_liste) if p]
     if not papirer:
         raise HTTPException(404, "ingen av de oppgitte id-ene er cachet")
-    if format in ("bib", "ris"):
-        tekst = rapport.til_bibtex(papirer) if format == "bib" else rapport.til_ris(papirer)
-        media = "application/x-bibtex" if format == "bib" else "application/x-research-info-systems"
+    if format in ("bib", "ris", "csl"):
+        # csl = CSL-JSON, inngangen til Citation Style Language og dermed til 10 000+
+        # ferdige tidsskriftstiler via en hvilken som helst citeproc (Zotero, Pandoc,
+        # citeproc-js). Lagt til 2026-09-04 ved siden av BibTeX/RIS, som er
+        # UTVEKSLINGSformater — CSL-JSON er RENDRINGSformatet.
+        tekst = {"bib": rapport.til_bibtex, "ris": rapport.til_ris,
+                 "csl": rapport.til_csl_json}[format](papirer)
+        media = {"bib": "application/x-bibtex",
+                 "ris": "application/x-research-info-systems",
+                 "csl": "application/vnd.citationstyles.csl+json"}[format]
+        filending = "json" if format == "csl" else format
         return Response(tekst.encode("utf-8"), media_type=f"{media}; charset=utf-8",
-                         headers={"Content-Disposition": f'attachment; filename="{_slug(tittel)}.{format}"'})
+                         headers={"Content-Disposition": f'attachment; filename="{_slug(tittel)}.{filending}"'})
     blokker = rapport.kildesamling_blokker(papirer, tittel=tittel)
     return _rapport_svar(blokker, format, tittel, tittel)
 
