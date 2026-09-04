@@ -115,8 +115,20 @@ ikke lenger gratis som lokal Ollama.
 
 Samme mønster som `stromkontrol` (privat-pilot-app på Dokploy): `Dockerfile`
 (`python:3.14-slim`, `uvicorn api:app`), `docker-compose.yml` (volum `/data`,
-`dokploy-network: external`, ingen Traefik-labels i fila — Domains-fanen i
-Dokploy-UI-et står for ruting/middleware). `.dockerignore` utelater `venv/`/`.git/`
+`dokploy-network: external`).
+
+**Arbeidsdelingen mellom compose og Dokploy-UI, målt 2026-09-04:** denne linjen sa
+«ingen Traefik-labels i fila» — det er FEIL, og har vært det siden middlewarene ble lagt
+inn. `docker-compose.yml:46-49` definerer BÅDE `forskningssok-auth` (Basic Auth) og
+`forskningssok-forwardauth`. Det er husets dokumenterte mønster
+(`integrasjoner/dokploy` §Domains-fanens Middlewares-felt er en REFERANSE): middlewaren
+defineres som label i appens egen compose, og Domains-fanen refererer bare NAVNET
+(`forskningssok-auth@docker`). Limer man credentials rett inn i UI-feltet, forkaster
+Traefik hele ruten.
+
+**Ruting** derimot eier Dokploy: ingen router-labels finnes i noen av husets 12
+compose-filer på `dokploy-network`, fordi Dokploy genererer dem selv fra Domains-fanen.
+En håndskrevet router ville kjempet mot den genereringen. `.dockerignore` utelater `venv/`/`.git/`
 (uten den kopierte `COPY . .` inn en hel Mac-kompilert venv og full git-historikk —
 fanget under bygging, bildet gikk fra å dra med seg venv til en ren 72 MB).
 
