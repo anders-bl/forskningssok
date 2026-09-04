@@ -424,6 +424,59 @@ def hent_sitater(paper_id: str | None = None, *, utkast_id: int | None = None,
              "paper_aar": r[10]} for r in rows]
 
 
+def sitatbank(*, db_path: Path = DB) -> list[dict]:
+    """Alle sitater gruppert på papiret de kom fra, nyeste papir først.
+
+    Banken er lageret; grupperingen på papir er den ene som ALLTID er sann og aldri krever
+    en embedding. Den semantiske relasjonen ligger i relaterte_sitater() ved siden av — de
+    er bevisst atskilt, så en nede embedder gjør banken tregere å utforske, aldri utilgjengelig."""
+    db = _db(db_path)
+    rows = db.execute("""
+        SELECT s.paper_id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi,
+               count(*), max(s.opprettet)
+        FROM sitater s JOIN papers p ON p.id = s.paper_id
+        GROUP BY s.paper_id ORDER BY max(s.opprettet) DESC""").fetchall()
+    db.close()
+    return [{"paper_id": r[0], "tittel": r[1], "forfattere": r[2], "tidsskrift": r[3],
+             "aar": r[4], "doi": r[5], "antall": r[6], "sist": r[7]} for r in rows]
+
+
+def relaterte_sitater(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
+    """Papirer du har SITERT som ligger semantisk nær `paper_id` — «relasjonelle sitater».
+
+    Dette er det ingen referansehåndterer gjør: Zotero, EndNote og Mendeley er arkivskap
+    som ikke aner at to sitater handler om det samme. Vi har embeddingene, så nabolaget
+    er gratis.
+
+    Ingen avstandsTERSKEL, med vilje. En global klynging ville krevd en grense jeg måtte
+    ha gjettet, og en ukalibrert terskel er nøyaktig felleklassen huset jakter på
+    (konsepter/detektorfelle). k-nærmeste trenger ingen: den svarer alltid «de k nærmeste
+    du faktisk har sitert», og avstanden følger med så DU kan se hvor nært det er.
+
+    Filtrerer til papirer som HAR sitater — et nabolag av usiterte papirer er et
+    søkeresultat, ikke en sitatbank."""
+    db = _db(db_path)
+    rad = db.execute("SELECT rowid FROM papers WHERE id=?", (paper_id,)).fetchone()
+    if not rad:
+        db.close()
+        return []
+    qvec = db.execute("SELECT embedding FROM paper_vec WHERE chunk_id=?", (rad[0],)).fetchone()
+    if not qvec:
+        db.close()
+        return []   # papiret mangler vektor (ingen abstract, eller embedderen var nede)
+    # Hentes bredt og filtreres på «har sitat» etterpå: vec0 kan ikke JOIN-e i MATCH-en,
+    # og et smalt K ville gitt tomt svar så snart de nærmeste naboene er usiterte.
+    rows = db.execute("""
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance,
+               p.forfattere, p.abstract
+        FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
+        WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
+        ORDER BY v.distance""", (qvec[0], 60, rad[0])).fetchall()
+    siterte = {r[0] for r in db.execute("SELECT DISTINCT paper_id FROM sitater")}
+    db.close()
+    return _naboer_fra_rader([r for r in rows if r[0] in siterte], k)
+
+
 def _naboer_fra_rader(rows, k: int) -> list[dict]:
     """Bygger nabo-dicts og BÅNDER dem som ranking.py:_band gjør for hovedsøket
     (domene_naer, arts_naer FØR avstand) — samme species-trap-motvekt Svart hatt-
@@ -436,6 +489,12 @@ def _naboer_fra_rader(rows, k: int) -> list[dict]:
     uendret — kun presentasjonsrekkefølgen innenfor det settet."""
     naboer = [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
                "kilde_url": r[5], "avstand": r[6],
+               # forfattere BÆRES videre (lagt til 2026-09-04). Den ble hentet hele tiden
+               # — r[7] brukes til domene_naer-sjekken rett under — men falt ut av dicten.
+               # Boilerplaten bygger referanselisten sin av nabo-dictene, og uten dette
+               # sto hver relatert kilde som «(2022) Aquaculture.» uten forfatter. En
+               # referanse uten forfatter er ikke en referanse.
+               "forfattere": r[7],
                "domene_naer": domene_naer_tekst(f"{r[7]} {r[2]}"),
                "arts_naer": arts_naer_tekst(f"{r[1]} {r[8]}")}
               for r in rows]

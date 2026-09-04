@@ -443,6 +443,38 @@ def api_rapport_dokument(utkast_id: int, format: str = "md"):
     return _rapport_svar(blokker, format, utkast["tittel"], utkast["tittel"])
 
 
+@app.get("/api/sitatbank")
+def api_sitatbank():
+    """Sitatbanken: alle sitater gruppert på papir. Grupperingen på papir krever ingen
+    embedding og er alltid sann — den semantiske relasjonen ligger i /api/relaterte ved
+    siden av, så en nede embedder gjør banken tregere å utforske, aldri utilgjengelig."""
+    return {"papirer": bank.sitatbank()}
+
+
+@app.get("/api/relaterte/{paper_id:path}")
+def api_relaterte(paper_id: str, k: int = 5):
+    """«Relasjonelle sitater» — papirer DU HAR SITERT som ligger semantisk nær dette.
+    Det er det ingen referansehåndterer gjør: Zotero og EndNote er arkivskap som ikke aner
+    at to sitater handler om det samme. Ærlig tom liste hvis papiret mangler vektor."""
+    return {"relaterte": bank.relaterte_sitater(paper_id, k=k)}
+
+
+@app.get("/api/rapport/boilerplate/{paper_id:path}")
+def api_rapport_boilerplate(paper_id: str, format: str = "md", k: int = 5):
+    """Åpner et papir og dets semantiske naboer i sitatbanken SAMLET som ett
+    arbeidsdokument — alt som kan utledes er utledet, og bare tenkingen står tom."""
+    kilde = bank.hent(paper_id)
+    if not kilde:
+        raise HTTPException(404, f"{paper_id} er ikke cachet")
+    relaterte = bank.relaterte_sitater(paper_id, k=k)
+    per_papir: dict[str, list] = {}
+    for pid in [paper_id] + [r["id"] for r in relaterte]:
+        per_papir[pid] = bank.hent_sitater(pid)
+    tittel = f"Arbeidsnotat — {kilde.get('tittel') or paper_id}"
+    blokker = rapport.boilerplate_blokker(kilde, relaterte, per_papir, tittel=tittel)
+    return _rapport_svar(blokker, format, tittel, tittel)
+
+
 @app.get("/api/rapport/kildesamling")
 def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str = "md"):
     """Eksport av et papirutvalg (Markdown/PDF/BibTeX/RIS, se rapport.py). `ids` =

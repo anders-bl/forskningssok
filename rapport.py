@@ -326,6 +326,69 @@ def sitatnotater(sitater: list[dict], *, tittel: str = "Sitatnotater") -> str:
     return til_markdown(sitatnotater_blokker(sitater, tittel=tittel))
 
 
+# ---------- Mal 6: boilerplate fra sitatbanken — «relasjonelle sitater åpnet samlet» ----------
+
+def boilerplate_blokker(kildepapir: dict, relaterte: list[dict],
+                         sitater_per_papir: dict[str, list[dict]],
+                         *, tittel: str | None = None) -> list[Blokk]:
+    """Et arbeidsdokument bygget av ETT papir pluss dets semantiske naboer i sitatbanken.
+
+    Dette er det Anders beskrev som «relasjonelle sitater åpnet samlet i en boilerplate som
+    fyller ut mekanisk alt som trengs». Alt som KAN utledes er utledet: overskriftene,
+    kildehenvisningene, referanselisten, rekkefølgen. Det eneste tomme er der du skal
+    tenke — og de stedene er merket, ikke usynlige.
+
+    Nabolaget er IKKE en påstand om at papirene hører sammen faglig. Det er
+    embedding-avstand mellom abstracts, og avstanden står i dokumentet så leseren kan
+    bedømme den selv. Samme kontrakt som «Lignende»-fanen: kandidater, ikke en dom."""
+    ktittel = kildepapir.get("tittel") or "Uten tittel"
+    blokker = [Blokk("h1", tittel or f"Arbeidsnotat — {ktittel}")]
+    blokker.append(Blokk("meta",
+        f"Generert av forskningssok, {_dato()}. Bygget av ETT papir og "
+        f"{len(relaterte)} semantisk nærmeste papirer DU HAR SITERT. Nabolaget er "
+        f"embedding-avstand mellom abstracts, ikke en faglig dom — avstanden står ved hver "
+        f"kilde. Ingenting her er AI-generert prosa; alle sitater er ordrett dine egne utdrag."))
+
+    alle = [kildepapir] + relaterte
+    for i, p in enumerate(alle):
+        pid = p.get("id") or p.get("paper_id") or ""
+        avstand = p.get("avstand")
+        blokker.append(Blokk("h2", p.get("tittel") or "Uten tittel"))
+        merknad = _kildelinje({
+            "paper_forfattere": p.get("forfattere"), "paper_aar": p.get("aar"),
+            "paper_tittel": None, "paper_tidsskrift": p.get("tidsskrift"),
+            "paper_doi": p.get("doi"),
+        })
+        if i == 0:
+            merknad += "  ·  utgangspunkt"
+        elif avstand is not None:
+            merknad += f"  ·  avstand {avstand:.3f}"
+        blokker.append(Blokk("meta", merknad))
+
+        for s in sorted(sitater_per_papir.get(pid, []), key=lambda x: x.get("opprettet", 0)):
+            blokker.append(Blokk("sitat", s.get("tekst", "")))
+            if (s.get("kommentar") or "").strip():
+                blokker.append(Blokk("p", f"Kommentar: {s['kommentar']}"))
+        blokker.append(Blokk("p", "*Din lesning:*"))
+
+    blokker.append(Blokk("h2", "Å skrive ut"))
+    blokker.append(Blokk("p", "*Hva sier de sammen? Hvor er de uenige? Hva mangler?*"))
+
+    blokker.append(Blokk("h2", "Referanser"))
+    for p in alle:
+        blokker.append(Blokk("p", _kildelinje({
+            "paper_forfattere": p.get("forfattere"), "paper_aar": p.get("aar"),
+            "paper_tittel": p.get("tittel"), "paper_tidsskrift": p.get("tidsskrift"),
+            "paper_doi": p.get("doi"),
+        })))
+    blokker.append(Blokk("meta",
+        "Referansene over er husets eget format. Trenger du APA, Vancouver eller en "
+        "tidsskriftspesifikk stil: hent samme utvalg som CSL-JSON (format=csl) og kjør det "
+        "gjennom en hvilken som helst citeproc — det er samme motor Zotero og Pandoc bruker, "
+        "med over 10 000 ferdige stiler."))
+    return blokker
+
+
 # ---------- Mal 5: dokumentet — egen tekst + festede sitater, det som faktisk deles ----------
 
 def dokument_blokker(utkast: dict, sitater: list[dict], *, tittel: str | None = None) -> list[Blokk]:
