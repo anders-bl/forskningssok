@@ -35,6 +35,11 @@
 cd ~/prosjekter/forskningssok
 venv/bin/python -m pytest -q
 ```
+Suiten skal gå med NULL advarsler — `pytest -q` uten warnings-blokk. Dukker det opp en
+DeprecationWarning, les den: `starlette.testclient` sin httpx→httpx2-advarsel var en
+try/except rundt en IMPORT, altså «hele API-testdelen faller ved innsamling» den dagen
+fallbacken fjernes, ikke en gradvis degradering. Advarsler her er varsler, ikke støy.
+
 Suiten er NETTVERKSFRI, og det er en kontrakt, ikke en tilfeldighet: CI kjører den med
 HTTP_PROXY/HTTPS_PROXY pekt på en død adresse. Trenger en ny test en ekstern kilde, mock
 den — ellers blir CI rød på en maskin uten internett, og grønn på din, av grunner som
