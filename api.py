@@ -23,6 +23,7 @@ from adapters import openalex
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
+import domeneprofil
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
 from evidensniva import evidensniva
 from ranking import arts_naer, domene_naer, ranger
@@ -85,6 +86,15 @@ def _varm_stille(paper_id: str, hendelse: str) -> None:
     except Exception:
         logger.warning("varm_opp(%s, %s) feilet — handlingen selv er upåvirket",
                        paper_id, hendelse, exc_info=True)
+
+
+@app.get("/api/profil")
+def api_profil():
+    """Fagfeltet flaten skal beskrive seg selv med. Uten dette endepunktet sto ni steder
+    i frontend/index.html med ordet «laks» hardkodet — altså de stedene en profilbytte
+    garantert ville glemt, og som ville fortsatt påstå fiskehelse for en bruker i et
+    annet fagfelt uten at noe feilet."""
+    return domeneprofil.for_frontend()
 
 
 @app.get("/api/status")

@@ -1,0 +1,80 @@
+# Domeneprofil: norsk oppdrettslaks-patologi (Ulvens fagfelt, idébank #28/#29).
+#
+# DETTE er den eneste fila som skal endres for å peke verktøyet mot et annet fagfelt.
+# Ingen Python-modul skal lenger bære et fagfelt-spesifikt ord — verifisert av
+# tests/test_domeneprofil_generisk.py, som laster en HELT annen profil og sjekker at
+# ingen fiske-term lekker gjennom.
+#
+# Velg profil med FORSKNINGSSOK_PROFIL: enten et navn her i profiler/ («fiskehelse»)
+# eller en absolutt sti til en .toml utenfor repoet. Samme mønster som paths.py bruker
+# for FORSKNINGSSOK_DB.
+
+navn = "Fiskehelse — norsk lakseoppdrett"
+# Brukes i «Om»-panelets første avsnitt. Én linje, ikke en avhandling.
+kort = "norsk oppdrettslaks-patologi (nyre/lever/ultralyd-validering)"
+# Søkefeltets standardverdi ved sidelast, og eksempelet i placeholderen.
+sok_standard = "nephrocalcinosis salmon"
+sok_eksempel = "nephrocalcinosis smolt seawater transfer"
+
+[domene]
+# Domene-nærhet matches mot forfatter-affiliasjon + tidsskriftnavn — de to strengene
+# Europe PMC allerede returnerer, så dette koster ingen ny henting. Se ranking.py:domene_naer.
+merke = "★"
+merke_betyr = "norsk fagmiljø/fagtidsskrift"
+fagmiljoer = [
+  "havforskningsinstitutt", "veterinærinstitutt", "veterinaerinstitutt",
+  "nmbu", "norwegian university of life sciences", "nofima", "pharmaq",
+]
+fagtidsskrifter = [
+  "journal of fish diseases", "aquaculture", "diseases of aquatic organisms",
+  "journal of fish biology", "fish and shellfish immunology",
+]
+
+[art]
+# «Art» er profilens navn på MÅLOBJEKTET — arten i fiskehelse, men like gjerne
+# populasjonen, materialet eller systemet i et annet fagfelt. Signalet er FRAVÆR/NÆRVÆR,
+# aldri en klassifikator: et papir uten treff blir flagget, ALDRI filtrert bort.
+merke = "⚠ art?"
+merke_betyr = "nevner ikke laks/oppdrettsfisk i tittel/abstract"
+merke_utdypet = "kan være en annen art (f.eks. humanmedisin)"
+termer = [
+  "salmon", "salmo salar", "laks", "smolt", "post-smolt", "salmonid", "salmonids",
+  "atlantic salmon", "trout", "ørret", "aquaculture", "oppdrett", "teleost", "finfish",
+  "farmed fish", "fish",
+]
+# Fraser som inneholder en artsterm uten å handle om arten. Fjernes FØR substreng-sjekken
+# — en ordgrense-regex ville uansett matchet «salmon» inni «salmon calcitonin».
+# «salmon calcitonin» er et vanlig LEGEMIDDELNAVN i kalsium-/nyrestein-litteratur
+# (kalsitonin ble opprinnelig isolert fra laks), altså en systematisk falsk-positiv
+# kollisjon i NETTOPP dette domenet. Fanget live 2026-09-02 på et ekte pediatrisk
+# case-serie-funn om CYP24A1-mutasjoner.
+kollisjoner = ["salmon calcitonin"]
+
+[akser]
+# Forskningsakser for «Omfang»-panelet (idébank #28: faser/miljøfaktorer/regenerasjon;
+# idébank #30: lever/ultralyd-validering). Nøkkelord-tilstedeværelse, bevisst kjedelig —
+# se scoping.py for hvorfor det ikke skal være en semantisk klassifikator.
+"Faser" = ["stage", "phase", "progression", "fase", "stadium", "utvikling"]
+"Miljøfaktorer" = [
+  "co2", "co₂", "hypercapnia", "hyperkapni", "temperature", "temperatur",
+  "salinity", "salinitet", "environment", "miljø", "vannkjemi", "tetthet",
+]
+"Regenerasjon" = [
+  "seawater transfer", "smolt", "sjøsetting", "regenerat", "recovery",
+  "post-smolt", "ferskvann",
+]
+"Lever" = ["liver", "hepat", "lever"]
+"Ultralyd-validering" = [
+  "ultrasound", "ultrasonograph", "echograph", "ultralyd", "imaging", "diagnos", "skann",
+]
+
+[om]
+# Vises ordrett i «Om»-panelet under §Domeneprofil. Sto tidligere hardkodet i
+# frontend/index.html, altså det ene stedet en profilbytte garantert ville glemt.
+domeneprofil = """
+Denne instansen er scopet til norsk lakseoppdrett — fagmiljøer (Havforskningsinstituttet,
+Veterinærinstituttet, NMBU, Nofima, Pharmaq), fagtidsskrifter, og artstermer er alle
+hentet fra profiler/fiskehelse.toml. Et ★ betyr «norsk fagmiljø/fagtidsskrift», et ⚠ betyr
+«nevner ikke laks/oppdrettsfisk i tittel/abstract» — begge er signaler for DEG å vurdere,
+ikke en dom verktøyet feller.
+"""

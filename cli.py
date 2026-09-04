@@ -17,6 +17,7 @@ from adapters import core as core_adapter
 from adapters.europe_pmc import sok
 from bank import hent, lagre, lignende
 from citation_gap import gap_kandidater
+import domeneprofil
 from dedup import dedupliser
 from ranking import domene_naer, ranger
 from resolve import resolve
@@ -78,8 +79,10 @@ def _print_papirer(papirer: list[PaperDossier], antall: int, query: str, eksakt_
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Nefrokalsinose-litteratursøk (Europe PMC).")
-    ap.add_argument("query", nargs="*", help="søkestreng, f.eks. 'nephrocalcinosis smolt seawater transfer'")
+    ap = argparse.ArgumentParser(
+        description=f"Litteratursøk (Europe PMC) — profil: {domeneprofil.NAVN}")
+    ap.add_argument("query", nargs="*",
+                    help=f"søkestreng, f.eks. '{domeneprofil.PROFIL['sok_eksempel']}'")
     ap.add_argument("-n", "--antall", type=int, default=10, help="maks treff å vise")
     ap.add_argument("--lignende", metavar="ID", help="vis cachede papirer semantisk nærmest DOI/PMID")
     ap.add_argument("--gap", metavar="ID", help="citation-gap-testen: cachede naboer IKKE i papirets egen referanseliste")

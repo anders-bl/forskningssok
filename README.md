@@ -2,11 +2,12 @@
 
 Entitet-sentrisk litteratursøk — vertikal #4 av samme mal som `bruktmarked` /
 `teknisk-enhets-sok` / `rollesok` (skjelettet: `vertikal-sok-mal`). Omdøpt 2026-09-02 fra
-`nefrokalsinose-sok`: arkitekturen var alt ~90 % domeneagnostisk (kun `ranking.py`s
-domeneliste er fiskespesifikk — se [[prosjekt/idebank/29-forskningssok-rammeverk]]), navnet
-løy om det. **Denne INSTANSEN er fortsatt fiskehelse-scopet** — domeneprofilen er ikke
-trukket ut som egen injiserbar fil ennå (§Neste steg), så repoet er generisk i navn før det
-er generisk i kode. Ikke et løfte om at andre fagfelt fungerer i dag.
+`nefrokalsinose-sok`: arkitekturen var alt ~90 % domeneagnostisk, navnet løy ikke lenger om
+det (se [[prosjekt/idebank/29-forskningssok-rammeverk]]). **Siden 2026-09-04 er den siste
+tideler også ute av koden:** fagfeltet er en datafil (`profiler/*.toml`), valgt med
+`FORSKNINGSSOK_PROFIL`, og ingen Python-modul i repoet bærer et fagfelt-spesifikt ord i
+kjørende kode. Denne INSTANSEN er fortsatt fiskehelse-scopet — det er profilen som er valgt,
+ikke en begrensning i koden. Se §Domeneprofilen som datafil.
 
 Bygget for Ulven (marinbiolog, firma skanner 500 fisk/t med ultralyd) — svimmel av støy i
 eget litteratursøk, ville ha hard empiri, tverrfaglig, om nefrokalsinose hos oppdrettsfisk:
@@ -373,6 +374,47 @@ Og én ytelsessak: «nå»-laget koster en full embedding av utkastteksten (bge-
 ai-proxy i Dokploy). Autolagringen fyrer også når bare tittelen endret seg, så den ber nå
 om varme med `{tvungen: false}` og hopper over hentingen når teksten er uendret. Alt annet
 (sitering, festing, fanebytte) endrer det VARIGE laget og må tvinge en henting.
+
+## Domeneprofilen som datafil (2026-09-04)
+
+```bash
+# standard — uendret oppførsel for Ulven-instansen
+venv/bin/uvicorn api:app --port 8420
+
+# et annet fagfelt: navn i profiler/, eller absolutt sti til en .toml utenfor repoet
+FORSKNINGSSOK_PROFIL=/sti/til/mitt-fagfelt.toml venv/bin/uvicorn api:app --port 8420
+```
+
+Profilen eier fagmiljøer, fagtidsskrifter, målobjekt-termer, homonym-kollisjoner,
+forskningsakser — **og UI-tekstene**. Det siste er poenget: verdiene ble samlet i
+`domeneprofil.py` alt 2026-09-02, men ni steder i `frontend/index.html` sa fortsatt «laks»
+rett ut, og `rapport.py` skrev det inn i eksporterte PDF-er. Det er de stedene et
+profilbytte garantert ville glemt — og de ville ikke feilet, bare påstått feil fagfelt.
+Flaten leser dem nå fra `/api/profil`.
+
+**Bevist, ikke påstått.** `tests/test_domeneprofil_generisk.py` laster
+`tests/fixtures/annetfagfelt.toml` — bygningsakustikk, valgt fordi det deler null vokabular
+med lakseoppdrett — og sjekker at fiske-oppførselen faktisk FORSVINNER: et laksepapir er
+ikke lenger domene-nært, aksenavnene skifter, båndingen snur rekkefølgen, og merketeksten i
+en eksportert rapport følger med. Å lese koden og ikke se ordet «laks» beviser ingenting om
+hva den gjør.
+
+Én av testene er en detektor (`test_ingen_python_modul_navngir_fagfeltet_i_kjorende_kode`):
+den parser AST-en til hver modul og feller fagfelt-ord i strengliteraler, men lar
+docstrings og kommentarer stå — de er institusjonell hukommelse om HVORFOR en mekanisme
+finnes, og skal nevne det konkrete tilfellet den ble bygget for. **Positiv kontroll kjørt:**
+en plantet literal i `scoping.py` ble felt med fil og linjenummer, og detektoren gikk grønt
+igjen da den ble fjernet. Tolv grønne tester på første kjøring er ellers nettopp når en
+detektor skal mistenkes for ikke å måle noe.
+
+Verifisert live side ved side: to instanser, samme kode, ulik profil — `★ / ⚠ art? /
+«nephrocalcinosis salmon»` mot `◆ / ⚠ rom? / «reverberation time classroom»`, med akser,
+«Om»-panel og søke-eksempel byttet i takt.
+
+⚠ **Det finnes ingen andre ekte profiler enn fiskehelse.** Akustikkprofilen er en
+testfixtur, ikke et fagfelt noen bruker. Mekanismen er verifisert; at et VILKÅRLIG fagfelt
+gir gode treff er ikke — kildene (Europe PMC, CORE) er biomedisinsk tunge, og et fagfelt
+utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
 ## Tips for domeneavgrensning
 

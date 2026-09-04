@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from xml.sax.saxutils import escape as _xml_escape
 
+import domeneprofil
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
 from evidensniva import evidensniva
 
@@ -125,8 +126,12 @@ def _kildesamling_papir_blokker(p: dict) -> list[Blokk]:
     if lenke:
         ut.append(Blokk("lenke", lenke))
     niva = evidensniva(p.get("tittel", ""), p.get("abstract", ""))
+    # Merketeksten kommer fra profilen, ikke fra denne fila: dette er en EKSPORTERT
+    # streng, altså den som følger med ut av huset i en delt PDF. Sto den hardkodet som
+    # «laks/oppdrettsfisk», ville en bruker i et annet fagfelt delt en rapport som
+    # påstår feil fagfelt — uten at noe feilet noe sted.
     varsel = "" if arts_naer_tekst(f"{p.get('tittel', '')} {p.get('abstract', '')}") \
-        else " · ⚠ nevner ikke laks/oppdrettsfisk — sjekk art før bruk"
+        else f" · {domeneprofil.PROFIL['art'].get('merke', '⚠')} {domeneprofil.PROFIL['art'].get('merke_betyr', 'nevner ikke målobjektet')} — sjekk før bruk"
     if niva != "Ukjent design" or varsel:
         merknad = niva if niva != "Ukjent design" else ""
         ut.append(Blokk("p", f"{merknad}{varsel}".strip(" ·")))

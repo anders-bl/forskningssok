@@ -1,0 +1,40 @@
+# TESTPROFIL — ikke et ekte fagfelt noen bruker, og ikke ment å bli det.
+#
+# Formålet er å være så LANGT fra fiskehelse som mulig: ingen art, ingen norsk
+# institusjon, ingen felles term. Er det noe fiskespesifikt igjen i Python-koden,
+# skal en profil som denne avsløre det ved at fiske-oppførsel overlever profilbyttet.
+#
+# Domenet er bygningsakustikk, valgt fordi det deler NULL vokabular med lakseoppdrett
+# og har et naturlig «målobjekt» (bygg/rom) som ikke er en art — nettopp for å teste at
+# `art`-seksjonen er en generisk målobjekt-akse og ikke en biologi-antakelse.
+
+navn = "Bygningsakustikk"
+kort = "romakustikk og etterklang i undervisningsbygg"
+sok_standard = "reverberation time classroom"
+sok_eksempel = "speech intelligibility classroom absorption"
+
+[domene]
+merke = "◆"
+merke_betyr = "akustikk-fagmiljø/fagtidsskrift"
+fagmiljoer = ["sintef", "chalmers", "technical university of denmark"]
+fagtidsskrifter = ["applied acoustics", "building acoustics", "journal of sound and vibration"]
+
+[art]
+merke = "⚠ rom?"
+merke_betyr = "nevner ikke bygg eller rom i tittel/abstract"
+merke_utdypet = "kan handle om frittfelt-akustikk uten bygningskontekst"
+termer = ["classroom", "building", "room", "auditorium", "klasserom", "bygning", "rom"]
+# Homonym-kollisjon i DETTE domenet, samme mekanisme som «salmon calcitonin» i fiskehelse:
+# «room temperature» er en målebetingelse, ikke en bygningskontekst.
+kollisjoner = ["room temperature"]
+
+[akser]
+"Etterklang" = ["reverberation", "rt60", "etterklang", "decay"]
+"Taleforståelse" = ["intelligibility", "sti", "taleforståelse", "speech clarity"]
+"Absorpsjon" = ["absorption", "absorpsjon", "porous", "baffle"]
+
+[om]
+domeneprofil = """
+Testprofil for bygningsakustikk. Finnes kun for å bevise at ingenting fiskespesifikt
+er igjen i koden.
+"""

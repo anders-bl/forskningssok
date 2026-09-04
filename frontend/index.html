@@ -303,7 +303,7 @@ svg text{ font-family:system-ui,sans-serif; }
 <body>
 
 <div class="topbar">
-  <div class="wordmark">Litteratursøk <small>av Lauvasdata · forskningssok</small></div>
+  <div class="wordmark">Litteratursøk <small id="wordmark-fag">av Lauvasdata · forskningssok</small></div>
   <div class="topbar-meta">
     <span id="cache-meta">bank.db · —</span>
     <button class="pilleknapp" id="skuff-knapp" title="Dokumentet du skriver i — sitater lander her">
@@ -317,8 +317,8 @@ svg text{ font-family:system-ui,sans-serif; }
   <div class="om-panel" role="dialog" aria-labelledby="om-tittel">
     <button class="om-lukk" id="om-lukk" aria-label="Lukk">✕</button>
     <h2 id="om-tittel">Om dette verktøyet</h2>
-    <p>Litteratursøk bygget for norsk oppdrettslaks-patologi (nyre/lever/ultralyd-
-      validering) — ikke et generelt forskningsverktøy ennå, se §Domeneprofil under.</p>
+    <p id="om-kort">Litteratursøk — se §Domeneprofil under for hvilket fagfelt denne
+      instansen er scopet til.</p>
 
     <h3>Kilder søkt akkurat nå</h3>
     <div id="om-kilder"><div class="om-kilde-rad"><span class="om-prikk"></span>sjekker …</div></div>
@@ -328,8 +328,8 @@ svg text{ font-family:system-ui,sans-serif; }
       <li>Ingen AI-generert sammendrag eller syntese — du ser alltid rå tittel/abstract
         fra kilden selv, aldri en omskrivning.</li>
       <li>Ingen fulltekst-mining — kun abstract, med mindre papiret er open access.</li>
-      <li>Rangeringen FLAGGER og OMORDNER etter fagfelt-/art-nærhet (★ og ⚠-merker) —
-        den fjerner aldri et treff. Et treff uten stjerne kan fortsatt være riktig,
+      <li id="om-merker">Rangeringen FLAGGER og OMORDNER etter fagfelt-/målobjekt-nærhet —
+        den fjerner aldri et treff. Et treff uten merke kan fortsatt være riktig,
         avgjørelsen er alltid din.</li>
       <li>«Evidensnivå»-merket er mønstergjenkjenning på ord forfatterne selv bruker
         («systematic review», «case report» …), ikke en faglig vurdering — brukes aldri
@@ -347,11 +347,10 @@ svg text{ font-family:system-ui,sans-serif; }
       varmeste du har, ikke mot en absolutt skala.</p>
 
     <h3>Domeneprofil</h3>
-    <p>Denne instansen er scopet til norsk lakseoppdrett — fagmiljøer (Havforsknings-
-      instituttet, Veterinærinstituttet, NMBU, Nofima, Pharmaq), fagtidsskrifter, og
-      artstermer er alle hardkodet for DETTE fagfeltet. Et ★ betyr «norsk fagmiljø/
-      fagtidsskrift», et ⚠ betyr «nevner ikke laks/oppdrettsfisk i tittel/abstract» —
-      begge er signaler for DEG å vurdere, ikke en dom verktøyet feller.</p>
+    <p id="om-domeneprofil">Laster …</p>
+    <p>Fagfeltet — fagmiljøer, fagtidsskrifter, artstermer og forskningsakser — er en
+      datafil (<code>profiler/*.toml</code>), ikke kode. Å peke verktøyet mot et annet
+      fagfelt er å bytte den fila, ikke å endre logikk.</p>
 
     <h3>Hvor dataen din lever</h3>
     <p>Alt (cachede papirer, sitater, dokumenter, varme) ligger i én lokal sqlite-fil på
@@ -367,7 +366,7 @@ svg text{ font-family:system-ui,sans-serif; }
     <div class="pane">
       <div class="pane-head">
         <form id="search-form">
-          <input id="search-input" placeholder="f.eks. nephrocalcinosis smolt seawater transfer" value="nephrocalcinosis salmon">
+          <input id="search-input" placeholder="søk i litteraturen">
           <button type="submit">Søk</button>
         </form>
         <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
@@ -474,6 +473,13 @@ svg text{ font-family:system-ui,sans-serif; }
 const state = {
   paperId: null, papers: {}, sisteResultat: { ids: [], tittel: '' },
   lastNaboer: [], varmet: new Set(), sitatLinse: 'dokument', sisteVarmeTekst: null,
+  // Fagfeltet kommer fra /api/profil, aldri fra strenger i denne fila. Fallbacken er
+  // bevisst NØYTRAL, ikke fisk: laster profilen ikke, skal flaten si mindre — ikke
+  // påstå feil fagfelt. Se domeneprofil.py for hvorfor dette er hele generaliseringen.
+  profil: {
+    domene_merke: '★', domene_merke_betyr: 'domene-nær',
+    art_merke: '⚠', art_merke_betyr: 'nevner ikke målobjektet', art_merke_utdypet: '',
+  },
 };
 const dok = { id: null, tittel: '', lagreTimer: null, sisteEksport: null };
 
@@ -487,6 +493,21 @@ async function api(path, opts) {
 }
 
 function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Merkene tegnes ETT sted. De sto tidligere som ni nesten-like strenger med «laks» i
+// title-attributtet — nettopp formen som overlever et fagfeltbytte uten at noe feiler.
+function domeneMerke(p) {
+  const pr = state.profil;
+  return p.domene_naer ? `<span class="star" title="${escapeHtml(pr.domene_merke_betyr)}">${escapeHtml(pr.domene_merke)}</span>` : '';
+}
+function artMerke(p, { kort = true } = {}) {
+  if (p.arts_naer !== false) return '';
+  const pr = state.profil;
+  const tittel = pr.art_merke_utdypet ? `${pr.art_merke_betyr} — ${pr.art_merke_utdypet}` : pr.art_merke_betyr;
+  return kort
+    ? `<span class="pill-species" title="${escapeHtml(tittel)}">${escapeHtml(pr.art_merke)}</span>`
+    : `<span style="color:var(--warn)" title="${escapeHtml(tittel)}">· ${escapeHtml(pr.art_merke)}</span>`;
+}
 
 let varselTimer = null;
 function si(tekst) {
@@ -570,9 +591,9 @@ function renderResults(papirer) {
     btn.dataset.id = p.id;
     btn.innerHTML = `
       <div class="result-row1">
-        ${p.domene_naer ? '<span class="star">★</span>' : ''}<span>${p.aar || '?'} · ${p.siteringstall ?? '?'} sit.</span>
+        ${domeneMerke(p)}<span>${p.aar || '?'} · ${p.siteringstall ?? '?'} sit.</span>
         ${p.open_access ? '<span class="pill-oa">OA</span>' : ''}
-        ${p.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk i tittel/abstract — kan være en annen art (f.eks. humanmedisin)">⚠ art?</span>' : ''}
+        ${artMerke(p)}
         ${evidensBadge(p.evidensniva)}
       </div>
       <div class="result-title">${escapeHtml(p.tittel)}</div>
@@ -680,8 +701,8 @@ async function openPaper(id) {
     `<span>${escapeHtml(p.tidsskrift||'')} · ${p.aar||'?'}</span>` +
     (p.doi ? `<span>· ${p.doi}</span>` : '') +
     `<span>· ${p.open_access ? 'open access' : 'abstract (ikke OA)'}</span>` +
-    (p.domene_naer ? '<span class="star">· ★ domene-nær</span>' : '') +
-    (p.arts_naer === false ? '<span style="color:var(--warn)" title="Nevner ikke laks/oppdrettsfisk i tittel/abstract">· ⚠ trolig annen art</span>' : '') +
+    (p.domene_naer ? `<span class="star">· ${escapeHtml(state.profil.domene_merke)} ${escapeHtml(state.profil.domene_merke_betyr)}</span>` : '') +
+    artMerke(p, {kort: false}) +
     (p.evidensniva && p.evidensniva !== 'Ukjent design' ? `<span title="Mønster-basert, ikke en kvalitetsdom — se evidensniva.py">· ${escapeHtml(p.evidensniva)}</span>` : '');
   $('#reader-title').textContent = p.tittel;
   $('#reader-authors').textContent = p.forfattere || '';
@@ -794,7 +815,7 @@ async function lastVarme({tvungen = true} = {}) {
       return `
       <div class="varmekort" data-id="${escapeHtml(p.id)}" style="border-left-color:${varmeFarge(samlet)}">
         <div class="vk-tittel">${escapeHtml(p.tittel)}</div>
-        <div class="vk-meta">${p.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span>${p.aar||'?'} · ${escapeHtml(p.tidsskrift||'')}</span>${p.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+        <div class="vk-meta">${domeneMerke(p)}<span>${p.aar||'?'} · ${escapeHtml(p.tidsskrift||'')}</span>${artMerke(p)}</div>
         <div class="lagrad"><span>varig</span><span class="lagbar"><i style="width:${Math.round(p.varig_andel*100)}%;background:${varmeFarge(p.varig_andel)}"></i></span></div>
         <div class="lagrad"><span>nå</span><span class="lagbar"><i style="width:${Math.round(p.naa_andel*100)}%;background:${varmeFarge(p.naa_andel)}"></i></span></div>
         <div class="vk-aarsak">${escapeHtml(p.aarsaker.join(' · '))}${p.avstand != null ? ` · avstand ${p.avstand.toFixed(3)}` : ''}</div>
@@ -817,7 +838,7 @@ async function loadLignende(id) {
     el.innerHTML = '<div class="hint" style="margin-bottom:.6rem">Semantiske naboer i cachen (bge-m3-avstand), rangert med fagmiljø/art FØR ren avstand — ikke hele Europe PMC.</div>' +
       data.naboer.map(n => `
         <div class="neighbor" data-id="${escapeHtml(n.id)}">
-          <div class="neighbor-row1">${n.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span class="dist">${n.avstand.toFixed(3)}</span><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+          <div class="neighbor-row1">${domeneMerke(n)}<span class="dist">${n.avstand.toFixed(3)}</span><span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${artMerke(n)}</div>
           <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
         </div>`).join('');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
@@ -846,7 +867,7 @@ async function loadGap(id) {
       <div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv${kildeMerknad}. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
       (data.gap.length ? data.gap.map(g => `
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
-          <div class="neighbor-row1">${g.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${g.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+          <div class="neighbor-row1">${domeneMerke(g)}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${artMerke(g)}</div>
           <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
         </div>`).join('') : '<div class="hint">Ingen gap — alle cachede naboer er alt sitert av papiret.</div>');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
@@ -1229,13 +1250,37 @@ document.addEventListener('keydown', e => {
 // unngår hele skjema-innsendingsmekanismen.
 api('/api/status').then(s => $('#cache-meta').textContent = `bank.db · ${s.papirer_cachet} papirer cachet`).catch(()=>{});
 
+// Profilen hentes FØR første søk: søkefeltets standardverdi kommer fra den, og et søk
+// på en tom streng ville vært en tom flate ved hver sidelast. Feiler hentingen, kjører
+// resten videre med den nøytrale fallbacken — flaten sier da mindre om fagfeltet, men
+// lyver ikke om det, og søk/lesing/sitering virker uendret.
+async function lastProfil() {
+  try {
+    const p = await api('/api/profil');
+    state.profil = p;
+    $('#search-input').placeholder = `f.eks. ${p.sok_eksempel}`;
+    if (!$('#search-input').value) $('#search-input').value = p.sok_standard;
+    $('#wordmark-fag').textContent = p.navn;
+    $('#om-kort').textContent = `Litteratursøk bygget for ${p.kort} — ikke et generelt forskningsverktøy, se §Domeneprofil under.`;
+    $('#om-domeneprofil').textContent = p.om_domeneprofil || `Denne instansen er scopet til ${p.navn}.`;
+    // Kulepunktet navnga merkene statisk («★ og ⚠»). Under en annen profil er de andre
+    // tegn, og setningen ble da feil i det ene panelet som finnes for å forklare dem.
+    $('#om-merker').textContent =
+      `Rangeringen FLAGGER og OMORDNER etter fagfelt-/målobjekt-nærhet (${p.domene_merke} = ${p.domene_merke_betyr}, ` +
+      `${p.art_merke} = ${p.art_merke_betyr}) — den fjerner aldri et treff. Et treff uten merke kan ` +
+      `fortsatt være riktig, avgjørelsen er alltid din.`;
+  } catch {
+    $('#om-domeneprofil').textContent = 'Kunne ikke lese domeneprofilen akkurat nå.';
+  }
+}
+
 (async () => {
+  await lastProfil();
   const liste = await lastDokListe(null);
   if (liste.length) await apneDok(liste[0].id); else await settLinse('lose');
   lastVarme();
+  utforSok($('#search-input').value.trim());
 })();
-
-utforSok($('#search-input').value.trim());
 </script>
 </body>
 </html>

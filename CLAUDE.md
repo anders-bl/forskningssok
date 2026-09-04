@@ -15,6 +15,12 @@
 
 ## Konvensjoner
 - Typehints er påkrevd.
+- **Aldri fagfelt-spesifikke ord i kjørende kode.** Fagmiljøer, tidsskrifter,
+  målobjekt-termer, akser, merker og UI-tekster bor i `profiler/*.toml` (valgt med
+  `FORSKNINGSSOK_PROFIL`). Docstrings og kommentarer SKAL derimot nevne det konkrete
+  tilfellet en mekanisme ble bygget for — det er hvorfor-hukommelsen.
+  `tests/test_domeneprofil_generisk.py` håndhever skillet med en AST-detektor og feller
+  en ny «laks» i en strengliteral.
 - Kommentarer: kun når WHY er ikke-opplagt — en skjult forutsetning, en subtil
   invariant, en tidligere feil kommentaren forklarer (samme regel som husets
   globale CLAUDE.md). ALDRI hva koden gjør — det leser man av navn. Dette repoet
