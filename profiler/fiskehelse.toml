@@ -48,7 +48,10 @@ termer = [
 # (kalsitonin ble opprinnelig isolert fra laks), altså en systematisk falsk-positiv
 # kollisjon i NETTOPP dette domenet. Fanget live 2026-09-02 på et ekte pediatrisk
 # case-serie-funn om CYP24A1-mutasjoner.
-kollisjoner = ["salmon calcitonin"]
+# «salmon arm» er et STEDSNAVN (by i British Columbia) — samme homonym-klasse som
+# legemiddelnavnet over, funnet ved korpus-inspeksjon 2026-09-04: «A Salmon Arm scrapbook»
+# lå i cachen med arts_naer=True og ble båndet OPP over ekte fiskehelse-papirer.
+kollisjoner = ["salmon calcitonin", "salmon arm"]
 # MeSH-descriptorer som betyr «dette handler om målobjektet». Valgt fra NLMs vokabular
 # 2026-09-04, FØR måling og uten å se på hvilke cachede papirer som bærer hvilke —
 # ellers ville lista vært tilpasset svaret (forhåndsregistreringen sier hvorfor).

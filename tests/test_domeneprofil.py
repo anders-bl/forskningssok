@@ -98,3 +98,24 @@ def test_animals_alene_er_ikke_et_artstreff():
     nesten alltid sant, og et predikat som alltid er sant måler ingenting."""
     from domeneprofil import arts_naer_mesh
     assert arts_naer_mesh(("Animals", "Mice", "Hypercalcemia")) is False
+
+
+def test_stedsnavn_er_ikke_et_artstreff():
+    """«Salmon Arm» er en by i British Columbia. Funnet ved korpus-inspeksjon 2026-09-04:
+    «A Salmon Arm scrapbook» lå i cachen med arts_naer=True og ble båndet OPP over ekte
+    fiskehelse-papirer. Samme homonym-klasse som legemiddelnavnet «salmon calcitonin»."""
+    from domeneprofil import arts_naer_tekst
+    assert arts_naer_tekst("A Salmon Arm scrapbook") is False
+    assert arts_naer_tekst("Nephrocalcinosis in farmed salmon") is True
+
+
+def test_lakseokonomi_forblir_et_artstreff_og_det_er_riktig():
+    """Kalibreringens viktigste funn: seks lakseøkonomi-papirer i cachen er IKKE falske
+    positive for arts_naer. De handler faktisk om laks. Predikatet svarer korrekt på sitt
+    eget spørsmål — «nevner dette målarten?» — og problemet er at å NEVNE laks ikke er det
+    samme som å handle om laksens HELSE.
+
+    Det er en manglende dimensjon i domeneprofilen (fagfelt), ikke en feil i artsaksen, og
+    en kollisjonsfrase kan ikke fikse det: «salmon» står med rette i tittelen."""
+    from domeneprofil import arts_naer_tekst
+    assert arts_naer_tekst("Economic Factors Effecting Salmon Fisheries in Japan") is True

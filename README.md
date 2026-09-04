@@ -535,6 +535,61 @@ intet tjenestenavn — de bor bak `X-Internal-Key` på `/health`. Testdekket
 (`test_helse_lekker_ingen_tall_uten_noekkel`), fordi et offentlig endepunkt som stille
 begynner å lekke er en regresjon ingen ville lagt merke til.
 
+## Kalibrering mot det ekte korpuset (2026-09-04)
+
+Målt på 55 cachede papirer, 2 970 par-avstander. Tallene her er FRA denne cachen, ikke
+universelle — et annet fagfelt vil ha en annen fordeling.
+
+### Avstandsskalaen er ærlig, men bruker en tredjedel av stolpen
+
+| | avstand |
+|---|---|
+| nærmeste par | 0,566 |
+| p5 | 0,858 |
+| median | **1,028** |
+| p95 | 1,155 |
+| fjerneste par | 1,266 |
+
+Alle 2 970 par ligger i 0,57–1,27, altså et smalt bånd (spredning 0,097) — som forventet
+når hele cachen er ett fagfelt. `naa_andel = 1 − avstand/2` gir da stolper mellom 37 % og
+72 %, med median på 49 %.
+
+**Det er riktig oppførsel, ikke en feil:** en homogen samling SKAL se homogen ut. Alternativet
+(normalisering mot listas maks) ble prøvd og forkastet samme dag — den tegnet 5 % spredning
+som tolv fulle stolper. Men det betyr at «nå»-stolpen bærer lite informasjon innenfor ett
+fagfelt, og det er verdt å vite før man leser mye ut av 49 % mot 42 %.
+
+### Metrikken stemmer i endene — spot-sjekket
+
+Nærmeste par (0,566) er to japanske laksøkonomi-papirer; nest nærmest er to
+nyrefysiologi-papirer. Fjerneste par kobler en genetikk-metode mot en by-scrapbook.
+Embedding-avstanden gjør altså jobben sin.
+
+### Det kalibreringen faktisk avslørte: artsaksen kan ikke skille fagfelt
+
+41 av 55 papirer fikk `arts_naer=True`. Sju av dem er ikke fiskehelse:
+
+- **«A Salmon Arm scrapbook»** — Salmon Arm er en by i British Columbia. Et STEDSNAVN,
+  samme homonym-klasse som legemiddelnavnet «salmon calcitonin». Lagt i `kollisjoner`.
+- **Seks lakseøkonomi-papirer** (Research Papers in Economics, Japan Fisheries Research
+  and Education Agency) — pris, tilbud/etterspørsel, betalingsvilje.
+
+⚠ **De seks er IKKE falske positive, og det er poenget.** De handler faktisk om laks.
+Predikatet svarer korrekt på sitt eget spørsmål — *«nevner dette målarten?»* — og
+problemet er at å NEVNE laks ikke er det samme som å handle om laksens HELSE. En
+kollisjonsfrase kan ikke fikse det: «salmon» står med rette i tittelen.
+
+Det er en manglende **fagfelt**-dimensjon i domeneprofilen, ikke en feil i artsaksen. Ikke
+bygget — å legge til en tredje akse endrer rangeringen for alle treff, og det bør måles før
+det gjøres. Notert her så neste person ikke prøver å kurere det med flere kollisjonsfraser.
+
+### Og det som IKKE kunne kalibreres
+
+`_KILDE_TERSKEL = 3` (feil på rad før en kilde regnes som nede) står fortsatt ukalibrert.
+Instrumentet ble bygget samme dag, så det finnes null data om hvor ofte et Europe PMC-kall
+feiler forbigående. Å velge et tall nå ville vært å gjette og kalle det måling. Terskelen
+kan først kalibreres når `kilde_status` har samlet noen ukers ekte søk.
+
 ## Tips for domeneavgrensning
 
 Et bart `nephrocalcinosis`-søk treffer mest human-medisin (nyrestein hos mennesker
