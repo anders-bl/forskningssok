@@ -1214,7 +1214,13 @@ $$('[data-omfang]').forEach(btn => btn.addEventListener('click', () => {
 }));
 
 // ---------- Om-panel (metodikk/transparens) ----------
-const KILDENAVN = {europe_pmc: 'Europe PMC', openalex: 'OpenAlex', core: 'CORE'};
+const KILDENAVN = {
+  europe_pmc: 'Europe PMC (søk)',
+  europe_pmc_referanser: 'Europe PMC (referanselister)',
+  openalex: 'OpenAlex',
+  core: 'CORE',
+  crossref: 'Crossref (utgivernes referanse-deposit)',
+};
 
 function apneOmPanel() {
   $('#om-overlay').hidden = false;

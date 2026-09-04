@@ -127,8 +127,16 @@ def api_status():
         if siste_sok else None,
         "kilder": {
             "europe_pmc": _kilde_naabar("https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=test&pageSize=1"),
+            # /references er en EGEN delressurs med eget oppetid, og den har vært 503
+            # sammenhengende siden 2026-09-02. Uten denne linjen sa panelet «Europe PMC —
+            # nåbar nå» mens gap-rapportene samtidig skrev «kilde: openalex + crossref»,
+            # og de to utsagnene motsa hverandre uten at noen av dem var direkte usanne.
+            # Én kilde kan være halvveis oppe, og da skal flaten vise nettopp det.
+            "europe_pmc_referanser": _kilde_naabar(
+                "https://www.ebi.ac.uk/europepmc/webservices/rest/MED/41363532/references?format=json&pageSize=1"),
             "openalex": _kilde_naabar("https://api.openalex.org/works/W2151543183"),
             "core": _kilde_naabar("https://api.core.ac.uk/v3/search/works"),
+            "crossref": _kilde_naabar("https://api.crossref.org/works/10.1111/jfd.70099"),
         },
     }
 

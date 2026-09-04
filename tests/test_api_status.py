@@ -51,3 +51,18 @@ def test_status_nede_kilde_gir_false_ikke_500(tmp_path, monkeypatch):
     assert r.json()["kilder"]["europe_pmc"] is False
     assert r.json()["kilder"]["core"] is False
     assert r.json()["siste_sok"] is None
+
+
+def test_status_skiller_europe_pmc_sok_fra_referanselister(tmp_path, monkeypatch):
+    """De to er ulike delressurser med ulik oppetid: /search har vært oppe hele tiden
+    mens /references har svart 503 sammenhengende siden 2026-09-02. Slått sammen til én
+    linje sa panelet «Europe PMC — nåbar nå» mens gap-rapporten samtidig skrev «kilde:
+    openalex + crossref» — to utsagn som motsa hverandre uten at noen av dem var usanne."""
+    import api
+    monkeypatch.setattr(api, "CACHE_DB", tmp_path / "cache.db")
+    with patch("api._kilde_naabar", side_effect=lambda url, **k: "/references" not in url):
+        from fastapi.testclient import TestClient
+        kilder = TestClient(api.app).get("/api/status").json()["kilder"]
+    assert kilder["europe_pmc"] is True
+    assert kilder["europe_pmc_referanser"] is False
+    assert kilder["crossref"] is True
