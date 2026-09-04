@@ -267,6 +267,69 @@ def sitatnotater(sitater: list[dict], *, tittel: str = "Sitatnotater") -> str:
     return til_markdown(sitatnotater_blokker(sitater, tittel=tittel))
 
 
+# ---------- Mal 5: dokumentet — egen tekst + festede sitater, det som faktisk deles ----------
+
+def dokument_blokker(utkast: dict, sitater: list[dict], *, tittel: str | None = None) -> list[Blokk]:
+    """Den ENESTE malen som blander brukerens egen prosa med sitert kildetekst. Derfor
+    er skillet mellom dem bygget inn i blokk-typene («p» for din tekst, «sitat» +
+    kildelinje for det som er hentet), ikke overlatt til leserens hukommelse: en delt PDF
+    må aldri kunne leses som om du selv skrev det du siterte.
+
+    Sitatene snus til ELDSTE først her (bank leverer nyeste først) — et dokument leses
+    ovenfra, og rekkefølgen du fanget dem i er den eneste rekkefølgen verktøyet vet noe
+    om. Ingen forsøk på å gjette hvor i brødteksten de hører hjemme."""
+    tittel = tittel or utkast.get("tittel") or "Uten tittel"
+    blokker = [Blokk("h1", tittel)]
+    n = len(sitater)
+    blokker.append(Blokk("meta", f"Skrevet i forskningssok, eksportert {_dato()} — "
+                                  f"{n} sitat{'' if n == 1 else 'er'} festet til dokumentet."))
+
+    innhold = (utkast.get("innhold") or "").strip()
+    if innhold:
+        for avsnitt in [a.strip() for a in innhold.split("\n") if a.strip()]:
+            blokker.append(Blokk("p", avsnitt))
+    else:
+        blokker.append(Blokk("meta", "(Ingen brødtekst skrevet ennå.)"))
+
+    if not sitater:
+        return blokker
+
+    blokker.append(Blokk("h2", "Kilder sitert"))
+    for s in sorted(sitater, key=lambda x: x.get("opprettet", 0)):
+        blokker.append(Blokk("sitat", s.get("tekst", "")))
+        blokker.append(Blokk("p", _kildelinje(s)))
+        if (s.get("kommentar") or "").strip():
+            blokker.append(Blokk("p", f"Kommentar: {s['kommentar']}"))
+    return blokker
+
+
+def _kildelinje(sitat: dict) -> str:
+    """Én lesbar henvisning per sitat. Feltene som mangler droppes stille — en
+    henvisning uten årstall er fortsatt sann; en oppdiktet «(u.å.)»-konvensjon ville
+    vært verktøyet som fyller ut på forfatterens vegne."""
+    deler = []
+    forfattere = (sitat.get("paper_forfattere") or "").split(",")
+    if forfattere and forfattere[0].strip():
+        deler.append(forfattere[0].strip() + (" et al." if len(forfattere) > 1 else ""))
+    if sitat.get("paper_aar"):
+        deler.append(f"({sitat['paper_aar']})")
+    if sitat.get("paper_tittel"):
+        # Punktum kun hvis tittelen ikke alt ender på skilletegn — Europe PMC leverer
+        # mange titler med punktum bakt inn, og «… Considerations..» så ut som en feil
+        # i det eksporterte dokumentet (målt live 2026-09-04).
+        tit = sitat["paper_tittel"].rstrip()
+        deler.append(tit if tit.endswith((".", "?", "!")) else tit + ".")
+    if sitat.get("paper_tidsskrift"):
+        deler.append(f"*{sitat['paper_tidsskrift']}*.")
+    if sitat.get("paper_doi"):
+        deler.append(f"doi:{sitat['paper_doi']}")
+    return " ".join(deler) or "Ukjent kilde"
+
+
+def dokument(utkast: dict, sitater: list[dict], *, tittel: str | None = None) -> str:
+    return til_markdown(dokument_blokker(utkast, sitater, tittel=tittel))
+
+
 # ---------- Mal 3: citation-gap-rapport — Aaron Tay-proben som delbart dokument ----------
 
 def gap_rapport_blokker(kilde_papir: dict, gap_resultat: dict, *, tittel: str | None = None) -> list[Blokk]:

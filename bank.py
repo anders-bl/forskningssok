@@ -84,7 +84,111 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     db.execute("""CREATE TABLE IF NOT EXISTS utkast(
         id INTEGER PRIMARY KEY, tittel TEXT NOT NULL, innhold TEXT NOT NULL,
         opprettet REAL NOT NULL, oppdatert REAL NOT NULL)""")
+    try:  # migrasjon: sitater fantes før dokumentskuffen — idempotent, samme mønster
+        db.execute("ALTER TABLE sitater ADD COLUMN utkast_id INTEGER")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass  # kolonnen finnes alt
+    db.execute("""CREATE TABLE IF NOT EXISTS varme(
+        paper_id TEXT PRIMARY KEY, poeng REAL NOT NULL, sist_rort REAL NOT NULL,
+        sterkeste_hendelse TEXT)""")
+    try:  # migrasjon: kolonnen het «siste_hendelse» før den lagret det sterkeste
+        db.execute("ALTER TABLE varme RENAME COLUMN siste_hendelse TO sterkeste_hendelse")
+        db.commit()
+    except sqlite3.OperationalError:
+        pass  # alt omdøpt, eller tabellen er ny
     return db
+
+
+# ---------- Varme: det VARIGE laget (se varm_opp for hvorfor to lag, ikke ett) ----------
+
+VARME_VEKT = {
+    "apnet": 1.0,      # du leste det
+    "sitert": 6.0,     # du tok noe ut av det
+    "dokument": 4.0,   # du festet det til et dokument
+    "nabo": 0.0,       # settes av spredningen selv, aldri direkte utenfra
+}
+# Hvilken handling som får NAVNGI et papir i panelet. Ikke den siste, men den sterkeste:
+# målt live 2026-09-04 sa kortet «du har lest det» om et papir jeg nettopp hadde SITERT,
+# fordi en sidelast rakk å skrive «apnet» oppå. Et papir du har sitert er et papir du har
+# sitert, uansett hvor mange ganger du åpner det etterpå.
+HENDELSE_RANG = {"sitert": 4, "dokument": 3, "apnet": 2, "nabo": 1}
+NABO_SPREDNING = 0.30   # brøkdel av kildens delta som treffer hver semantiske nabo
+NABO_VIDDE = 5          # hvor mange naboer spredningen når
+
+
+def varm_opp(paper_id: str, hendelse: str, *, spre: bool = True, db_path: Path = DB) -> float:
+    """Legger varme på ETT papir og (for «sitert»/«dokument») en brøkdel på dets
+    semantiske naboer. Returnerer papirets nye totalpoeng.
+
+    Hvorfor akkumulert og persistert, ikke utledet på nytt hver gang: det andre laget
+    (avstand mot teksten du skriver NÅ, se lignende_tekst) er allerede momentant og
+    glemmer alt mellom dokumenter. Dette laget er hukommelsen — «du har rørt dette 11
+    ganger over to uker» er et signal ingen avstandsmåling kan gjenskape. De to holdes
+    bevisst atskilt hele veien opp i UI-et, slik at et papir som er varmt aldri skjuler
+    HVORFOR det er varmt.
+
+    Ingen forfall: varmen synker aldri av seg selv. Et papir du sluttet å bruke blir
+    kaldt RELATIVT (visningen normaliserer mot maks), ikke absolutt — verktøyet skal
+    ikke stille glemme noe du faktisk brukte.
+
+    Spredningen er grunnen til at panelet kan løfte fram noe du ALDRI har åpnet: siterer
+    du A, arver A-s nærmeste naboer 30 % av det. Ukjent, men i selskap med noe du brukte.
+    """
+    vekt = VARME_VEKT.get(hendelse)
+    if not vekt:
+        return 0.0
+    poeng = _legg_varme(paper_id, vekt, hendelse, db_path=db_path)
+    if spre and hendelse in ("sitert", "dokument"):
+        for n in lignende(paper_id, k=NABO_VIDDE, db_path=db_path):
+            _legg_varme(n["id"], vekt * NABO_SPREDNING, "nabo", db_path=db_path)
+    return poeng
+
+
+def _legg_varme(paper_id: str, delta: float, hendelse: str, *, db_path: Path = DB) -> float:
+    """BEGIN IMMEDIATE, ikke en ren UPSERT: navnevalget må lese den lagrede hendelsen
+    før det skriver, og rangeringen bor i HENDELSE_RANG — å speile den i et SQL
+    CASE-uttrykk ville gitt to kopier av samme regel som kan drive fra hverandre.
+    IMMEDIATE tar skrivelåsen med én gang, så to samtidige varm_opp serialiseres i stedet
+    for å lese samme utgangstilstand og skrive navnet nedover igjen."""
+    db = _db(db_path)
+    ts = time.time()
+    try:
+        db.execute("BEGIN IMMEDIATE")
+        rad = db.execute(
+            "SELECT poeng, sterkeste_hendelse FROM varme WHERE paper_id=?", (paper_id,)).fetchone()
+        if rad is None:
+            db.execute("INSERT INTO varme(paper_id, poeng, sist_rort, sterkeste_hendelse) VALUES (?,?,?,?)",
+                       (paper_id, delta, ts, hendelse))
+            poeng = delta
+        else:
+            poeng = rad[0] + delta
+            navn = hendelse if HENDELSE_RANG.get(hendelse, 0) > HENDELSE_RANG.get(rad[1], 0) else rad[1]
+            db.execute("UPDATE varme SET poeng=?, sist_rort=?, sterkeste_hendelse=? WHERE paper_id=?",
+                       (poeng, ts, navn, paper_id))
+        db.commit()
+    finally:
+        db.close()
+    return poeng
+
+
+def varmeliste(k: int = 12, *, db_path: Path = DB) -> list[dict]:
+    """Varmeste papirer først. JOIN mot papers, ikke LEFT JOIN: varme på en id som ikke
+    (lenger) er cachet er ikke et papir vi kan vise — den blir stille liggende i
+    varme-tabellen til papiret eventuelt caches igjen, i stedet for å bli en rad uten
+    tittel i panelet."""
+    db = _db(db_path)
+    rows = db.execute("""
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url,
+               v.poeng, v.sist_rort, v.sterkeste_hendelse, p.forfattere, p.abstract
+        FROM varme v JOIN papers p ON p.id = v.paper_id
+        ORDER BY v.poeng DESC LIMIT ?""", (k,)).fetchall()
+    db.close()
+    return [{"id": r[0], "tittel": r[1], "tidsskrift": r[2], "aar": r[3], "doi": r[4],
+             "kilde_url": r[5], "poeng": round(r[6], 2), "sist_rort": r[7],
+             "sterkeste_hendelse": r[8],
+             "domene_naer": domene_naer_tekst(f"{r[9]} {r[2]}"),
+             "arts_naer": arts_naer_tekst(f"{r[1]} {r[10]}")} for r in rows]
 
 
 def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> int:
@@ -140,21 +244,40 @@ def hent(paper_id: str, *, db_path: Path = DB) -> dict | None:
     return d
 
 
-def lagre_sitat(paper_id: str, tekst: str, kommentar: str = "", *, db_path: Path = DB) -> dict:
+def lagre_sitat(paper_id: str, tekst: str, kommentar: str = "",
+                 utkast_id: int | None = None, *, db_path: Path = DB) -> dict:
     """Lagrer en sitert seksjon (+ valgfri kommentar) direkte fra leseflaten. Krever at
     papiret alt er cachet (paper_id må finnes i `papers`) — sitering av noe verktøyet
-    ikke selv har hentet ville vært en gjettet kildehenvisning."""
+    ikke selv har hentet ville vært en gjettet kildehenvisning.
+
+    `utkast_id` er NULLBAR med vilje (hybriden Anders valgte 2026-09-04): sitatet hører
+    alltid til papiret, og hører I TILLEGG til ett dokument hvis ett var åpent da du
+    siterte. Er det ingen, blir det et løst sitat du kan feste senere — det havner aldri
+    i et dokument du ikke ba om, og går aldri tapt fordi du ikke hadde ett åpent."""
     if not hent(paper_id, db_path=db_path):
         raise ValueError(f"{paper_id} er ikke cachet — søk det opp først")
     db = _db(db_path)
     ts = time.time()
     cur = db.execute(
-        "INSERT INTO sitater(paper_id, tekst, kommentar, opprettet) VALUES (?,?,?,?)",
-        (paper_id, tekst, kommentar, ts))
+        "INSERT INTO sitater(paper_id, tekst, kommentar, opprettet, utkast_id) VALUES (?,?,?,?,?)",
+        (paper_id, tekst, kommentar, ts, utkast_id))
     db.commit()
     sid = cur.lastrowid
     db.close()
-    return {"id": sid, "paper_id": paper_id, "tekst": tekst, "kommentar": kommentar, "opprettet": ts}
+    return {"id": sid, "paper_id": paper_id, "tekst": tekst, "kommentar": kommentar,
+            "opprettet": ts, "utkast_id": utkast_id}
+
+
+def knytt_sitat(sitat_id: int, utkast_id: int | None, *, db_path: Path = DB) -> bool:
+    """Fester et løst sitat til et dokument, eller løsner det igjen (utkast_id=None).
+    Å fjerne et sitat fra dokumentet SKAL ikke slette det — slett_sitat er den eneste
+    veien til faktisk tap, og den må velges eksplisitt."""
+    db = _db(db_path)
+    cur = db.execute("UPDATE sitater SET utkast_id=? WHERE id=?", (utkast_id, sitat_id))
+    db.commit()
+    endret = cur.rowcount > 0
+    db.close()
+    return endret
 
 
 def oppdater_sitat(sitat_id: int, kommentar: str, *, db_path: Path = DB) -> bool:
@@ -175,23 +298,34 @@ def slett_sitat(sitat_id: int, *, db_path: Path = DB) -> bool:
     return slettet
 
 
-def hent_sitater(paper_id: str | None = None, *, db_path: Path = DB) -> list[dict]:
-    """Alle lagrede sitater, nyeste først — filtrert på ett papir hvis oppgitt, ellers
-    hele notat-loggen (Notater-fanen på tvers av alt som er lest)."""
+_SITAT_FELT = """SELECT s.id, s.paper_id, s.tekst, s.kommentar, s.opprettet,
+                        p.tittel, p.doi, s.utkast_id, p.forfattere, p.tidsskrift, p.aar
+                 FROM sitater s JOIN papers p ON p.id = s.paper_id"""
+
+
+def hent_sitater(paper_id: str | None = None, *, utkast_id: int | None = None,
+                  kun_lose: bool = False, db_path: Path = DB) -> list[dict]:
+    """Alle lagrede sitater, nyeste først. Tre uavhengige linser på SAMME lager (hybriden):
+    ett papir (`paper_id`), ett dokument (`utkast_id`), eller de som ennå ikke er festet
+    til noe dokument (`kun_lose`). Ingen av dem kopierer en rad — et sitat har én identitet
+    uansett hvilken linse du ser det gjennom."""
     db = _db(db_path)
+    hvor, args = [], []
     if paper_id:
-        rows = db.execute(
-            """SELECT s.id, s.paper_id, s.tekst, s.kommentar, s.opprettet, p.tittel, p.doi
-               FROM sitater s JOIN papers p ON p.id = s.paper_id
-               WHERE s.paper_id=? ORDER BY s.opprettet DESC""", (paper_id,)).fetchall()
-    else:
-        rows = db.execute(
-            """SELECT s.id, s.paper_id, s.tekst, s.kommentar, s.opprettet, p.tittel, p.doi
-               FROM sitater s JOIN papers p ON p.id = s.paper_id
-               ORDER BY s.opprettet DESC""").fetchall()
+        hvor.append("s.paper_id=?")
+        args.append(paper_id)
+    if utkast_id is not None:
+        hvor.append("s.utkast_id=?")
+        args.append(utkast_id)
+    if kun_lose:
+        hvor.append("s.utkast_id IS NULL")
+    sql = _SITAT_FELT + (" WHERE " + " AND ".join(hvor) if hvor else "") + " ORDER BY s.opprettet DESC"
+    rows = db.execute(sql, args).fetchall()
     db.close()
     return [{"id": r[0], "paper_id": r[1], "tekst": r[2], "kommentar": r[3],
-             "opprettet": r[4], "paper_tittel": r[5], "paper_doi": r[6]} for r in rows]
+             "opprettet": r[4], "paper_tittel": r[5], "paper_doi": r[6],
+             "utkast_id": r[7], "paper_forfattere": r[8], "paper_tidsskrift": r[9],
+             "paper_aar": r[10]} for r in rows]
 
 
 def _naboer_fra_rader(rows, k: int) -> list[dict]:

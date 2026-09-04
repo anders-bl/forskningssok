@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Litteratursøk — nefrokalsinose</title>
+<title>Litteratursøk — forskningssok</title>
 <!-- Inline favicon (2026-09-04) — uten denne gjør nettleseren et IMPLISITT
      /favicon.ico-kall på hver sidelast, som treffer samme Traefik-auth-gate som
      resten av domenet og feiler (401/302, ikke et bilde). Firefox sin
@@ -15,13 +15,20 @@
 <style>
 /* Fjordstein 2.0 (designsystem/fjordstein-2 i plattformwikien) — IKKE en oppfunnet
    palett. System-font-stack er et bevisst Fjordstein-valg (null webfont-LCP-kost),
-   ikke en forglemmelse. */
+   ikke en forglemmelse.
+
+   --kald/--varm er lagt til 2026-09-04 for varme-panelet: de er de to ENDEPUNKTENE i
+   én rampe, ikke to selvstendige aksentfarger. Alt imellom interpoleres i JS
+   (varmeFarge) fordi tallet som styrer den er kontinuerlig — å runde det til tre
+   CSS-klasser ville gjort «litt varmere enn i går» usynlig, som er hele poenget. */
 :root{
   --accent:#2E5C47; --accent-lt:#4A7D64; --accent-muted:#7AAF95;
   --bg:#F8F7F4; --surface:#FFFFFF; --surface-2:#EFEEEA; --border:#E5E4E0;
   --text:#1C1C1A; --muted:#5A5A56;
   --warn:#9C4A30; --warn-soft:#F3DED6;
+  --kald:#6F9FB8; --lunken:#D8B26A; --varm:#C4633A;
   --shadow:0 1px 2px rgba(20,20,18,.06), 0 6px 20px -8px rgba(20,20,18,.18);
+  --shadow-opp:0 -2px 4px rgba(20,20,18,.05), 0 -12px 32px -14px rgba(20,20,18,.22);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -29,7 +36,9 @@
     --bg:#141412; --surface:#1F1D1A; --surface-2:#2A2926; --border:#34322E;
     --text:#EDECE7; --muted:#A8A7A0;
     --warn:#E2795C; --warn-soft:#3A231C;
+    --kald:#7FA8BE; --lunken:#E3C07A; --varm:#E08758;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
+    --shadow-opp:0 -2px 4px rgba(0,0,0,.3), 0 -14px 34px -14px rgba(0,0,0,.55);
   }
 }
 :root[data-theme="dark"]{
@@ -37,7 +46,9 @@
   --bg:#141412; --surface:#1F1D1A; --surface-2:#2A2926; --border:#34322E;
   --text:#EDECE7; --muted:#A8A7A0;
   --warn:#E2795C; --warn-soft:#3A231C;
+  --kald:#7FA8BE; --lunken:#E3C07A; --varm:#E08758;
   --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
+  --shadow-opp:0 -2px 4px rgba(0,0,0,.3), 0 -14px 34px -14px rgba(0,0,0,.55);
 }
 *{box-sizing:border-box;}
 html{ font-size:16px; }
@@ -48,26 +59,37 @@ body{
   display:flex; flex-direction:column;
 }
 @media (prefers-reduced-motion:no-preference){
-  .result,.tab,.icon-btn,.selbtn{ transition:background-color .12s ease, border-color .12s ease; }
+  .result,.tab,.selbtn,.varmekort,.sitatkort{ transition:background-color .12s ease, border-color .12s ease; }
+  .skuff{ transition:height .18s cubic-bezier(.3,.7,.4,1); }
+  .skuff.drar{ transition:none; }
 }
 :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
 button{ font:inherit; }
 
+/* ---------- Topplinje ---------- */
 .topbar{
   display:flex; align-items:center; gap:1rem; padding:.6rem 1.1rem;
   border-bottom:1px solid var(--border); background:var(--surface); flex:none;
 }
 .wordmark{ font-weight:700; font-size:.9375rem; }
 .wordmark small{ font-weight:400; color:var(--muted); margin-left:.4rem; }
-.modeswitch{ display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:2px; gap:2px; }
-.modeswitch button{ font-size:.75rem; font-weight:600; border:0; background:none; color:var(--muted); padding:.3rem .8rem; border-radius:99px; cursor:pointer; }
-.modeswitch button.active{ background:var(--surface); color:var(--accent); box-shadow:var(--shadow); }
-.topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.9rem; align-items:center; }
-.om-knapp{ border:1px solid var(--border); background:var(--surface); color:var(--muted); border-radius:99px; padding:.25rem .7rem; font-size:.75rem; cursor:pointer; }
-.om-knapp:hover{ color:var(--accent); border-color:var(--accent-muted); }
+.topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.6rem; align-items:center; }
+.pilleknapp{
+  border:1px solid var(--border); background:var(--surface); color:var(--muted);
+  border-radius:99px; padding:.3rem .75rem; font-size:.75rem; cursor:pointer;
+  display:inline-flex; align-items:center; gap:.35rem;
+}
+.pilleknapp:hover{ color:var(--accent); border-color:var(--accent-muted); }
+.pilleknapp.aktiv{ color:var(--accent); border-color:var(--accent); background:var(--surface-2); }
+.pilleknapp .tall{
+  background:var(--accent); color:var(--surface); border-radius:99px;
+  font-size:.625rem; font-weight:700; padding:0 .35rem; min-width:1.05rem; text-align:center;
+}
+
+/* ---------- Om-panel ---------- */
 .om-overlay[hidden]{ display:none; }
 .om-overlay{ position:fixed; inset:0; background:rgba(20,20,18,.45); display:flex;
-  align-items:flex-start; justify-content:center; padding:4vh 1rem; z-index:50; overflow-y:auto; }
+  align-items:flex-start; justify-content:center; padding:4vh 1rem; z-index:60; overflow-y:auto; }
 .om-panel{ background:var(--surface); border-radius:12px; box-shadow:var(--shadow);
   max-width:640px; width:100%; padding:1.4rem 1.6rem 1.6rem; margin-bottom:4vh; }
 .om-panel h2{ margin:0 0 .2rem; font-size:1.05rem; }
@@ -80,46 +102,27 @@ button{ font:inherit; }
 .om-prikk.opp{ background:var(--accent); }
 .om-prikk.nede{ background:var(--warn); }
 
-.shell{ flex:1; min-height:0; display:grid; grid-template-columns:320px 1fr 340px; }
-.shell[hidden]{ display:none; }
-
-/* ---------- Skriv-modus (FDR-038: fast panel, aldri inline, speil ikke orakel) ---------- */
-.skriv-head{ flex:none; padding:.9rem 2rem .6rem; border-bottom:1px solid var(--border); }
-.skriv-tittel{ font-size:1.125rem; font-weight:700; border:0; background:none; color:var(--text); width:100%; margin-bottom:.3rem; }
-.skriv-meta{ font-size:.6875rem; color:var(--muted); }
-.skriv-editor{ flex:1; padding:1.1rem 2rem 3rem; max-width:680px; font-size:1rem; line-height:1.7; color:var(--text); outline:none; overflow-y:auto; }
-.skriv-editor:empty::before{ content:attr(data-placeholder); color:var(--muted); }
-.ambient-status{ display:flex; align-items:center; gap:6px; font-size:.6875rem; color:var(--muted); margin-bottom:.6rem; padding-bottom:.5rem; border-bottom:1px solid var(--border); }
-.ambient-status i{ width:6px; height:6px; border-radius:50%; background:var(--accent); flex:none; }
-.ambient-status.venter i{ background:var(--muted); }
-.ambient-why{ font-size:.625rem; font-weight:700; color:var(--accent); background:var(--surface-2); border-radius:6px; padding:.15rem .45rem; display:inline-block; margin-bottom:.3rem; }
-.axis-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:1rem; }
-.axis-chip{ font-size:.65rem; font-weight:600; border-radius:99px; padding:.28rem .6rem; border:1px solid var(--border); color:var(--muted); display:flex; align-items:center; gap:5px; }
-.axis-chip .bar{ width:22px; height:4px; border-radius:2px; background:var(--border); overflow:hidden; }
-.axis-chip .bar i{ display:block; height:100%; background:var(--accent); }
-.axis-chip.thin{ border-color:var(--warn); color:var(--warn); }
-.draft-item{ padding:.65rem .6rem; border-radius:8px; cursor:pointer; border:1px solid transparent; text-align:left; width:100%; background:none; display:block; }
-.draft-item:hover{ background:var(--surface-2); }
-.draft-item.active{ background:var(--surface-2); border-color:var(--accent); }
-.draft-item .t{ font-size:.8125rem; font-weight:600; }
-.draft-item .m{ font-size:.6875rem; color:var(--muted); }
+/* ---------- Arbeidsrommet: tre paneler + skuff, ETT skall (ingen modusbryter) ---------- */
+.arbeidsrom{ flex:1; min-height:0; display:flex; flex-direction:column; }
+.shell{ flex:1; min-height:0; display:grid; grid-template-columns:340px minmax(0,1fr) 360px; }
 .pane{ min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
 .pane + .pane{ border-left:1px solid var(--border); }
 .pane-scroll{ flex:1; overflow-y:auto; }
 .pane-head{ flex:none; padding:.9rem 1rem .6rem; display:flex; flex-direction:column; gap:.6rem; }
 
+/* ---------- Venstre: søk ---------- */
 #search-form{ display:flex; gap:.4rem; }
 #search-input{
   flex:1; border:1px solid var(--border); background:var(--surface-2); color:var(--text);
-  border-radius:8px; padding:.5rem .65rem; font-size:.8125rem;
+  border-radius:8px; padding:.5rem .65rem; font-size:.8125rem; min-width:0;
 }
 #search-form button{
   border:0; background:var(--accent); color:var(--surface); border-radius:8px;
   padding:.5rem .8rem; cursor:pointer; font-weight:600; font-size:.8125rem;
 }
 #search-form button:hover{ background:var(--accent-lt); }
-.search-meta{ font-size:.6875rem; color:var(--muted); display:flex; align-items:center; gap:.5rem; }
-.rapport-eksport-gruppe{ display:inline-flex; align-items:center; gap:.3rem; font-size:.6875rem; color:var(--muted); }
+.search-meta{ font-size:.6875rem; color:var(--muted); display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.rapport-eksport-gruppe{ display:inline-flex; align-items:center; gap:.3rem; font-size:.6875rem; color:var(--muted); flex-wrap:wrap; }
 .rapport-eksport-gruppe.i-meta{ margin-left:auto; }
 .rapport-eksport-gruppe.blokk{ display:flex; margin-bottom:.7rem; }
 .rapport-btn{
@@ -131,20 +134,21 @@ button{ font:inherit; }
 .utforsk-forslag{
   border:1px dashed var(--accent); background:var(--surface-2); color:var(--accent);
   border-radius:99px; padding:.3rem .7rem; font-size:.6875rem; font-weight:600; cursor:pointer;
-  margin-top:.5rem; display:none; align-items:center; gap:.3rem; width:fit-content;
+  display:none; align-items:center; gap:.3rem; width:fit-content;
 }
 .utforsk-forslag.vis{ display:flex; }
+.seksjonstittel{ font-size:.6875rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin:0 0 .4rem; padding:0 .1rem; }
 .cache-echo{ padding:.5rem .5rem .2rem; }
-.cache-echo-tittel{ font-size:.6875rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-bottom:.4rem; padding:0 .1rem; }
 .cache-echo .result{ background:var(--surface-2); }
 
 .result-list{ padding:.15rem .5rem 1rem; display:flex; flex-direction:column; gap:.15rem; }
 .result{
-  padding:.65rem .6rem; border-radius:8px; cursor:pointer; border:1px solid transparent; text-align:left; width:100%; background:none;
+  padding:.65rem .6rem; border-radius:8px; cursor:pointer; border:1px solid transparent;
+  text-align:left; width:100%; background:none; position:relative;
 }
 .result:hover{ background:var(--surface-2); }
 .result.active{ background:var(--surface-2); border-color:var(--accent); }
-.result-row1{ display:flex; align-items:baseline; gap:.4rem; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; font-variant-numeric:tabular-nums; }
+.result-row1{ display:flex; align-items:baseline; gap:.4rem; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; font-variant-numeric:tabular-nums; flex-wrap:wrap; }
 .star{ color:var(--accent); }
 .pill-oa{ background:var(--surface-2); color:var(--accent); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
 .pill-species{ background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
@@ -152,6 +156,7 @@ button{ font:inherit; }
 .result-title{ font-size:.8125rem; line-height:1.35; margin-bottom:.25rem; }
 .result-journal{ font-size:.6875rem; color:var(--muted); font-style:italic; }
 
+/* ---------- Midten: leseflaten ---------- */
 .reader-head{ flex:none; padding:1.1rem 2rem .8rem; border-bottom:1px solid var(--border); }
 .reader-kicker{ font-size:.6875rem; color:var(--muted); display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem; }
 .reader-title{ font-size:1.375rem; font-weight:700; line-height:1.3; margin:0 0 .4rem; }
@@ -165,15 +170,16 @@ button{ font:inherit; }
 .utforsk-banner{ display:flex; align-items:center; justify-content:space-between; gap:.5rem; background:var(--surface-2); border-radius:8px; padding:.5rem .65rem; margin-bottom:.4rem; font-size:.75rem; }
 .utforsk-banner button{ border:0; background:none; color:var(--accent); font-weight:600; cursor:pointer; font-size:.6875rem; }
 .reader-body{ padding:1.3rem 2rem 3rem; }
-.reader-grid{ display:grid; grid-template-columns:20px 1fr; column-gap:.9rem; max-width:640px; }
+.reader-grid{ display:grid; grid-template-columns:20px minmax(0,1fr); column-gap:.9rem; max-width:640px; }
 .gutter-dot{ display:flex; justify-content:center; padding-top:.5rem; }
 .gutter-dot i{ width:8px; height:8px; border-radius:50%; background:var(--accent); display:block; }
 .reader-body p{ grid-column:2; font-size:1.0625rem; line-height:1.7; margin:0 0 1.2rem; }
-.hl{ background:rgba(122,175,149,.28); border-radius:2px; }
 #empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; }
+.tomflate{ max-width:22rem; margin:0 auto; }
+.tomflate b{ display:block; color:var(--text); font-size:1rem; margin-bottom:.4rem; }
 
 .seltoolbar{
-  position:fixed; z-index:20; display:flex; align-items:center; gap:2px;
+  position:fixed; z-index:40; display:flex; align-items:center; gap:2px;
   background:var(--text); color:var(--bg); border-radius:10px; padding:5px;
   box-shadow:var(--shadow);
 }
@@ -181,8 +187,9 @@ button{ font:inherit; }
 .selbtn{ border:0; background:none; color:inherit; border-radius:6px; padding:.4rem .55rem; cursor:pointer; font-weight:600; font-size:.75rem; }
 .selbtn:hover{ background:rgba(255,255,255,.15); }
 
-.tabs{ display:flex; gap:2px; padding:.7rem .8rem 0; flex:none; }
-.tab{ border:0; background:none; color:var(--muted); font-weight:600; font-size:.75rem; padding:.55rem .7rem; border-radius:8px 8px 0 0; cursor:pointer; border-bottom:2px solid transparent; }
+/* ---------- Høyre: relevans ---------- */
+.tabs{ display:flex; gap:2px; padding:.7rem .8rem 0; flex:none; border-bottom:1px solid var(--border); }
+.tab{ border:0; background:none; color:var(--muted); font-weight:600; font-size:.75rem; padding:.55rem .7rem; border-radius:8px 8px 0 0; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
 .tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
 .tab .count{ font-size:.625rem; margin-left:3px; color:var(--muted); }
 .tabpanel{ display:none; padding:.85rem; }
@@ -190,23 +197,103 @@ button{ font:inherit; }
 
 .neighbor{ border:1px solid var(--border); border-radius:8px; padding:.65rem .7rem; margin-bottom:.5rem; background:var(--surface); cursor:pointer; }
 .neighbor:hover{ border-color:var(--accent); }
-.neighbor-row1{ display:flex; justify-content:space-between; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; }
+.neighbor-row1{ display:flex; justify-content:space-between; gap:.4rem; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; flex-wrap:wrap; }
 .neighbor-row1 .dist{ color:var(--accent); font-weight:700; }
 .neighbor-title{ font-size:.75rem; line-height:1.4; }
+
+/* Varmekortet: to lag, aldri slått sammen til ett tall (se /api/varme sin docstring). */
+.varmekort{
+  border:1px solid var(--border); border-left:3px solid var(--border);
+  border-radius:8px; padding:.6rem .7rem; margin-bottom:.5rem; background:var(--surface); cursor:pointer;
+}
+.varmekort:hover{ border-color:var(--accent); }
+.varmekort .vk-tittel{ font-size:.75rem; line-height:1.4; margin-bottom:.35rem; }
+.varmekort .vk-meta{ font-size:.6875rem; color:var(--muted); display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.45rem; }
+.lagrad{ display:grid; grid-template-columns:2.6rem 1fr; align-items:center; gap:.45rem; font-size:.625rem; color:var(--muted); margin-top:.2rem; }
+.lagbar{ height:5px; border-radius:99px; background:var(--surface-2); overflow:hidden; }
+.lagbar i{ display:block; height:100%; border-radius:99px; }
+.vk-aarsak{ font-size:.625rem; color:var(--muted); margin-top:.45rem; font-style:italic; }
 
 .banner{ border:1px dashed var(--warn); background:var(--warn-soft); border-radius:8px; padding:.7rem .75rem; font-size:.75rem; line-height:1.5; margin-bottom:.7rem; }
 .banner b{ color:var(--warn); }
 .hint{ font-size:.75rem; color:var(--muted); line-height:1.55; }
 
-.note{ border:1px solid var(--border); border-radius:10px; padding:.7rem .75rem; margin-bottom:.65rem; background:var(--surface); }
-.note-quote{ display:flex; justify-content:space-between; gap:.5rem; font-style:italic; font-size:.8125rem; line-height:1.5; margin-bottom:.5rem; padding-left:.65rem; border-left:2px solid var(--border); }
-.note-kommentar{ width:100%; border:1px solid transparent; background:none; color:var(--text); font:inherit; font-size:.75rem; resize:none; padding:.2rem; border-radius:6px; }
-.note-kommentar:hover,.note-kommentar:focus{ border-color:var(--border); background:var(--surface-2); }
-.note-meta{ display:flex; justify-content:space-between; font-size:.6875rem; color:var(--muted); margin-top:.4rem; }
-.note-slett,.draft-slett{ border:none; background:none; color:var(--muted); cursor:pointer; font-size:1rem; line-height:1; padding:.1rem .3rem; border-radius:6px; flex-shrink:0; }
-.note-slett:hover,.draft-slett:hover{ color:var(--warn); background:var(--warn-soft); }
-.draft-row{ display:flex; align-items:stretch; gap:.15rem; }
-.draft-row .draft-item{ flex:1; min-width:0; }
+/* ---------- Skuffen: dokumentbehandleren ---------- */
+.skuff{
+  flex:none; height:44px; display:flex; flex-direction:column; overflow:hidden;
+  background:var(--surface); border-top:1px solid var(--border); box-shadow:var(--shadow-opp);
+  position:relative;
+}
+.skuff.apen{ height:46vh; }
+.skuff-grep{
+  position:absolute; top:0; left:0; right:0; height:6px; cursor:ns-resize; z-index:3;
+}
+.skuff.apen .skuff-grep::after{
+  content:''; position:absolute; top:2px; left:50%; transform:translateX(-50%);
+  width:42px; height:3px; border-radius:99px; background:var(--border);
+}
+.skuff-linje{
+  flex:none; display:flex; align-items:center; gap:.6rem; padding:.5rem .9rem;
+  border-bottom:1px solid transparent; min-height:44px;
+}
+.skuff.apen .skuff-linje{ border-bottom-color:var(--border); }
+.skuff-tittelknapp{
+  border:0; background:none; color:var(--text); font-weight:700; font-size:.8125rem;
+  cursor:pointer; display:flex; align-items:center; gap:.45rem; padding:.15rem .2rem; border-radius:6px;
+}
+.skuff-tittelknapp:hover{ color:var(--accent); }
+.skuff-pil{ color:var(--muted); font-size:.7rem; }
+.skuff-velger{
+  border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+  border-radius:8px; padding:.3rem .5rem; font-size:.75rem; max-width:15rem;
+}
+.skuff-verktoy{ margin-left:auto; display:flex; align-items:center; gap:.3rem; flex-wrap:wrap; }
+.skuff-kropp{ flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 320px; }
+.skuff-kropp > *{ min-width:0; min-height:0; overflow-y:auto; }
+.skuff-skriv{ padding:.9rem 1.6rem 2rem; }
+.skuff-sidespalte{ border-left:1px solid var(--border); padding:.85rem .9rem 2rem; background:var(--bg); }
+.dok-tittel{
+  font-size:1.0625rem; font-weight:700; border:0; background:none; color:var(--text);
+  width:100%; max-width:44rem; margin-bottom:.5rem; padding:0;
+}
+.dok-editor{
+  max-width:44rem; font-size:1rem; line-height:1.7; color:var(--text); outline:none; min-height:6rem;
+}
+.dok-editor:empty::before{ content:attr(data-placeholder); color:var(--muted); }
+.dok-lagret{ font-size:.6875rem; color:var(--muted); margin-top:1rem; }
+
+.segment{ display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:2px; gap:2px; margin-bottom:.7rem; }
+.segment button{ flex:1; font-size:.6875rem; font-weight:600; border:0; background:none; color:var(--muted); padding:.3rem .4rem; border-radius:99px; cursor:pointer; }
+.segment button.active{ background:var(--surface); color:var(--accent); box-shadow:var(--shadow); }
+
+.sitatkort{ border:1px solid var(--border); border-radius:10px; padding:.6rem .65rem; margin-bottom:.55rem; background:var(--surface); }
+.sitatkort.los{ border-style:dashed; }
+.sitat-tekst{ font-style:italic; font-size:.8125rem; line-height:1.5; padding-left:.6rem; border-left:2px solid var(--accent-muted); margin-bottom:.4rem; }
+.sitat-kilde{ font-size:.6875rem; color:var(--muted); line-height:1.4; }
+.sitat-kommentar{ width:100%; border:1px solid transparent; background:none; color:var(--text); font:inherit; font-size:.75rem; resize:vertical; padding:.25rem; border-radius:6px; margin-top:.35rem; }
+.sitat-kommentar:hover,.sitat-kommentar:focus{ border-color:var(--border); background:var(--surface-2); }
+.sitat-knapper{ display:flex; gap:.3rem; margin-top:.45rem; flex-wrap:wrap; }
+.minibtn{ border:1px solid var(--border); background:none; color:var(--muted); border-radius:99px; padding:.15rem .5rem; font-size:.625rem; cursor:pointer; }
+.minibtn:hover{ color:var(--text); border-color:var(--accent); }
+.minibtn.fare:hover{ color:var(--warn); border-color:var(--warn); background:var(--warn-soft); }
+
+.axis-row{ display:flex; flex-wrap:wrap; gap:6px; margin-top:.5rem; }
+.axis-chip{ font-size:.65rem; font-weight:600; border-radius:99px; padding:.28rem .6rem; border:1px solid var(--border); color:var(--muted); display:flex; align-items:center; gap:5px; }
+.axis-chip .bar{ width:22px; height:4px; border-radius:2px; background:var(--border); overflow:hidden; }
+.axis-chip .bar i{ display:block; height:100%; background:var(--accent); }
+.axis-chip.thin{ border-color:var(--warn); color:var(--warn); }
+
+.varsel{
+  position:fixed; left:50%; bottom:1.1rem; transform:translateX(-50%); z-index:70;
+  background:var(--text); color:var(--bg); border-radius:99px; padding:.45rem 1rem;
+  font-size:.75rem; box-shadow:var(--shadow);
+}
+.varsel[hidden]{ display:none; }
+
+@media (max-width:1180px){
+  .shell{ grid-template-columns:290px minmax(0,1fr) 300px; }
+  .skuff-kropp{ grid-template-columns:minmax(0,1fr) 260px; }
+}
 
 svg text{ font-family:system-ui,sans-serif; }
 ::-webkit-scrollbar{ width:9px; }
@@ -217,13 +304,12 @@ svg text{ font-family:system-ui,sans-serif; }
 
 <div class="topbar">
   <div class="wordmark">Litteratursøk <small>av Lauvasdata · forskningssok</small></div>
-  <div class="modeswitch" id="modeswitch">
-    <button class="active" data-mode="les">Les</button>
-    <button data-mode="skriv">Skriv</button>
-  </div>
   <div class="topbar-meta">
     <span id="cache-meta">bank.db · —</span>
-    <button class="om-knapp" id="om-knapp" title="Kilder, hva verktøyet ikke gjør, og hvor dataen din lever">ℹ️ Om</button>
+    <button class="pilleknapp" id="skuff-knapp" title="Dokumentet du skriver i — sitater lander her">
+      ✎ Dokument <span class="tall" id="dok-antall" hidden>0</span>
+    </button>
+    <button class="pilleknapp" id="om-knapp" title="Kilder, hva verktøyet ikke gjør, og hvor dataen din lever">ℹ️ Om</button>
   </div>
 </div>
 
@@ -251,6 +337,15 @@ svg text{ font-family:system-ui,sans-serif; }
       <li>Et tomt resultat betyr «ikke søkt/cachet ennå», aldri «forskningen mangler».</li>
     </ul>
 
+    <h3>Varme — hva panelet til høyre faktisk måler</h3>
+    <p>To lag, holdt fra hverandre med vilje. <b>Varig</b> er hva DU har gjort: åpnet,
+      sitert, festet til et dokument — og en brøkdel som smitter over på de semantiske
+      naboene til det du siterte, slik at noe du aldri har åpnet kan stige. <b>Nå</b> er
+      ren avstand mot teksten som står i dokumentet i dette øyeblikket. Ingen av dem er
+      en kvalitetsdom, og et kaldt papir er ikke et dårlig papir — bare ett du ikke har
+      brukt ennå. Varmen synker aldri av seg selv; stolpene er normalisert mot det
+      varmeste du har, ikke mot en absolutt skala.</p>
+
     <h3>Domeneprofil</h3>
     <p>Denne instansen er scopet til norsk lakseoppdrett — fagmiljøer (Havforsknings-
       instituttet, Veterinærinstituttet, NMBU, Nofima, Pharmaq), fagtidsskrifter, og
@@ -259,104 +354,111 @@ svg text{ font-family:system-ui,sans-serif; }
       begge er signaler for DEG å vurdere, ikke en dom verktøyet feller.</p>
 
     <h3>Hvor dataen din lever</h3>
-    <p>Alt (cachede papirer, sitater, utkast) ligger i én lokal sqlite-fil på denne
-      maskinen — ingenting sendes videre til tredjepart utover selve søketeksten til
-      kildene over. Ingen deling mellom brukere ennå.</p>
+    <p>Alt (cachede papirer, sitater, dokumenter, varme) ligger i én lokal sqlite-fil på
+      denne maskinen — ingenting sendes videre til tredjepart utover selve søketeksten
+      til kildene over. Deling skjer ved at DU eksporterer en fil og sender den; verktøyet
+      laster ingenting opp av seg selv.</p>
   </div>
 </div>
 
-<div class="shell" id="shell-les">
-  <div class="pane">
-    <div class="pane-head">
-      <form id="search-form">
-        <input id="search-input" placeholder="f.eks. nephrocalcinosis smolt seawater transfer" value="nephrocalcinosis salmon">
-        <button type="submit">Søk</button>
-      </form>
-      <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
-        <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
-          📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
-        </span>
+<div class="arbeidsrom">
+  <div class="shell">
+    <!-- Venstre: søk og treff -->
+    <div class="pane">
+      <div class="pane-head">
+        <form id="search-form">
+          <input id="search-input" placeholder="f.eks. nephrocalcinosis smolt seawater transfer" value="nephrocalcinosis salmon">
+          <button type="submit">Søk</button>
+        </form>
+        <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
+          <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
+            📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
+          </span>
+        </div>
+        <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
       </div>
-      <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
-    </div>
-    <div class="pane-scroll">
-      <div class="cache-echo" id="cache-echo" hidden></div>
-      <div class="result-list" id="result-list"></div>
-    </div>
-  </div>
-
-  <div class="pane">
-    <div id="reader-head" class="reader-head" hidden>
-      <div class="reader-kicker" id="reader-kicker"></div>
-      <div class="reader-title" id="reader-title"></div>
-      <div class="reader-authors" id="reader-authors"></div>
-      <div class="emner" id="reader-emner"></div>
-      <div class="reader-tilgang" id="reader-tilgang"></div>
-    </div>
-    <div class="pane-scroll">
-      <div id="empty-reader">Søk til venstre, velg et papir for å lese abstractet her.</div>
-      <div class="reader-body" id="reader-body" hidden></div>
-    </div>
-  </div>
-
-  <div class="pane">
-    <div class="tabs">
-      <button class="tab active" data-tab="lignende">Lignende<span class="count" id="c-lignende"></span></button>
-      <button class="tab" data-tab="kart">Kart</button>
-      <button class="tab" data-tab="gap">Gap</button>
-      <button class="tab" data-tab="notater">Notater<span class="count" id="c-notater"></span></button>
-    </div>
-    <div class="pane-scroll">
-      <div class="tabpanel active" id="tab-lignende"><div class="hint">Åpne et papir for å se semantiske naboer i cachen.</div></div>
-      <div class="tabpanel" id="tab-kart"><div class="hint">Åpne et papir for å se relasjonskartet.</div></div>
-      <div class="tabpanel" id="tab-gap"><div class="hint">Åpne et papir for å kjøre citation-gap-testen.</div></div>
-      <div class="tabpanel" id="tab-notater">
-        <span class="rapport-eksport-gruppe blokk" id="eksport-sitatnotater">
-          📄 Eksporter alle notater: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
-        </span>
-        <div id="notater-liste"><div class="hint">Ingen sitater lagret ennå. Merk tekst i leseflaten og trykk «Sitér».</div></div>
+      <div class="pane-scroll">
+        <div class="cache-echo" id="cache-echo" hidden></div>
+        <div class="result-list" id="result-list"></div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- SKRIV-MODUS: FDR-038 ambient-modus — fast panel, aldri inline, speil ikke orakel. -->
-<div class="shell" id="shell-skriv" hidden>
-  <div class="pane">
-    <div class="pane-head">
-      <button id="btn-nytt-utkast" style="border:1px solid var(--border); background:var(--surface-2); color:var(--text); border-radius:8px; padding:.5rem; font-size:.75rem; font-weight:600; cursor:pointer;">+ Nytt utkast</button>
-    </div>
-    <div class="pane-scroll"><div id="draft-list" style="padding:.15rem .5rem 1rem;"></div></div>
-  </div>
-
-  <div class="pane">
-    <div class="skriv-head">
-      <input class="skriv-tittel" id="skriv-tittel" placeholder="Uten tittel">
-      <div class="skriv-meta">Kun lokalt · relevans-panelet til høyre oppdateres når du stopper å skrive</div>
-    </div>
-    <div class="pane-scroll">
-      <div class="skriv-editor" id="skriv-editor" contenteditable="true" data-placeholder="Skriv her…"></div>
-    </div>
-  </div>
-
-  <div class="pane">
-    <div class="tabs">
-      <button class="tab active" data-tab-skriv="relevans">Relevans</button>
-      <button class="tab" data-tab-skriv="omfang">Omfang</button>
-    </div>
-    <div class="pane-scroll">
-      <div class="tabpanel active" id="tab-relevans">
-        <div class="ambient-status venter" id="ambient-status"><i></i><span>skriv noe for å se relevante papirer</span></div>
-        <div id="ambient-list"></div>
-        <div class="hint">Speil, ikke orakel: utdrag fra det du alt har cachet, aldri en generert påstand. Samme prinsipp som Fars ambient-modus (FDR-038).</div>
+    <!-- Midten: leseflaten -->
+    <div class="pane">
+      <div id="reader-head" class="reader-head" hidden>
+        <div class="reader-kicker" id="reader-kicker"></div>
+        <div class="reader-title" id="reader-title"></div>
+        <div class="reader-authors" id="reader-authors"></div>
+        <div class="emner" id="reader-emner"></div>
+        <div class="reader-tilgang" id="reader-tilgang"></div>
       </div>
-      <div class="tabpanel" id="tab-omfang">
-        <div class="hint" style="margin-bottom:.7rem">Hvor mye av det du har skrevet berører hver akse — til scoping, ikke en fasit.</div>
-        <span class="rapport-eksport-gruppe blokk" id="eksport-omfang">
-          📄 Eksporter omfang-rapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+      <div class="pane-scroll">
+        <div id="empty-reader"><div class="tomflate">
+          <b>Ingen papir åpent</b>
+          Søk til venstre og velg et treff. Merk tekst i abstractet for å sitere det —
+          sitatet lander i dokumentskuffen under.
+        </div></div>
+        <div class="reader-body" id="reader-body" hidden></div>
+      </div>
+    </div>
+
+    <!-- Høyre: relevans, med varmen først -->
+    <div class="pane">
+      <div class="tabs">
+        <button class="tab active" data-tab="varmt">Varmt<span class="count" id="c-varmt"></span></button>
+        <button class="tab" data-tab="lignende">Lignende<span class="count" id="c-lignende"></span></button>
+        <button class="tab" data-tab="kart">Kart</button>
+        <button class="tab" data-tab="gap">Gap</button>
+      </div>
+      <div class="pane-scroll">
+        <div class="tabpanel active" id="tab-varmt">
+          <div class="hint">Samler seg mens du jobber.</div>
+        </div>
+        <div class="tabpanel" id="tab-lignende"><div class="hint">Åpne et papir for å se semantiske naboer i cachen.</div></div>
+        <div class="tabpanel" id="tab-kart"><div class="hint">Åpne et papir for å se relasjonskartet.</div></div>
+        <div class="tabpanel" id="tab-gap"><div class="hint">Åpne et papir for å kjøre citation-gap-testen.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skuffen: dokumentbehandleren. Ligger UNDER leseflaten i samme skall, ikke bak en
+       modusbryter — hele poenget er at et sitat kan lande i dokumentet uten at du
+       forlater papiret du leser. -->
+  <div class="skuff" id="skuff">
+    <div class="skuff-grep" id="skuff-grep" title="Dra for å endre høyde"></div>
+    <div class="skuff-linje">
+      <button class="skuff-tittelknapp" id="skuff-toggle">
+        <span class="skuff-pil" id="skuff-pil">▲</span>
+        <span id="skuff-navn">Dokument</span>
+      </button>
+      <select class="skuff-velger" id="dok-velger" title="Bytt dokument"></select>
+      <button class="minibtn" id="btn-nytt-dok">+ Nytt</button>
+      <div class="skuff-verktoy">
+        <span class="rapport-eksport-gruppe">
+          📄 <button class="rapport-btn" id="dok-md">Markdown</button><button class="rapport-btn" id="dok-pdf">PDF</button><button class="rapport-btn" id="dok-kopier" title="Legg hele dokumentet på utklippstavlen som Markdown">Kopier</button><button class="rapport-btn" id="dok-del" title="Del filen via systemets delingsmeny">Del</button>
         </span>
+        <button class="minibtn fare" id="btn-slett-dok" title="Slett dette dokumentet">Slett</button>
+      </div>
+    </div>
+    <div class="skuff-kropp">
+      <div class="skuff-skriv">
+        <input class="dok-tittel" id="dok-tittel" placeholder="Uten tittel">
+        <div class="dok-editor" id="dok-editor" contenteditable="true" data-placeholder="Skriv her — relevanspanelet til høyre varmes opp av det du skriver."></div>
+        <div class="dok-lagret" id="dok-lagret">Lagres lokalt automatisk når du tar en pause.</div>
+      </div>
+      <div class="skuff-sidespalte">
+        <div class="segment" id="sitat-segment">
+          <button class="active" data-linse="dokument">I dokumentet</button>
+          <button data-linse="lose">Løse</button>
+          <button data-linse="alle">Alle</button>
+        </div>
+        <div id="sitat-liste"></div>
+        <div class="seksjonstittel" style="margin-top:1.2rem">Omfang</div>
+        <div class="hint">Hvor mye av det du har skrevet berører hver akse. Tynn dekning betyr at du ikke har skrevet om det ennå — ikke at forskningen mangler.</div>
         <div class="axis-row" id="axis-row"></div>
-        <div class="hint">Tynn dekning betyr at du ikke har skrevet/søkt om det ennå — ikke at forskningen mangler.</div>
+        <span class="rapport-eksport-gruppe" style="margin-top:.6rem">
+          📄 Omfang: <button class="rapport-btn" data-omfang="md">Markdown</button><button class="rapport-btn" data-omfang="pdf">PDF</button>
+        </span>
       </div>
     </div>
   </div>
@@ -366,8 +468,14 @@ svg text{ font-family:system-ui,sans-serif; }
   <button class="selbtn" id="btn-siter">✚ Sitér</button>
 </div>
 
+<div class="varsel" id="varsel" hidden></div>
+
 <script>
-const state = { paperId: null, papers: {}, sisteResultat: { ids: [], tittel: '' } };
+const state = {
+  paperId: null, papers: {}, sisteResultat: { ids: [], tittel: '' },
+  lastNaboer: [], varmet: new Set(), sitatLinse: 'dokument',
+};
+const dok = { id: null, tittel: '', lagreTimer: null, sisteEksport: null };
 
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -378,9 +486,14 @@ async function api(path, opts) {
   return r.json();
 }
 
-function fmtCite(p) {
-  const forfatter = (p.forfattere || '').split(',')[0] || p.tittel.slice(0,20);
-  return `${forfatter} et al. (${p.aar || '?'}). ${p.tidsskrift}.${p.doi ? ' doi:' + p.doi : ''}`;
+function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let varselTimer = null;
+function si(tekst) {
+  const el = $('#varsel');
+  el.textContent = tekst; el.hidden = false;
+  clearTimeout(varselTimer);
+  varselTimer = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
 // ---------- Søk — tre modi fra ETT søk (søk-doktrinen: Oppslag+Oppdagelse alltid
@@ -425,7 +538,7 @@ async function visCacheEko(q, alleredeViste) {
     const nye = rel.naboer.filter(n => !alleredeViste.includes(n.id));
     if (!nye.length) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = '<div class="cache-echo-tittel">Fra din cache — samme betydning, andre ord</div>' +
+    el.innerHTML = '<div class="seksjonstittel">Fra din cache — samme betydning, andre ord</div>' +
       nye.slice(0, 3).map(n => `
         <button class="result" data-id="${escapeHtml(n.id)}">
           <div class="result-row1"><span>${n.aar||'?'} · avstand ${n.avstand.toFixed(3)}</span></div>
@@ -448,12 +561,12 @@ async function foreslaUtforskning(toppId) {
   } catch { /* ingen forslag er en ærlig ikke-feil — knappen forblir skjult */ }
 }
 
-function renderResults(papirer, eksaktId) {
+function renderResults(papirer) {
   const list = $('#result-list');
   list.innerHTML = '';
   for (const p of papirer) {
     const btn = document.createElement('button');
-    btn.className = 'result' + (p.id === eksaktId ? '' : '');
+    btn.className = 'result';
     btn.dataset.id = p.id;
     btn.innerHTML = `
       <div class="result-row1">
@@ -469,9 +582,19 @@ function renderResults(papirer, eksaktId) {
   }
 }
 
-// ---------- Rapport-eksport (idébank #29 §Gul hatt-gjennomgang) — delt av alle fire
-// maler: kildesamling, sitatnotater, citation-gap, omfang. Markdown OG PDF fra samme
-// endepunkt (Anders/Ulven ba om PDF 2026-09-02) — se rapport.py for hvorfor formatet
+const EVIDENS_KORT = {
+  'Systematisk oversikt/meta-analyse': 'SR', 'Randomisert kontrollert studie': 'RCT',
+  'Kohort-/observasjonsstudie': 'Kohort', 'Case-rapport/case-serie': 'Case',
+};
+function evidensBadge(niva) {
+  if (!niva || niva === 'Ukjent design') return '';
+  const kort = EVIDENS_KORT[niva] || niva;
+  return `<span class="pill-evidens" title="${escapeHtml(niva)} — mønster-basert, ikke en kvalitetsdom">${escapeHtml(kort)}</span>`;
+}
+
+// ---------- Rapport-eksport (idébank #29 §Gul hatt-gjennomgang) — delt av alle fem
+// maler: kildesamling, sitatnotater, citation-gap, omfang, dokument. Markdown OG PDF fra
+// samme endepunkt (Anders/Ulven ba om PDF 2026-09-02) — se rapport.py for hvorfor formatet
 // avgjøres server-side (én Blokk-liste, to renderere), ikke ved å konvertere i JS. ----------
 function slugFilnavn(s) {
   return (s || 'rapport').replace(/[^a-z0-9æøå]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
@@ -479,22 +602,26 @@ function slugFilnavn(s) {
 
 const RAPPORT_EKSTENSJON = { pdf: 'pdf', bib: 'bib', ris: 'ris' };
 
+async function hentRapport(baseUrl, format) {
+  const sep = baseUrl.includes('?') ? '&' : '?';
+  const r = await fetch(`${baseUrl}${sep}format=${format}`);
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
+  return r.blob();
+}
+
 async function lastNedRapport(baseUrl, filnavnStem, format, btn) {
   const opprinnelig = btn.textContent;
   btn.disabled = true;
   btn.textContent = format === 'md' ? 'Genererer…' : `Genererer ${format.toUpperCase()}…`;
   try {
-    const sep = baseUrl.includes('?') ? '&' : '?';
-    const r = await fetch(`${baseUrl}${sep}format=${format}`);
-    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText);
-    const blob = await r.blob();
+    const blob = await hentRapport(baseUrl, format);
     const lenke = document.createElement('a');
     lenke.href = URL.createObjectURL(blob);
     lenke.download = `${slugFilnavn(filnavnStem)}.${RAPPORT_EKSTENSJON[format] || 'md'}`;
     lenke.click();
     URL.revokeObjectURL(lenke.href);
   } catch (err) {
-    alert('Kunne ikke generere rapporten: ' + err.message);
+    si('Kunne ikke generere: ' + err.message);
   } finally {
     btn.disabled = false;
     btn.textContent = opprinnelig;
@@ -513,18 +640,6 @@ $$('#eksport-kildesamling .rapport-btn').forEach(btn => btn.addEventListener('cl
                   tittel, btn.dataset.format, btn);
 }));
 
-// Sitatnotater — hele leseloggen, uavhengig av hvilket papir som er åpent.
-$$('#eksport-sitatnotater .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
-  lastNedRapport('/api/rapport/sitatnotater', 'Sitatnotater', btn.dataset.format, btn);
-}));
-
-// Omfang — teksten som faktisk står i utkastet akkurat nå.
-$$('#eksport-omfang .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
-  const tekst = $('#skriv-editor').textContent || '';
-  if (tekst.trim().length < 20) { alert('Skriv litt mer først — for kort tekst å vurdere omfang på.'); return; }
-  lastNedRapport(`/api/rapport/omfang?tekst=${encodeURIComponent(tekst)}`, 'Omfang-rapport', btn.dataset.format, btn);
-}));
-
 // ---------- Utforskning (søk-doktrinens tredje modus — vet domenet, ikke termen) ----------
 async function utforskEmne(emneId, emneNavn) {
   $('#result-status').textContent = 'utforsker…';
@@ -535,7 +650,7 @@ async function utforskEmne(emneId, emneNavn) {
     $('#result-status').textContent = '';
     $('#result-count').textContent = `${data.papirer.length} verk i emnet`;
     for (const p of data.papirer) state.papers[p.id] = p;
-    renderResults(data.papirer, null);
+    renderResults(data.papirer);
     settResultatForEksport(data.papirer, `Kildesamling — emnet «${emneNavn}»`);
     const banner = document.createElement('div');
     banner.className = 'utforsk-banner';
@@ -548,18 +663,6 @@ async function utforskEmne(emneId, emneNavn) {
   } catch (err) {
     $('#result-status').textContent = 'Feil: ' + err.message;
   }
-}
-
-function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-const EVIDENS_KORT = {
-  'Systematisk oversikt/meta-analyse': 'SR', 'Randomisert kontrollert studie': 'RCT',
-  'Kohort-/observasjonsstudie': 'Kohort', 'Case-rapport/case-serie': 'Case',
-};
-function evidensBadge(niva) {
-  if (!niva || niva === 'Ukjent design') return '';
-  const kort = EVIDENS_KORT[niva] || niva;
-  return `<span class="pill-evidens" title="${escapeHtml(niva)} — mønster-basert, ikke en kvalitetsdom">${escapeHtml(kort)}</span>`;
 }
 
 // ---------- Leseflate ----------
@@ -611,28 +714,91 @@ async function openPaper(id) {
     }).catch(()=>{}); // tilgang-info er en bonus, aldri blokkerende
   }
 
+  // «Åpnet» er det svakeste varme-signalet, og telles ÉN gang per papir per økt:
+  // uten den grensen ville et par klikk fram og tilbake i trefflista overdøvd en
+  // faktisk sitering, og panelet hadde målt navigasjon i stedet for interesse.
+  if (!state.varmet.has(id)) {
+    state.varmet.add(id);
+    fetch('/api/varme', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({paper_id: id, hendelse: 'apnet'})}).catch(()=>{});
+  }
+
   loadLignende(id);
-  loadNotater(id);
   loadGapLazy = true; // gap hentes når fanen faktisk åpnes (unngå unødig EBI-kall)
   $('#tab-gap').innerHTML = `<div class="hint">Åpne fanen for å kjøre citation-gap-testen mot dette papiret.</div>`;
   $('#tab-kart').innerHTML = `<div class="hint">Laster…</div>`;
 }
 
-// ---------- Fanevalg (Les) ----------
-// Bevisst begrenset til #shell-les .tab — uten scoping kolliderer denne med Skriv-
-// modusens egne faner (delt .tab/.tabpanel-klasse). Fanget som ekte bug under bygging
-// av Fjordlys-mockupen samme kveld (feil id-prefiks kastet en stille TypeError og lot
-// et panel stå tomt) — scopet fra start her i stedet for å gjenta feilen.
+// ---------- Fanevalg (høyre panel) ----------
+// Bevisst scopet til .shell .tab — uten scoping ville dette kollidert med et hvilket som
+// helst annet .tab-sett på siden. Fanget som ekte bug under bygging av Fjordlys-mockupen
+// (feil id-prefiks kastet en stille TypeError og lot et panel stå tomt).
 let loadGapLazy = false;
-$$('#shell-les .tab').forEach(t => t.addEventListener('click', () => {
+$$('.shell .tab').forEach(t => t.addEventListener('click', () => {
   toolbar.hidden = true;
-  $$('#shell-les .tab').forEach(x => x.classList.remove('active'));
-  $$('#shell-les .tabpanel').forEach(x => x.classList.remove('active'));
+  $$('.shell .tab').forEach(x => x.classList.remove('active'));
+  $$('.shell .tabpanel').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   $('#tab-' + t.dataset.tab).classList.add('active');
+  if (t.dataset.tab === 'varmt') lastVarme();
   if (t.dataset.tab === 'gap' && loadGapLazy && state.paperId) { loadGapLazy = false; loadGap(state.paperId); }
   if (t.dataset.tab === 'kart' && state.paperId) renderKart(state.paperId);
 }));
+
+// ---------- Varme-panelet: to lag, tegnet som to stolper ----------
+// Fargerampen interpoleres i JS, ikke via klasser, fordi tallet den viser er
+// kontinuerlig. Stoppene leses fra CSS-variablene slik at mørk modus arver riktig par.
+function lesFarge(navn) {
+  const s = getComputedStyle(document.documentElement).getPropertyValue(navn).trim();
+  const m = s.match(/^#([0-9a-f]{6})$/i);
+  return m ? [0,2,4].map(i => parseInt(m[1].slice(i, i+2), 16)) : [120,120,120];
+}
+
+// Rampen går i TO RGB-segmenter gjennom --lunken, ikke i ett strekk og ikke i HSL.
+// Begge de enklere variantene ble prøvd og målt live 2026-09-04, begge feilet synlig:
+// en rett RGB-lerp kald→varm treffer rgb(175,152,140) på midten — en avmettet grå som
+// forsvant mot --surface, altså nettopp de halvfulle stolpene som er de vanligste. Og
+// HSL-interpolasjon hjelper ikke her, fordi de to endepunktene ligger ~180° fra hverandre
+// på fargesirkelen: «korteste vei» er tvetydig, og implementasjonen valgte veien om
+// magenta (målt: rgb(203,91,225) på midten). En varmerampe skal ikke krysse fargesirkelen
+// i det hele tatt — mellomstoppet gjør hvert segment kort nok til at ren RGB-lerp holder
+// seg mettet hele veien.
+function varmeFarge(andel) {
+  const t = Math.max(0, Math.min(1, andel));
+  const [fra, til, lokal] = t < 0.5
+    ? [lesFarge('--kald'), lesFarge('--lunken'), t * 2]
+    : [lesFarge('--lunken'), lesFarge('--varm'), (t - 0.5) * 2];
+  return `rgb(${fra.map((c, i) => Math.round(c + (til[i] - c) * lokal)).join(',')})`;
+}
+
+async function lastVarme() {
+  const el = $('#tab-varmt');
+  try {
+    const tekst = $('#dok-editor').textContent || '';
+    const data = await api(`/api/varme?k=12&tekst=${encodeURIComponent(tekst)}`);
+    $('#c-varmt').textContent = data.papirer.length || '';
+    if (!data.papirer.length) {
+      el.innerHTML = '<div class="hint">Ingenting er varmt ennå. Åpne et papir, siter noe — eller skriv i dokumentet under, så dukker det som ligner opp her. Kaldt betyr ubrukt, ikke uinteressant.</div>';
+      return;
+    }
+    const naaHint = data.har_naa_lag ? '' :
+      '<div class="hint" style="margin-bottom:.6rem">Bare det varige laget vises — skriv i dokumentet under for å legge til «nå»-laget.</div>';
+    el.innerHTML = naaHint + data.papirer.map(p => {
+      const samlet = Math.max(p.varig_andel, p.naa_andel);
+      return `
+      <div class="varmekort" data-id="${escapeHtml(p.id)}" style="border-left-color:${varmeFarge(samlet)}">
+        <div class="vk-tittel">${escapeHtml(p.tittel)}</div>
+        <div class="vk-meta">${p.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span>${p.aar||'?'} · ${escapeHtml(p.tidsskrift||'')}</span>${p.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
+        <div class="lagrad"><span>varig</span><span class="lagbar"><i style="width:${Math.round(p.varig_andel*100)}%;background:${varmeFarge(p.varig_andel)}"></i></span></div>
+        <div class="lagrad"><span>nå</span><span class="lagbar"><i style="width:${Math.round(p.naa_andel*100)}%;background:${varmeFarge(p.naa_andel)}"></i></span></div>
+        <div class="vk-aarsak">${escapeHtml(p.aarsaker.join(' · '))}${p.avstand != null ? ` · avstand ${p.avstand.toFixed(3)}` : ''}</div>
+      </div>`;
+    }).join('');
+    $$('.varmekort', el).forEach(k => k.addEventListener('click', () => openPaper(k.dataset.id)));
+  } catch (err) {
+    el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`;
+  }
+}
 
 async function loadLignende(id) {
   const el = $('#tab-lignende');
@@ -679,7 +845,7 @@ async function loadGap(id) {
   }
 }
 
-function renderKart(id) {
+function renderKart() {
   const el = $('#tab-kart');
   const naboer = state.lastNaboer || [];
   if (!naboer.length) { el.innerHTML = '<div class="hint">Ingen naboer å tegne ennå.</div>'; return; }
@@ -706,31 +872,6 @@ function renderKart(id) {
   $$('.kart-node', el).forEach(c => c.addEventListener('click', () => openPaper(c.dataset.id)));
 }
 
-// ---------- Notater ----------
-async function loadNotater(id) {
-  const el = $('#notater-liste');
-  try {
-    const sitater = await api(`/api/sitater?paper_id=${encodeURIComponent(id)}`);
-    $('#c-notater').textContent = sitater.length || '';
-    if (!sitater.length) { el.innerHTML = '<div class="hint">Ingen sitater for dette papiret ennå. Merk tekst i leseflaten og trykk «Sitér».</div>'; return; }
-    el.innerHTML = sitater.map(s => `
-      <div class="note" data-id="${s.id}">
-        <div class="note-quote">«${escapeHtml(s.tekst)}»<button class="note-slett" title="Slett sitat">×</button></div>
-        <textarea class="note-kommentar" placeholder="Kommentar…" rows="1">${escapeHtml(s.kommentar||'')}</textarea>
-        <div class="note-meta"><span>${escapeHtml(fmtCite(state.papers[id]||{}))}</span><span>${new Date(s.opprettet*1000).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}</span></div>
-      </div>`).join('');
-    $$('.note-kommentar', el).forEach(ta => ta.addEventListener('blur', async () => {
-      const noteId = ta.closest('.note').dataset.id;
-      await api(`/api/sitater/${noteId}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({kommentar: ta.value})});
-    }));
-    $$('.note-slett', el).forEach(btn => btn.addEventListener('click', async () => {
-      const noteId = btn.closest('.note').dataset.id;
-      await api(`/api/sitater/${noteId}`, {method:'DELETE'});
-      loadNotater(id);
-    }));
-  } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
-}
-
 // ---------- Utvalgs-verktøylinje (ekte tekstmarkering, ikke simulert) ----------
 const toolbar = $('#seltoolbar');
 document.addEventListener('mouseup', (e) => {
@@ -741,7 +882,7 @@ document.addEventListener('mouseup', (e) => {
   if (!text || !body.contains(sel.anchorNode) || !state.paperId) { toolbar.hidden = true; return; }
   const rect = sel.getRangeAt(0).getBoundingClientRect();
   toolbar.style.left = (rect.left + rect.width/2 - 40) + 'px';
-  toolbar.style.top = (rect.top - 44 + window.scrollY) + 'px';
+  toolbar.style.top = (rect.top - 44) + 'px';
   toolbar.hidden = false;
   toolbar.dataset.tekst = text;
 });
@@ -752,138 +893,280 @@ $('#btn-siter').addEventListener('click', async () => {
   if (!tekst || !state.paperId) return;
   toolbar.hidden = true;
   try {
-    await api('/api/sitater', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({paper_id: state.paperId, tekst})});
+    // Hybriden: er et dokument åpent, festes sitatet til det med én gang. Er det ikke,
+    // lagres det løst — aldri tapt, aldri dyttet inn i et dokument du ikke valgte.
+    await api('/api/sitater', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({paper_id: state.paperId, tekst, utkast_id: dok.id})});
     const p = $('#abstract-p');
     if (p && p.textContent.includes(tekst)) $('#gutter-0').innerHTML = '<i></i>';
-    loadNotater(state.paperId);
-    $$('.tab').forEach(x=>x.classList.remove('active')); $$('.tabpanel').forEach(x=>x.classList.remove('active'));
-    $('.tab[data-tab="notater"]').classList.add('active'); $('#tab-notater').classList.add('active');
-  } catch (err) { alert('Kunne ikke lagre: ' + err.message); }
+    apneSkuff();
+    if (!dok.id) state.sitatLinse = 'lose';
+    settLinse(state.sitatLinse);
+    si(dok.id ? 'Sitat lagt i dokumentet' : 'Sitat lagret løst — velg et dokument for å feste det');
+    lastVarme();
+  } catch (err) { si('Kunne ikke lagre: ' + err.message); }
 });
 
-// ---------- Skriv-modus (FDR-038 ambient-modus) ----------
-const skrivState = { utkastId: null, debounceTimer: null };
+// ---------- Skuffen: åpne/lukke/dra ----------
+const skuff = $('#skuff');
+function skuffErApen() { return skuff.classList.contains('apen'); }
+function apneSkuff() {
+  if (skuffErApen()) return;
+  skuff.classList.add('apen');
+  if (skuffHoyde) skuff.style.height = skuffHoyde + 'px';
+  $('#skuff-pil').textContent = '▼';
+  $('#skuff-knapp').classList.add('aktiv');
+}
+function lukkSkuff() {
+  skuff.classList.remove('apen');
+  skuff.style.height = '';
+  $('#skuff-pil').textContent = '▲';
+  $('#skuff-knapp').classList.remove('aktiv');
+}
+function vekslSkuff() { skuffErApen() ? lukkSkuff() : apneSkuff(); }
+$('#skuff-toggle').addEventListener('click', vekslSkuff);
+$('#skuff-knapp').addEventListener('click', vekslSkuff);
 
-$$('#modeswitch button').forEach(b => b.addEventListener('click', () => {
-  $$('#modeswitch button').forEach(x => x.classList.remove('active'));
-  b.classList.add('active');
-  $('#shell-les').hidden = b.dataset.mode !== 'les';
-  $('#shell-skriv').hidden = b.dataset.mode !== 'skriv';
-  if (b.dataset.mode === 'skriv') lastDraftList();
-}));
+let skuffHoyde = 0;
+(() => {
+  const grep = $('#skuff-grep');
+  let drar = false;
+  grep.addEventListener('mousedown', (e) => {
+    if (!skuffErApen()) { apneSkuff(); return; }
+    drar = true; skuff.classList.add('drar');
+    e.preventDefault(); // uten denne starter nettleseren tekstmarkering i stedet for dra
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!drar) return;
+    // Nedre grense er skuff-linjens egen høyde: dras den lavere blir verktøylinjen
+    // klippet, og skuffen ser ødelagt ut i stedet for lukket.
+    const h = Math.min(Math.max(window.innerHeight - e.clientY, 44), window.innerHeight - 160);
+    skuffHoyde = h;
+    skuff.style.height = h + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!drar) return;
+    drar = false; skuff.classList.remove('drar');
+    if (skuffHoyde <= 60) lukkSkuff();
+  });
+})();
 
-$$('#shell-skriv .tab').forEach(t => t.addEventListener('click', () => {
-  $$('#shell-skriv .tab').forEach(x => x.classList.remove('active'));
-  $$('#shell-skriv .tabpanel').forEach(x => x.classList.remove('active'));
-  t.classList.add('active');
-  $('#tab-' + t.dataset.tabSkriv).classList.add('active');
-}));
-
-async function lastDraftList() {
+// ---------- Dokumentet ----------
+async function lastDokListe(velgId) {
   const liste = await api('/api/utkast').catch(() => []);
-  const el = $('#draft-list');
-  if (!liste.length) { el.innerHTML = '<div class="hint">Ingen utkast ennå — trykk «+ Nytt utkast».</div>'; return; }
-  el.innerHTML = liste.map(u => `
-    <div class="draft-row">
-      <button class="draft-item${u.id === skrivState.utkastId ? ' active' : ''}" data-id="${u.id}">
-        <div class="t">${escapeHtml(u.tittel)}</div>
-        <div class="m">${new Date(u.oppdatert * 1000).toLocaleString('no-NO', {dateStyle:'short', timeStyle:'short'})}</div>
-      </button>
-      <button class="draft-slett" title="Slett utkast" data-id="${u.id}">×</button>
-    </div>`).join('');
-  $$('.draft-item', el).forEach(b => b.addEventListener('click', () => apneUtkast(Number(b.dataset.id))));
-  $$('.draft-slett', el).forEach(b => b.addEventListener('click', async () => {
-    const draftId = Number(b.dataset.id);
-    await api(`/api/utkast/${draftId}`, {method:'DELETE'});
-    if (skrivState.utkastId === draftId) {
-      skrivState.utkastId = null;
-      $('#skriv-tittel').value = '';
-      $('#skriv-editor').textContent = '';
-      $('#ambient-status').className = 'ambient-status venter';
-      $('#ambient-status').innerHTML = '<i></i><span>skriv noe for å se relevante papirer</span>';
-      $('#ambient-list').innerHTML = '';
-      $('#axis-row').innerHTML = '';
+  const velger = $('#dok-velger');
+  velger.innerHTML = liste.length
+    ? liste.map(u => `<option value="${u.id}">${escapeHtml(u.tittel)}</option>`).join('')
+    : '<option value="">(ingen dokumenter)</option>';
+  const maal = velgId ?? dok.id;
+  if (maal && liste.some(u => u.id === maal)) velger.value = String(maal);
+  return liste;
+}
+
+async function apneDok(id) {
+  const u = await api(`/api/utkast/${id}`).catch(() => null);
+  if (!u) return;
+  dok.id = u.id;
+  dok.tittel = u.tittel;
+  $('#dok-tittel').value = u.tittel === 'Uten tittel' ? '' : u.tittel;
+  $('#dok-editor').textContent = u.innhold;
+  $('#skuff-navn').textContent = u.tittel;
+  $('#dok-lagret').textContent = 'Lagret ' + new Date(u.oppdatert * 1000).toLocaleTimeString('no-NO', {hour:'2-digit', minute:'2-digit'});
+  await lastDokListe(u.id);
+  await settLinse(state.sitatLinse);
+  oppdaterOmfang(u.innhold);
+}
+
+$('#dok-velger').addEventListener('change', (e) => { if (e.target.value) apneDok(Number(e.target.value)); });
+
+$('#btn-nytt-dok').addEventListener('click', async () => {
+  const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({tittel:'', innhold:''})});
+  await lastDokListe(u.id);
+  await apneDok(u.id);
+  apneSkuff();
+  $('#dok-tittel').focus();
+});
+
+$('#btn-slett-dok').addEventListener('click', async () => {
+  if (!dok.id) return;
+  // Sitatene overlever: DELETE /api/utkast rører ikke sitater-tabellen, og de som var
+  // festet blir løse igjen ved neste «Løse»-oppslag (utkast_id peker på et borte
+  // dokument). Advarselen sier det, slik at ingen tror de sletter kildearbeidet sitt.
+  if (!confirm(`Slette «${dok.tittel}»? Sitatene du har lagret blir liggende som løse.`)) return;
+  await api(`/api/utkast/${dok.id}`, {method:'DELETE'});
+  dok.id = null; dok.tittel = '';
+  $('#dok-tittel').value = ''; $('#dok-editor').textContent = '';
+  $('#skuff-navn').textContent = 'Dokument';
+  $('#axis-row').innerHTML = '';
+  const liste = await lastDokListe(null);
+  if (liste.length) await apneDok(liste[0].id); else settLinse('lose');
+});
+
+function lagreDokDebounced() {
+  clearTimeout(dok.lagreTimer);
+  $('#dok-lagret').textContent = 'endret …';
+  dok.lagreTimer = setTimeout(async () => {
+    const tittel = $('#dok-tittel').value;
+    const innhold = $('#dok-editor').textContent;
+    const kropp = dok.id ? {id: dok.id, tittel, innhold} : {tittel, innhold};
+    const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(kropp)}).catch(() => null);
+    if (!u) { $('#dok-lagret').textContent = 'kunne ikke lagre — teksten står fortsatt her'; return; }
+    dok.id = u.id; dok.tittel = u.tittel;
+    $('#skuff-navn').textContent = u.tittel;
+    $('#dok-lagret').textContent = 'Lagret ' + new Date().toLocaleTimeString('no-NO', {hour:'2-digit', minute:'2-digit'});
+    await lastDokListe(u.id);
+    oppdaterOmfang(innhold);
+    lastVarme(); // «nå»-laget følger teksten — samme pause som utløser lagringen
+  }, 1200); // debounce ved PAUSE, ikke tastetrykk — FDR-038s eget krav
+}
+$('#dok-tittel').addEventListener('input', lagreDokDebounced);
+$('#dok-editor').addEventListener('input', lagreDokDebounced);
+
+// ---------- Sitatene i skuffen: tre linser på ETT lager ----------
+$$('#sitat-segment button').forEach(b => b.addEventListener('click', () => settLinse(b.dataset.linse)));
+
+async function settLinse(linse) {
+  state.sitatLinse = linse;
+  $$('#sitat-segment button').forEach(b => b.classList.toggle('active', b.dataset.linse === linse));
+  const el = $('#sitat-liste');
+  let url = '/api/sitater';
+  if (linse === 'dokument') {
+    if (!dok.id) {
+      el.innerHTML = '<div class="hint">Ingen dokument åpent. Trykk «+ Nytt» — eller siter noe nå, så havner det under «Løse» til du fester det.</div>';
+      $('#dok-antall').hidden = true;
+      return;
     }
-    lastDraftList();
+    url += `?utkast_id=${dok.id}`;
+  } else if (linse === 'lose') {
+    url += '?kun_lose=true';
+  }
+  try {
+    const sitater = await api(url);
+    if (linse === 'dokument') {
+      $('#dok-antall').hidden = sitater.length === 0;
+      $('#dok-antall').textContent = sitater.length;
+    }
+    if (!sitater.length) {
+      el.innerHTML = `<div class="hint">${linse === 'lose'
+        ? 'Ingen løse sitater — alt du har sitert er festet til et dokument.'
+        : 'Ingen sitater her ennå. Merk tekst i leseflaten over og trykk «Sitér».'}</div>`;
+      return;
+    }
+    el.innerHTML = sitater.map(s => tegnSitat(s)).join('');
+    koblSitatHandlinger(el);
+  } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
+}
+
+function tegnSitat(s) {
+  const los = s.utkast_id == null;
+  const forfatter = (s.paper_forfattere || '').split(',')[0] || '';
+  const kilde = [forfatter && forfatter + (s.paper_forfattere.includes(',') ? ' et al.' : ''),
+                 s.paper_aar && `(${s.paper_aar})`, s.paper_tittel]
+                .filter(Boolean).join(' ');
+  return `
+    <div class="sitatkort${los ? ' los' : ''}" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}">
+      <div class="sitat-tekst">«${escapeHtml(s.tekst)}»</div>
+      <div class="sitat-kilde">${escapeHtml(kilde)}${s.paper_doi ? ' · doi:' + escapeHtml(s.paper_doi) : ''}</div>
+      <textarea class="sitat-kommentar" placeholder="Kommentar…" rows="1">${escapeHtml(s.kommentar||'')}</textarea>
+      <div class="sitat-knapper">
+        <button class="minibtn" data-handling="apne">Åpne papiret</button>
+        ${los
+          ? '<button class="minibtn" data-handling="fest">✚ Fest til dokumentet</button>'
+          : '<button class="minibtn" data-handling="losne">↩ Løsne</button>'}
+        <button class="minibtn fare" data-handling="slett">Slett</button>
+      </div>
+    </div>`;
+}
+
+function koblSitatHandlinger(rot) {
+  $$('.sitat-kommentar', rot).forEach(ta => ta.addEventListener('blur', async () => {
+    const id = ta.closest('.sitatkort').dataset.id;
+    await api(`/api/sitater/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({kommentar: ta.value})}).catch(err => si('Kommentaren ble ikke lagret: ' + err.message));
+  }));
+  $$('.sitatkort .minibtn', rot).forEach(btn => btn.addEventListener('click', async () => {
+    const kort = btn.closest('.sitatkort');
+    const id = Number(kort.dataset.id);
+    const handling = btn.dataset.handling;
+    try {
+      if (handling === 'apne') { openPaper(kort.dataset.paper); return; }
+      if (handling === 'fest') {
+        if (!dok.id) { si('Ingen dokument åpent — trykk «+ Nytt» først'); return; }
+        await api(`/api/sitater/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({utkast_id: dok.id})});
+        si('Festet til «' + dok.tittel + '»');
+        lastVarme();
+      }
+      if (handling === 'losne') {
+        await api(`/api/sitater/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({utkast_id: null})});
+        si('Løsnet — sitatet ligger fortsatt under «Løse»');
+      }
+      if (handling === 'slett') {
+        if (!confirm('Slette dette sitatet for godt?')) return;
+        await api(`/api/sitater/${id}`, {method:'DELETE'});
+      }
+      settLinse(state.sitatLinse);
+    } catch (err) { si('Feil: ' + err.message); }
   }));
 }
 
-async function apneUtkast(id) {
-  const u = await api(`/api/utkast/${id}`).catch(() => null);
-  if (!u) return;
-  skrivState.utkastId = u.id;
-  $('#skriv-tittel').value = u.tittel === 'Uten tittel' ? '' : u.tittel;
-  $('#skriv-editor').textContent = u.innhold;
-  lastDraftList();
-  oppdaterRelevansOgOmfang(u.innhold);
+// ---------- Eksport og deling av dokumentet ----------
+function dokUrl() { return `/api/rapport/dokument?utkast_id=${dok.id}`; }
+function krevDok() {
+  if (!dok.id) { si('Ingen dokument åpent ennå'); return false; }
+  return true;
 }
+$('#dok-md').addEventListener('click', (e) => { if (krevDok()) lastNedRapport(dokUrl(), dok.tittel, 'md', e.target); });
+$('#dok-pdf').addEventListener('click', (e) => { if (krevDok()) lastNedRapport(dokUrl(), dok.tittel, 'pdf', e.target); });
 
-$('#btn-nytt-utkast').addEventListener('click', async () => {
-  const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tittel:'', innhold:''})});
-  skrivState.utkastId = u.id;
-  $('#skriv-tittel').value = '';
-  $('#skriv-editor').textContent = '';
-  $('#ambient-status').className = 'ambient-status venter';
-  $('#ambient-status').innerHTML = '<i></i><span>skriv noe for å se relevante papirer</span>';
-  $('#ambient-list').innerHTML = '';
-  $('#axis-row').innerHTML = '';
-  lastDraftList();
+$('#dok-kopier').addEventListener('click', async () => {
+  if (!krevDok()) return;
+  try {
+    const md = await (await hentRapport(dokUrl(), 'md')).text();
+    await navigator.clipboard.writeText(md);
+    si('Dokumentet er kopiert som Markdown');
+  } catch (err) { si('Kunne ikke kopiere: ' + err.message); }
 });
 
-function lagreUtkastDebounced() {
-  clearTimeout(skrivState.debounceTimer);
-  const tittel = $('#skriv-tittel').value;
-  const innhold = $('#skriv-editor').textContent;
-  skrivState.debounceTimer = setTimeout(async () => {
-    if (!skrivState.utkastId) {
-      const u = await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tittel, innhold})});
-      skrivState.utkastId = u.id;
-    } else {
-      await api('/api/utkast', {method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({id: skrivState.utkastId, tittel, innhold})});
-    }
-    lastDraftList();
-    oppdaterRelevansOgOmfang(innhold);
-  }, 1200); // debounce ved PAUSE, ikke tastetrykk — FDR-038s eget krav
-}
-$('#skriv-tittel').addEventListener('input', lagreUtkastDebounced);
-$('#skriv-editor').addEventListener('input', lagreUtkastDebounced);
-
-async function oppdaterRelevansOgOmfang(tekst) {
-  const status = $('#ambient-status');
-  if (!tekst || tekst.trim().length < 20) {
-    status.className = 'ambient-status venter';
-    status.innerHTML = '<i></i><span>skriv litt til — for kort tekst å finne relevans i ennå</span>';
-    $('#ambient-list').innerHTML = '';
-    $('#axis-row').innerHTML = '';
-    return;
-  }
-  status.className = 'ambient-status';
-  status.innerHTML = '<i></i><span>oppdatert nå — pauset skriving</span>';
+// Deling går gjennom systemets egen delingsmeny med FILEN — verktøyet laster ingenting
+// opp noe sted (se Om-panelet). navigator.share finnes ikke i alle nettlesere, og
+// canShare({files}) er en egen, strengere port: uten begge faller vi tilbake til
+// nedlasting, som er den ærlige «del den selv»-veien, ikke en feilmelding.
+$('#dok-del').addEventListener('click', async (e) => {
+  if (!krevDok()) return;
+  const btn = e.target;
   try {
-    const [rel, omf] = await Promise.all([
-      api(`/api/relevans?tekst=${encodeURIComponent(tekst)}`),
-      api(`/api/omfang?tekst=${encodeURIComponent(tekst)}`),
-    ]);
-    $('#ambient-list').innerHTML = rel.naboer.length
-      ? rel.naboer.map(n => `
-          <div class="neighbor" data-id="${escapeHtml(n.id)}">
-            <div class="ambient-why">avstand ${n.avstand.toFixed(3)}</div>
-            <div class="neighbor-title">${escapeHtml(n.tittel)}</div>
-            <div class="neighbor-row1" style="margin-top:.3rem">${n.domene_naer ? '<span class="star" title="Norsk fagmiljø/fagtidsskrift">★</span>' : ''}<span>${n.aar||'?'} · ${escapeHtml(n.tidsskrift||'')}</span>${n.arts_naer === false ? '<span class="pill-species" title="Nevner ikke laks/oppdrettsfisk">⚠ art?</span>' : ''}</div>
-          </div>`).join('')
-      : '<div class="hint">Ingen treff i cachen ennå for dette — ingen treff betyr ikke ingen forskning, bare at du ikke har søkt det opp i Les-fanen.</div>';
-    $$('.neighbor', $('#ambient-list')).forEach(n => n.addEventListener('click', () => {
-      $('[data-mode="les"]').click();
-      openPaper(n.dataset.id);
-    }));
-
-    $('#axis-row').innerHTML = Object.entries(omf.akser).map(([akse, verdi]) => `
-      <span class="axis-chip${verdi < 0.3 ? ' thin' : ''}">${escapeHtml(akse)}<span class="bar"><i style="width:${Math.round(verdi*100)}%"></i></span></span>`).join('');
+    const blob = await hentRapport(dokUrl(), 'pdf');
+    const fil = new File([blob], `${slugFilnavn(dok.tittel)}.pdf`, {type: 'application/pdf'});
+    if (navigator.canShare && navigator.canShare({files: [fil]})) {
+      await navigator.share({files: [fil], title: dok.tittel});
+      return;
+    }
+    si('Nettleseren har ingen delingsmeny — laster ned PDF-en i stedet');
+    lastNedRapport(dokUrl(), dok.tittel, 'pdf', btn);
   } catch (err) {
-    status.innerHTML = `<i></i><span>Feil: ${escapeHtml(err.message)}</span>`;
+    if (err.name !== 'AbortError') si('Deling feilet: ' + err.message);
   }
+});
+
+// ---------- Omfang ----------
+async function oppdaterOmfang(tekst) {
+  const rad = $('#axis-row');
+  if (!tekst || tekst.trim().length < 20) { rad.innerHTML = '<div class="hint">Skriv litt til.</div>'; return; }
+  try {
+    const omf = await api(`/api/omfang?tekst=${encodeURIComponent(tekst)}`);
+    rad.innerHTML = Object.entries(omf.akser).map(([akse, verdi]) => `
+      <span class="axis-chip${verdi < 0.3 ? ' thin' : ''}">${escapeHtml(akse)}<span class="bar"><i style="width:${Math.round(verdi*100)}%"></i></span></span>`).join('');
+  } catch { rad.innerHTML = '<div class="hint">Kunne ikke måle omfang akkurat nå.</div>'; }
 }
+$$('[data-omfang]').forEach(btn => btn.addEventListener('click', () => {
+  const tekst = $('#dok-editor').textContent || '';
+  if (tekst.trim().length < 20) { si('Skriv litt mer først — for kort tekst å vurdere omfang på'); return; }
+  lastNedRapport(`/api/rapport/omfang?tekst=${encodeURIComponent(tekst)}`, 'Omfang-rapport', btn.dataset.omfang, btn);
+}));
 
 // ---------- Om-panel (metodikk/transparens) ----------
 const KILDENAVN = {europe_pmc: 'Europe PMC', openalex: 'OpenAlex', core: 'CORE'};
@@ -903,7 +1186,11 @@ function lukkOmPanel() { $('#om-overlay').hidden = true; }
 $('#om-knapp').addEventListener('click', apneOmPanel);
 $('#om-lukk').addEventListener('click', lukkOmPanel);
 $('#om-overlay').addEventListener('click', e => { if (e.target.id === 'om-overlay') lukkOmPanel(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#om-overlay').hidden) lukkOmPanel(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('#om-overlay').hidden) { lukkOmPanel(); return; }
+  if (skuffErApen() && !$('#dok-editor').contains(document.activeElement)) lukkSkuff();
+});
 
 // ---------- Første last ----------
 // IKKE dispatchEvent(new Event('submit')) her — Firefox kan la en slik "ikke-klarert"
@@ -917,6 +1204,13 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#om-ov
 // helt uavhengig av server/nettverk/VPN — alt utelukket først). Direkte funksjonskall
 // unngår hele skjema-innsendingsmekanismen.
 api('/api/status').then(s => $('#cache-meta').textContent = `bank.db · ${s.papirer_cachet} papirer cachet`).catch(()=>{});
+
+(async () => {
+  const liste = await lastDokListe(null);
+  if (liste.length) await apneDok(liste[0].id); else await settLinse('lose');
+  lastVarme();
+})();
+
 utforSok($('#search-input').value.trim());
 </script>
 </body>

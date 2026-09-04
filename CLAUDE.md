@@ -9,7 +9,9 @@
   `adapters/*.py` bruker synkron `httpx.get()`, ikke `httpx.AsyncClient`. Samme
   ADR-004-disiplin (spørretid + TTL-cache) som resten av huset — ikke en mangel
   som bør "rettes" til async.
-- Ingen Docker i dette repoet.
+- Docker: `Dockerfile` + `docker-compose.yml` finnes (Dokploy-deploy, se README
+  §Deploy). Denne linjen sa «ingen Docker i dette repoet» til 2026-09-04 — den var
+  sann da den ble skrevet og drev fra virkeligheten da deploy-oppsettet kom inn.
 
 ## Konvensjoner
 - Typehints er påkrevd.

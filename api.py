@@ -75,6 +75,18 @@ def _kilde_naabar(url: str, *, timeout: float = 4.0) -> bool:
         return False
 
 
+def _varm_stille(paper_id: str, hendelse: str) -> None:
+    """Varme er et BIPRODUKT av at du bruker verktøyet — den skal aldri kunne velte
+    handlingen som utløste den. En feilet varme-skriving (låst db, papir ikke cachet)
+    logges og svelges; et sitat som ble lagret skal ikke bli et 500 fordi et
+    relevanssignal ikke lot seg oppdatere."""
+    try:
+        bank.varm_opp(paper_id, hendelse)
+    except Exception:
+        logger.warning("varm_opp(%s, %s) feilet — handlingen selv er upåvirket",
+                       paper_id, hendelse, exc_info=True)
+
+
 @app.get("/api/status")
 def api_status():
     """Helse-/kommandosenter-flate: tenkt som en pluggbar sjekk for
@@ -216,25 +228,45 @@ def api_emne_utforsk(emne_id: str, background_tasks: BackgroundTasks, navn: str 
 
 
 @app.get("/api/sitater")
-def api_sitater_liste(paper_id: str | None = None):
-    return bank.hent_sitater(paper_id)
+def api_sitater_liste(paper_id: str | None = None, utkast_id: int | None = None,
+                       kun_lose: bool = False):
+    return bank.hent_sitater(paper_id, utkast_id=utkast_id, kun_lose=kun_lose)
 
 
 @app.post("/api/sitater")
 def api_sitater_lagre(body: dict):
+    """`utkast_id` er valgfri — er dokumentskuffen åpen sender frontend den med, og
+    sitatet lander i dokumentet med én gang. Uten den blir det et løst sitat (se
+    bank.lagre_sitat sin docstring for hvorfor det ikke er en degradering)."""
     paper_id = body.get("paper_id", "")
     tekst = (body.get("tekst") or "").strip()
     if not paper_id or not tekst:
         raise HTTPException(400, "paper_id og tekst er påkrevd")
     try:
-        return bank.lagre_sitat(paper_id, tekst, body.get("kommentar", ""))
+        sitat = bank.lagre_sitat(paper_id, tekst, body.get("kommentar", ""), body.get("utkast_id"))
     except ValueError as e:
         raise HTTPException(404, str(e)) from e
+    # Varmen legges HER, ikke i frontend: en sitering er den sterkeste handlingen i
+    # verktøyet, og den skal telle likt uansett hvilken flate som utløste den.
+    _varm_stille(paper_id, "sitert")
+    return sitat
 
 
 @app.patch("/api/sitater/{sitat_id}")
 def api_sitater_oppdater(sitat_id: int, body: dict):
-    if not bank.oppdater_sitat(sitat_id, body.get("kommentar", "")):
+    """To uavhengige felt på samme rad: «kommentar» (redigering) og «utkast_id»
+    (feste/løsne mot et dokument). utkast_id=null er en GYLDIG verdi — «løsne» — så
+    tilstedeværelsen av nøkkelen, ikke sannhetsverdien, avgjør om den skrives."""
+    endret = False
+    if "kommentar" in body:
+        endret = bank.oppdater_sitat(sitat_id, body.get("kommentar", "")) or endret
+    if "utkast_id" in body:
+        endret = bank.knytt_sitat(sitat_id, body["utkast_id"]) or endret
+        if endret and body["utkast_id"] is not None:
+            traff = [s for s in bank.hent_sitater() if s["id"] == sitat_id]
+            if traff:
+                _varm_stille(traff[0]["paper_id"], "dokument")
+    if not endret:
         raise HTTPException(404, "sitat finnes ikke")
     return {"ok": True}
 
@@ -283,6 +315,101 @@ def api_relevans(tekst: str, k: int = 4):
     sitt eget kontraktsvar), ALDRI en feil — en «gir ingenting»-respons her SKAL se ut
     som stillhet, ikke en 4xx/5xx."""
     return {"naboer": bank.lignende_tekst(tekst, k=k)}
+
+
+@app.post("/api/varme")
+def api_varme_legg(body: dict):
+    """Frontend melder inn de svake signalene (åpnet et papir). De sterke («sitert»,
+    «dokument») legges server-side der handlingen skjer, ikke herfra."""
+    paper_id = (body.get("paper_id") or "").strip()
+    hendelse = body.get("hendelse", "apnet")
+    if not paper_id:
+        raise HTTPException(400, "paper_id er påkrevd")
+    if hendelse not in ("apnet",):
+        raise HTTPException(400, f"«{hendelse}» settes ikke utenfra")
+    _varm_stille(paper_id, hendelse)
+    return {"ok": True}
+
+
+@app.get("/api/varme")
+def api_varme(tekst: str = "", k: int = 12):
+    """Relevanspanelet, TO LAG SLÅTT SAMMEN MEN ALDRI BLANDET (Anders' valg 2026-09-04).
+
+    - `varig`: akkumulert bruk over tid (bank.varmeliste) — hukommelse, overlever
+      dokumentbytte og omstart.
+    - `naa`: semantisk avstand mot teksten som står i dokumentet i dette øyeblikket
+      (bank.lignende_tekst) — glemmer alt straks du bytter dokument.
+
+    Hvert kort bærer BEGGE tallene, og `aarsaker` sier hvilke av dem som faktisk
+    løftet det. Et papir som er varmt av gammel bruk, men fjernt fra det du skriver nå,
+    skal se annerledes ut enn ett som er nær nå men aldri rørt — å slå dem sammen til
+    ett tall ville skjult nettopp forskjellen som gjør panelet lesbart.
+
+    De to stolpene har BEVISST ULIK skala, fordi de to tallene er ulike slags tall:
+
+    - `varig_andel` er relativ (mot listas egen maks). Varmepoeng har ingen enhet — «7,3»
+      betyr ingenting alene, «varmest av det du har» betyr noe.
+    - `naa_andel` er ABSOLUTT (1 - avstand/2, over L2-rommets 0..2). Den var først
+      normalisert mot maks som varig-laget, og det var målbart en løgn: live 2026-09-04
+      lå de tolv kandidatene på avstand 0.955–1.002, altså ~5 % spredning, og
+      maks-normaliseringen tegnet dem ALLE som nesten fulle stolper. Panelet påstod
+      «alt er brennhett» der sannheten var «alt ligger middels nær, og omtrent like
+      nær». Med absolutt skala står de nå på ~halv stolpe, og et faktisk nært treff
+      (avstand 0.2 → 0.9) skiller seg ut fordi det ER annerledes, ikke fordi det tilfeldig
+      var best i en flat gruppe."""
+    varig = bank.varmeliste(k=k)
+    naa = bank.lignende_tekst(tekst, k=k) if (tekst or "").strip() else []
+
+    maks_poeng = max((v["poeng"] for v in varig), default=0.0)
+    # Nærheten snus fra avstand: L2 er lavere=bedre, og et panel der den lengste stolpen
+    # betyr «fjernest» ville løyet visuelt uansett hvilken skala den ellers hadde.
+    naerhet = {n["id"]: max(0.0, 1.0 - n["avstand"] / 2.0) for n in naa}
+
+    samlet: dict[str, dict] = {}
+    for v in varig:
+        samlet[v["id"]] = {**v, "avstand": None, "varig": v["poeng"], "naa": 0.0,
+                            "aarsaker": [_varme_aarsak(v["sterkeste_hendelse"])]}
+    for n in naa:
+        rad = samlet.setdefault(n["id"], {**n, "poeng": 0.0, "sterkeste_hendelse": None,
+                                          "varig": 0.0, "aarsaker": []})
+        rad["avstand"] = n["avstand"]
+        rad["naa"] = naerhet[n["id"]]
+        rad["aarsaker"] = rad["aarsaker"] + ["nær det du skriver nå"]
+
+    for rad in samlet.values():
+        rad["varig_andel"] = round(rad["varig"] / maks_poeng, 3) if maks_poeng else 0.0
+        rad["naa_andel"] = round(rad["naa"], 3)
+
+    rader = sorted(samlet.values(),
+                   key=lambda r: (not r["domene_naer"], not r["arts_naer"],
+                                  -(r["varig_andel"] + r["naa_andel"])))
+    return {"papirer": rader[:k], "har_naa_lag": bool(naa)}
+
+
+_VARME_AARSAK = {
+    "sitert": "du siterte det",
+    "dokument": "du festet det til et dokument",
+    "apnet": "du har lest det",
+    "nabo": "nabo av noe du siterte",
+}
+
+
+def _varme_aarsak(hendelse: str | None) -> str:
+    return _VARME_AARSAK.get(hendelse or "", "brukt tidligere")
+
+
+@app.get("/api/rapport/dokument")
+def api_rapport_dokument(utkast_id: int, format: str = "md"):
+    """Dokumentet slik det står — brødteksten din PLUSS sitatene som er festet til det,
+    med full kildehenvisning. Dette er filen Ulven faktisk deler videre, og den er derfor
+    den eneste rapporten som blander egen tekst med sitert tekst; blokk-typene holder de
+    to fra hverandre visuelt i begge formater (se rapport.dokument_blokker)."""
+    utkast = bank.hent_utkast(utkast_id)
+    if not utkast:
+        raise HTTPException(404, "utkast finnes ikke")
+    sitater = bank.hent_sitater(utkast_id=utkast_id)
+    blokker = rapport.dokument_blokker(utkast, sitater)
+    return _rapport_svar(blokker, format, utkast["tittel"], utkast["tittel"])
 
 
 @app.get("/api/rapport/kildesamling")

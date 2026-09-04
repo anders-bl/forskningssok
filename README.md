@@ -255,6 +255,80 @@ en eksplisitt `.om-overlay[hidden]{ display:none }`-regel (høyere spesifisitet)
 Live-verifisert: skjult ved last, åpner med kilde-status synlig, lukkes med
 Escape/bakgrunnsklikk/×-knapp.
 
+## Ett arbeidsrom med skuff — modusbryteren er borte (2026-09-04)
+
+Fram til nå var «Les» og «Skriv» to modi bak en bryter i toppbaren, og et sitat kunne
+bare havne i en notatliste. Anders' brief var at flaten «ikke er så oversiktlig»: søk og
+treff til venstre, lesevindu i midten, en dokumentbehandler som **kommer opp under** når
+man siterer og kan trekkes opp og redigeres direkte i, og relevans til høyre som blir
+varmere over tid.
+
+Skallet er derfor nå ETT: tre paneler over en skuff. Skuffen er kollapset til en
+44px-linje til du trenger den, spretter opp av seg selv når du siterer, og dras til
+ønsket høyde i grepet på toppkanten. Poenget med at den ligger under og ikke bak en
+bryter: et sitat kan lande i dokumentet uten at du forlater papiret du leser.
+
+### Sitat ↔ dokument: ett lager, valgfritt medlemskap
+
+Hybriden Anders valgte framfor både «alt inn i dokumentet» og «dokumentet er opt-in».
+`sitater.utkast_id` er nullbar:
+
+- Er et dokument åpent når du siterer, festes sitatet til det med én gang.
+- Er det ikke det, blir sitatet **løst** — synlig i skuffens «Løse»-linse, festbart senere.
+- «Løsne» setter kolonnen tilbake til NULL. `slett_sitat` er den ENESTE veien til faktisk
+  tap, og må velges eksplisitt. Å slette et dokument etterlater sitatene, ikke sletter dem.
+
+De tre linsene i skuffen (I dokumentet / Løse / Alle) er tre spørringer mot samme rad —
+ingen av dem kopierer noe, et sitat har én identitet uansett hvilken linse du ser det
+gjennom.
+
+### Varme — to lag, synlig adskilt
+
+«Relevansen blir varmere og varmere» er implementert som to lag som slås sammen i ett
+panel men aldri blandes til ett tall, fordi de to er ulike slags påstander:
+
+| Lag | Kilde | Hukommelse | Skala i UI |
+|---|---|---|---|
+| **varig** | `bank.varme` — akkumulert av det du gjør | overlever dokumentbytte og omstart | relativ (mot listas maks) |
+| **nå** | `bank.lignende_tekst` mot dokumentteksten | glemmer alt ved dokumentbytte | absolutt (`1 - avstand/2`) |
+
+Vekter: sitert 6, festet til dokument 4, åpnet 1. Sitering (og festing) sprer 30 % av sin
+egen vekt til papirets fem nærmeste semantiske naboer — det er grunnen til at panelet kan
+løfte fram noe du **aldri har åpnet**: ukjent, men i selskap med noe du brukte. Åpning
+sprer ikke, og telles én gang per papir per økt; ellers hadde panelet målt navigasjon i
+stedet for interesse. Ingen forfall: varmen synker aldri av seg selv, et ubrukt papir blir
+kaldt relativt, ikke absolutt.
+
+Kortet navngis av den **sterkeste** handlingen, ikke den siste (`HENDELSE_RANG`).
+
+**Tre ekte feil fanget live under bygging** (chrome-devtools mot ekte cache, ikke antatt
+riktig) — alle tre var tilfeller av at flaten sa noe annet enn dataen:
+
+1. *«nå»-laget var maks-normalisert.* Tolv kandidater lå på avstand 0.955–1.002 — ~5 %
+   spredning — og normaliseringen tegnet dem ALLE som nesten fulle stolper. Panelet
+   påstod «alt er brennhett» der sannheten var «alt ligger middels nær, og omtrent like
+   nær». Byttet til absolutt skala: en flat gruppe ser nå flat ut.
+2. *Fargerampen gikk gjennom grått.* Rett RGB-lerp kald→varm treffer rgb(175,152,140) på
+   midten, en avmettet grå som forsvant mot `--surface` — altså nettopp de halvfulle
+   stolpene, som er de vanligste. HSL-interpolasjon løste det ikke: endepunktene ligger
+   ~180° fra hverandre, «korteste vei» er tvetydig, og implementasjonen valgte veien om
+   magenta. Løst med et eksplisitt mellomstopp (`--lunken`) og to korte RGB-segmenter.
+3. *Kortet sa «du har lest det» om et papir jeg nettopp hadde sitert* — `siste_hendelse`
+   ble overskrevet av en sidelasts «apnet». Derav `sterkeste_hendelse`.
+
+### Lagring og deling
+
+Skuffen eksporterer dokumentet slik det står — brødteksten din **pluss** sitatene festet
+til det, med full kildehenvisning — via `/api/rapport/dokument` (`rapport.dokument_blokker`,
+den femte malen). Markdown og PDF fra samme Blokk-liste som resten, «Kopier» legger
+Markdown på utklippstavlen, «Del» sender PDF-en til systemets egen delingsmeny
+(`navigator.share`) med nedlasting som fallback. Verktøyet laster ingenting opp noe sted
+— deling er at DU sender filen.
+
+Dette er den eneste malen som blander egen prosa med sitert kildetekst, og skillet er
+derfor bygget inn i blokk-typene (`p` mot `sitat` + kildelinje): en delt PDF må aldri
+kunne leses som om du selv skrev det du siterte.
+
 ## Tips for domeneavgrensning
 
 Et bart `nephrocalcinosis`-søk treffer mest human-medisin (nyrestein hos mennesker
