@@ -416,6 +416,42 @@ testfixtur, ikke et fagfelt noen bruker. Mekanismen er verifisert; at et VILKÅR
 gir gode treff er ikke — kildene (Europe PMC, CORE) er biomedisinsk tunge, og et fagfelt
 utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
+## Overvåking — hva som dekker hva (2026-09-04)
+
+Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en
+fjerde sjekk oppå tre eksisterende:
+
+| lag | hvem | ser |
+|---|---|---|
+| crash-loop | `silverbullet/ops/container_helse.py`, cron på noden hvert 10. min | at containeren restarter — dekker enhver container, også denne |
+| HTTP oppe/nede | Uptime Kuma | at URL-en svarer |
+| **feil inne i appen** | GlitchTip (`GLITCHTIP_DSN`) | 500-er og degradering mens containeren er frisk og HTTP er 200 |
+| kilde-nåbarhet | «Om»-panelet via `/api/status` | om Europe PMC/OpenAlex/CORE/Crossref svarer NÅ |
+
+Det tredje laget var hullet: Anders traff en ekte feil 2026-09-04 (sitering feilet fordi
+embeddingen falt) mens containeren var frisk og forsiden svarte 200. Verken restart-telling
+eller en HTTP-sjekk kan se det.
+
+### Scoping av feilsporing — ikke alt som skjer er en alarm
+
+Taksonomien er bokbankens (`modernnetworkobservability` §The art of alerts): event →
+notification → alert → incident. `_skal_rapporteres` er porten:
+
+- **Vær** (502/503/504 — kilden er nede): slippes IKKE gjennom. EBI lå nede i dagevis i
+  september; uten porten ville hvert brukersøk blitt en hendelse.
+- **Forventet avvisning** (400/404/422): brukerinput, ikke en bug. Slippes ikke gjennom.
+- **Vår feil** (500, ufangede unntak): slippes gjennom.
+- **Fanget degradering**: porten ser den ikke, så den rapporteres EKSPLISITT der den skjer
+  (`_rapporter_degradering`). En feilende embedder gjør varme-panelet og «Lignende» stille
+  tomme mens appen svarer 200 — en `except` uten rapportering er hvordan det ble usynlig.
+
+### Uptime Kuma — `/api/helse`, ikke `/api/status`
+
+`/api/status` gjør **fem utgående kall** for å svare. En monitor hvert 60. sekund ville
+blitt 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål om VÅR tjeneste.
+`/api/helse` rører kun lokal disk, og svarer 503 hvis cachen ikke er lesbar — en død
+database er ekte nedetid her, siden søk, sitatbank og varme alle hviler på den.
+
 ## Tips for domeneavgrensning
 
 Et bart `nephrocalcinosis`-søk treffer mest human-medisin (nyrestein hos mennesker

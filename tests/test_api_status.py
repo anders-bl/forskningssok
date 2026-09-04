@@ -98,3 +98,62 @@ def test_glitchtip_init_kalles_naar_dsn_er_satt():
     assert falsk.init.call_args.kwargs["traces_sample_rate"] == 0
     import api as _a
     importlib.reload(_a)
+
+
+# ---------- Scoping-porten for feilsporing (2026-09-04) ----------
+
+def test_kilde_nede_er_vaer_ikke_en_hendelse():
+    """EBI lå nede i DAGEVIS i september. Uten porten ville hvert eneste brukersøk blitt
+    en hendelse i GlitchTip, og kanalen ville druknet — 1851 uleste varsler hvorav ett
+    fra et menneske er husets egen måling av den feilmodusen."""
+    from fastapi import HTTPException
+    import api
+    for kode in (502, 503, 504):
+        assert api._skal_rapporteres({"x": 1}, {"exc_info": HTTPException(kode, "nede")}) is None
+
+
+def test_forventet_avvisning_er_ikke_en_bug():
+    from fastapi import HTTPException
+    import api
+    for kode in (400, 404, 422):
+        assert api._skal_rapporteres({"x": 1}, {"exc_info": HTTPException(kode, "input")}) is None
+
+
+def test_vaar_egen_feil_slipper_gjennom():
+    from fastapi import HTTPException
+    import api
+    hendelse = {"x": 1}
+    assert api._skal_rapporteres(hendelse, {"exc_info": HTTPException(500, "vår")}) is hendelse
+    assert api._skal_rapporteres(hendelse, {"exc_info": ValueError("ufanget")}) is hendelse
+    assert api._skal_rapporteres(hendelse, None) is hendelse
+    assert api._skal_rapporteres(hendelse, {}) is hendelse
+
+
+def test_degraderingsrapport_er_noop_uten_dsn_og_kaster_aldri():
+    """En feil i feilsporingen som velter forespørselen ville vært verre enn den
+    opprinnelige feilen."""
+    import api
+    assert api._GLITCHTIP_DSN == ""
+    api._rapporter_degradering("test")     # skal ikke kaste
+
+
+def test_helse_er_billig_og_gjor_ingen_utgaaende_kall():
+    """En monitor hvert 60. sekund ville gjort 7 200 kall til fire tredjeparter i døgnet
+    om den traff /api/status. Husets høflighets-disiplin gjelder også vår egen overvåking."""
+    import api
+    with patch("api._kilde_naabar") as naabar:
+        from fastapi.testclient import TestClient
+        r = TestClient(api.app).get("/api/helse")
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    naabar.assert_not_called()
+
+
+def test_helse_er_503_naar_cachen_ikke_er_lesbar():
+    """En død database er ekte nedetid for denne appen — søk, sitatbank og varme hviler
+    alle på den. En monitor som bare måler at prosessen lever ville vært grønn da."""
+    import api
+    with patch("api.bank._db", side_effect=OSError("disk borte")):
+        from fastapi.testclient import TestClient
+        r = TestClient(api.app).get("/api/helse")
+    assert r.status_code == 503

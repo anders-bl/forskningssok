@@ -34,11 +34,43 @@ from ranking import arts_naer, domene_naer, ranger
 # compose. traces_sample_rate=0: vi vil ha FEIL, ikke ytelsessporing — det siste ville
 # sendt hver eneste request til en tredjepart uten at noen ba om det.
 _GLITCHTIP_DSN = os.environ.get("GLITCHTIP_DSN", "")
+
+
+def _skal_rapporteres(hendelse, hint):
+    """Scoping-porten. Uten den fanger feilsporing enten for LITE eller for MYE.
+
+    Taksonomien er bokbankens (`modernnetworkobservability` §The art of alerts):
+    event → notification → alert → incident. Ikke alt som skjer er en alarm, og en kanal
+    som roper på alt er like taus som en som aldri roper — målt i huset som 1851 uleste
+    varsler hvorav ETT fra et menneske (konsepter/feil-synlighet §Den motsatte feilmodusen).
+
+    Tre klasser, tre svar:
+
+    1. VÆR — kilden er nede. Europe PMC 503, CORE timeout, ai-proxy uten svar. Vi reiser
+       502/504 for dem, og det er RIKTIG oppførsel, ikke en defekt hos oss. Slippes ikke
+       gjennom: EBI lå nede i dagevis i september, og hver eneste brukers søk ville blitt
+       en hendelse.
+    2. FORVENTET AVVISNING — 400/404/422. «Papiret er ikke cachet», «tom spørring».
+       Brukerinput, ikke en bug. Slippes ikke gjennom.
+    3. VÅR FEIL — alt annet: ufangede unntak, 500. Slippes gjennom.
+
+    Den fjerde, som porten IKKE ser og som derfor rapporteres eksplisitt der den skjer:
+    fanget svikt som degraderer noe brukeren merker. Embedderen som feiler gjør at
+    varme-panelet og «Lignende» stille blir tomme — appen svarer 200 hele veien. Det er
+    nøyaktig hullet Anders falt i, og en `except` uten rapportering er hvordan det ble
+    usynlig."""
+    for verdi in (hint or {}).values():
+        if isinstance(verdi, HTTPException):
+            return None if verdi.status_code < 500 or verdi.status_code in (502, 503, 504) else hendelse
+    return hendelse
+
+
 if _GLITCHTIP_DSN:
     import sentry_sdk
     sentry_sdk.init(dsn=_GLITCHTIP_DSN,
                     environment=os.environ.get("ENVIRONMENT", "production"),
-                    traces_sample_rate=0)
+                    traces_sample_rate=0,
+                    before_send=_skal_rapporteres)
 
 app = FastAPI(title="forskningssok API")
 logger = logging.getLogger("forskningssok")
@@ -59,6 +91,11 @@ def _lagre_bakgrunn(papirer: list) -> None:
         # embed_manglende(). Se bank.lagre for feilrapporten som drev fram delingen.
         logger.warning("bakgrunns-embedding feilet (papirene ER cachet og kan siteres; "
                        "etterslepet tas ved neste søk)", exc_info=True)
+        # Rapporteres EKSPLISITT, fordi den er fanget og dermed usynlig for
+        # before_send-porten: appen svarer 200 hele veien mens varme-panelet og
+        # «Lignende» stille blir tomme. En `except` uten rapportering er nøyaktig
+        # hvordan dette ble usynlig sist.
+        _rapporter_degradering("bakgrunns-embedding")
 
 
 def _slug(tekst: str) -> str:
@@ -93,6 +130,23 @@ def _kilde_naabar(url: str, *, timeout: float = 4.0) -> bool:
         return False
 
 
+def _rapporter_degradering(hva: str) -> None:
+    """Send en FANGET svikt videre, med kontekst om hva brukeren mister.
+
+    Stille no-op uten DSN, og den skal aldri kunne kaste — en feil i feilsporingen som
+    velter forespørselen ville vært verre enn den opprinnelige feilen."""
+    if not _GLITCHTIP_DSN:
+        return
+    try:
+        import sentry_sdk
+        with sentry_sdk.new_scope() as scope:
+            scope.set_tag("degradering", hva)
+            scope.set_level("warning")
+            sentry_sdk.capture_exception()
+    except Exception:
+        logger.debug("kunne ikke rapportere degradering «%s»", hva, exc_info=True)
+
+
 def _varm_stille(paper_id: str, hendelse: str) -> None:
     """Varme er et BIPRODUKT av at du bruker verktøyet — den skal aldri kunne velte
     handlingen som utløste den. En feilet varme-skriving (låst db, papir ikke cachet)
@@ -111,6 +165,29 @@ def _evidens(tittel: str, abstract: str, pubtyper) -> dict:
     ville latt UI-et låne NLMs autoritet til vår egen gjetning."""
     niva, kilde = evidensniva(tittel, abstract, tuple(pubtyper or ()))
     return {"evidensniva": niva, "evidensniva_kilde": kilde}
+
+
+@app.get("/api/helse")
+def api_helse():
+    """Billig liveness for en oppetidsmonitor. Rører KUN lokal disk.
+
+    Skilt fra /api/status med vilje: den gjør fem utgående kall (Europe PMC, OpenAlex,
+    CORE, Crossref, EBI-referanser) for å svare på «er kildene nåbare NÅ». Det er riktig
+    for et menneske som åpner «Om»-panelet, og feil for en monitor — hvert 60. sekund
+    ville det blitt 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål
+    om VÅR tjeneste. Husets høflighets-disiplin gjelder også når det er vår egen overvåking
+    som er uhøflig.
+
+    Svarer 200 så lenge prosessen lever OG cachen er lesbar. En død database er en ekte
+    nedetid for denne appen — søk, sitatbank og varme hviler alle på den — så den hører
+    med i liveness, ikke bare prosessens puls."""
+    try:
+        db = bank._db(CACHE_DB)
+        db.execute("SELECT 1 FROM papers LIMIT 1").fetchone()
+        db.close()
+    except Exception as e:
+        raise HTTPException(503, f"cachen er ikke lesbar: {e}") from e
+    return {"ok": True, "tjeneste": "forskningssok", "profil": domeneprofil.NAVN}
 
 
 @app.get("/api/profil")
