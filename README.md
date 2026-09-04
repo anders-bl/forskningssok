@@ -445,12 +445,46 @@ notification → alert → incident. `_skal_rapporteres` er porten:
   (`_rapporter_degradering`). En feilende embedder gjør varme-panelet og «Lignende» stille
   tomme mens appen svarer 200 — en `except` uten rapportering er hvordan det ble usynlig.
 
-### Uptime Kuma — `/api/helse`, ikke `/api/status`
+### Uptime Kuma — `/health/ready`, offentlig
 
-`/api/status` gjør **fem utgående kall** for å svare. En monitor hvert 60. sekund ville
-blitt 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål om VÅR tjeneste.
-`/api/helse` rører kun lokal disk, og svarer 503 hvis cachen ikke er lesbar — en død
-database er ekte nedetid her, siden søk, sitatbank og varme alle hviler på den.
+Helsesjekken følger husstandarden (`konsepter/helsesjekk`, arvet fra `ny-tjeneste-mal`),
+ikke et endepunkt oppfunnet her. Første utkast VAR oppfunnet, og det var
+`reimplementer-i-stedet-for-gjenbruk` (`misc/feilantagelser` 2026-08-29): standarden i
+`rollesok/app/health.py` var bedre på tre punkter jeg ikke hadde tenkt på.
+
+| sti | spør | konsument |
+|---|---|---|
+| `/health/live` | lever prosessen? Aldri disk, aldri nett | Docker HEALTHCHECK |
+| `/health/ready` | kan vi ta trafikk? **Asserterer på innhold** | Uptime Kuma |
+| `/health` | full detalj, bak `X-Internal-Key` | mennesker |
+
+`/ready` er den som betyr noe: den svarer **503 hvis cachen er tom**, ikke bare hvis
+endepunktet er nede. Det er FDR-065-lærdommen — *en monitor mot skallet melder grønt i
+nedetid*. En tom cache kan ikke besvare et eneste søk.
+
+⚠ **`/api/status` er IKKE en monitor-sti.** Den gjør fem utgående kall (Europe PMC,
+OpenAlex, CORE, Crossref, EBI-referanser) for å svare på «er kildene nåbare nå». Hvert 60.
+sekund blir det 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål om
+VÅR tjeneste.
+
+**Oppsett (valgt 2026-09-04: unnta stien fra auth, så Kuma slipper en hemmelighet):**
+
+1. Dokploy → forskningssok → Domains: legg til en path-basert regel som unntar
+   `/health` fra `forskningssok-auth`-middlewaren. I Traefik-termer er det en egen router
+   med `PathPrefix(\`/health\`)`, høyere `priority` enn hovedruteren, og TOM
+   `middlewares`-liste.
+2. Redeploy — Domains-innstillinger er «lagret, ikke deployet» til containeren startes på
+   nytt (se §Deploy).
+3. Verifiser at unntaket faktisk traff:
+   `curl -s -o /dev/null -w "%{http_code}\n" https://forskningssok.lauvasdata.no/health/ready`
+   → **200** (ikke 401). Får du 401, traff ikke regelen.
+4. Uptime Kuma: HTTP(s)-monitor mot `https://forskningssok.lauvasdata.no/health/ready`,
+   forventet status 200, intervall 300 s. Ingen legitimasjon nødvendig.
+
+**Hva stien lekker offentlig:** kun `{"status": "pass"}`. Ingen tall, intet profilnavn,
+intet tjenestenavn — de bor bak `X-Internal-Key` på `/health`. Testdekket
+(`test_helse_lekker_ingen_tall_uten_noekkel`), fordi et offentlig endepunkt som stille
+begynner å lekke er en regresjon ingen ville lagt merke til.
 
 ## Tips for domeneavgrensning
 

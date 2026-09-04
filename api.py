@@ -7,14 +7,16 @@ laget serialiserer og feilhåndterer for HTTP.
 Kjør: venv/bin/uvicorn api:app --reload --port 8420
 """
 import logging
+import hmac
 import os
 import re
 import time
 from dataclasses import asdict
+from datetime import datetime, timezone
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse, Response
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import bank
@@ -167,27 +169,76 @@ def _evidens(tittel: str, abstract: str, pubtyper) -> dict:
     return {"evidensniva": niva, "evidensniva_kilde": kilde}
 
 
-@app.get("/api/helse")
-def api_helse():
-    """Billig liveness for en oppetidsmonitor. Rører KUN lokal disk.
+# ---------- Helsesjekk etter HUSSTANDARDEN (konsepter/helsesjekk, ny-tjeneste-mal) ----------
+# Jeg skrev først et eget /api/helse her. Det var `reimplementer-i-stedet-for-gjenbruk`
+# (misc/feilantagelser 2026-08-29): standarden fantes i rollesok/app/health.py, arvet fra
+# ny-tjeneste-mal, og var bedre enn min på tre punkter jeg ikke hadde tenkt på — tre nivåer
+# i stedet for ett, application/health+json som medietype, og at /ready asserterer på
+# INNHOLD og ikke bare på 200. Det siste er FDR-065-lærdommen: en monitor mot skallet
+# melder GRØNT i nedetid.
+#
+# /health/live   lever prosessen? Aldri eksterne kall, aldri disk. Docker HEALTHCHECK.
+# /health/ready  kan vi ta trafikk? Cachen må finnes OG ha papirer — en tom cache kan ikke
+#                besvare et eneste søk, så det er fail, ikke warn.
+# /health        full detalj. Uten nøkkel: kun status, ingen tall.
+#
+# Offentlig eksponering: Anders valgte å unnta helse-stien fra auth-gaten i Traefik, så
+# Kuma slipper en hemmelighet. Derfor lekker /live og /ready NULL — ikke profilnavn, ikke
+# antall papirer, ikke tjenestenavn. Tallene bor bak X-Internal-Key.
+_HELSE_MEDIA = "application/health+json"
 
-    Skilt fra /api/status med vilje: den gjør fem utgående kall (Europe PMC, OpenAlex,
-    CORE, Crossref, EBI-referanser) for å svare på «er kildene nåbare NÅ». Det er riktig
-    for et menneske som åpner «Om»-panelet, og feil for en monitor — hvert 60. sekund
-    ville det blitt 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål
-    om VÅR tjeneste. Husets høflighets-disiplin gjelder også når det er vår egen overvåking
-    som er uhøflig.
 
-    Svarer 200 så lenge prosessen lever OG cachen er lesbar. En død database er en ekte
-    nedetid for denne appen — søk, sitatbank og varme hviler alle på den — så den hører
-    med i liveness, ikke bare prosessens puls."""
+def _helse_sjekk() -> dict:
+    """Cachen ER tjenesten: mangler fila eller er papers tom, kan ingen spørring besvares."""
+    tid = datetime.now(timezone.utc).isoformat(timespec="seconds")
     try:
         db = bank._db(CACHE_DB)
-        db.execute("SELECT 1 FROM papers LIMIT 1").fetchone()
-        db.close()
+        try:
+            antall = db.execute("SELECT count(*) FROM papers").fetchone()[0]
+        finally:
+            db.close()
+        if not antall:
+            return {"componentType": "datastore", "status": "fail", "time": tid,
+                    "output": "cachen er tom — ingen søk kan besvares ennå"}
+        return {"componentType": "datastore", "status": "pass", "time": tid,
+                "observedValue": {"papirer": antall, "profil": domeneprofil.NAVN}}
     except Exception as e:
-        raise HTTPException(503, f"cachen er ikke lesbar: {e}") from e
-    return {"ok": True, "tjeneste": "forskningssok", "profil": domeneprofil.NAVN}
+        return {"componentType": "datastore", "status": "fail", "time": tid,
+                "output": f"{type(e).__name__}: {e}"}
+
+
+def _helse_svar(payload: dict):
+    return JSONResponse(payload, status_code=503 if payload["status"] == "fail" else 200,
+                        media_type=_HELSE_MEDIA)
+
+
+def _helse_bygg() -> dict:
+    sjekk = _helse_sjekk()
+    return {"status": sjekk["status"], "checks": {"cache:innhold": [sjekk]}}
+
+
+@app.get("/health/live")
+def health_live():
+    """Lever prosessen? Ingen disk, ingen nettverk — svarer så lenge uvicorn kjører."""
+    return JSONResponse({"status": "pass"}, media_type=_HELSE_MEDIA)
+
+
+@app.get("/health/ready")
+def health_ready():
+    """Kan vi ta trafikk? Asserterer på INNHOLD, ikke bare at endepunktet svarer.
+    Dette er stien en oppetidsmonitor skal peke på."""
+    return _helse_svar({"status": _helse_bygg()["status"]})
+
+
+@app.get("/health")
+def health_detail(x_internal_key: str = Header(None)):
+    """Full detalj bak portalens delte INTERNAL_API_KEY. Uten nøkkel: kun status —
+    samme svar som /ready, så et offentlig kall aldri lekker tall."""
+    payload = _helse_bygg()
+    nokkel = os.environ.get("INTERNAL_API_KEY", "")
+    if nokkel and x_internal_key and hmac.compare_digest(x_internal_key, nokkel):
+        return _helse_svar(payload)
+    return _helse_svar({"status": payload["status"]})
 
 
 @app.get("/api/profil")

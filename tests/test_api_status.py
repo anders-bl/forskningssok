@@ -137,23 +137,54 @@ def test_degraderingsrapport_er_noop_uten_dsn_og_kaster_aldri():
     api._rapporter_degradering("test")     # skal ikke kaste
 
 
-def test_helse_er_billig_og_gjor_ingen_utgaaende_kall():
-    """En monitor hvert 60. sekund ville gjort 7 200 kall til fire tredjeparter i døgnet
-    om den traff /api/status. Husets høflighets-disiplin gjelder også vår egen overvåking."""
+def test_live_er_billig_og_rorer_verken_disk_eller_nett():
+    """/health/live skal svare så lenge prosessen lever. Ingen eksterne kall, ingen disk —
+    en Docker HEALTHCHECK som leser databasen ville drept containeren ved disk-treghet."""
     import api
-    with patch("api._kilde_naabar") as naabar:
-        from fastapi.testclient import TestClient
-        r = TestClient(api.app).get("/api/helse")
-    assert r.status_code == 200
-    assert r.json()["ok"] is True
+    from fastapi.testclient import TestClient
+    with patch("api._kilde_naabar") as naabar, patch("api.bank._db") as db:
+        r = TestClient(api.app).get("/health/live")
+    assert r.status_code == 200 and r.json() == {"status": "pass"}
+    assert r.headers["content-type"].startswith("application/health+json")
     naabar.assert_not_called()
+    db.assert_not_called()
 
 
-def test_helse_er_503_naar_cachen_ikke_er_lesbar():
-    """En død database er ekte nedetid for denne appen — søk, sitatbank og varme hviler
-    alle på den. En monitor som bare måler at prosessen lever ville vært grønn da."""
+def test_ready_asserterer_paa_INNHOLD_ikke_bare_paa_200():
+    """FDR-065-lærdommen: en monitor mot skallet melder GRØNT i nedetid. En tom cache kan
+    ikke besvare et eneste søk, så den er fail — ikke warn, og ikke pass."""
     import api
-    with patch("api.bank._db", side_effect=OSError("disk borte")):
-        from fastapi.testclient import TestClient
-        r = TestClient(api.app).get("/api/helse")
+    from fastapi.testclient import TestClient
+    with patch("api.bank._db") as db:
+        db.return_value.execute.return_value.fetchone.return_value = (0,)
+        r = TestClient(api.app).get("/health/ready")
     assert r.status_code == 503
+    assert r.json()["status"] == "fail"
+
+
+def test_ready_er_503_naar_cachen_ikke_er_lesbar():
+    import api
+    from fastapi.testclient import TestClient
+    with patch("api.bank._db", side_effect=OSError("disk borte")):
+        r = TestClient(api.app).get("/health/ready")
+    assert r.status_code == 503
+
+
+def test_helse_lekker_ingen_tall_uten_noekkel():
+    """Stien er unntatt auth-gaten i Traefik, så den er OFFENTLIG. Uten nøkkel skal den
+    ikke røpe antall papirer, profilnavn eller tjenestenavn — kun status."""
+    import api
+    from fastapi.testclient import TestClient
+    r = TestClient(api.app).get("/health")
+    assert set(r.json()) == {"status"}
+    assert "papirer" not in r.text and "Fiskehelse" not in r.text
+
+
+def test_helse_gir_detalj_med_riktig_noekkel():
+    import os
+    import api
+    from fastapi.testclient import TestClient
+    with patch.dict(os.environ, {"INTERNAL_API_KEY": "hemmelig"}, clear=False):
+        r = TestClient(api.app).get("/health", headers={"X-Internal-Key": "hemmelig"})
+    assert "checks" in r.json()
+    assert r.json()["checks"]["cache:innhold"][0]["observedValue"]["papirer"] >= 0
