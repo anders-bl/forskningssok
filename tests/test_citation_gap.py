@@ -13,6 +13,22 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from citation_gap import gap_kandidater  # noqa: E402
 
+@pytest.fixture(autouse=True)
+def _ingen_ekte_crossref():
+    """Crossref-supplementet ble lagt til 2026-09-04 og gjorde tre av testene under
+    NETTVERKSAVHENGIGE uten at noe sa fra — de gikk grønt bare fordi maskinen tilfeldigvis
+    hadde internett, og `test_europe_pmc_svarer_normalt_bruker_ikke_openalex` sluttet å
+    verifisere det navnet lover. Autouse-fixturen lukker hele klassen: ingen test i denne
+    fila kan nå nå nettet uten å overstyre den EKSPLISITT.
+
+    Nøytral standard er «utgiveren har ikke deponert noe» (tom liste, ukjent antall) —
+    det er det vanligste ekte svaret, og det som ikke endrer de eksisterende
+    forventningene."""
+    with patch("citation_gap.crossref.referanser", return_value=[]), \
+         patch("citation_gap.crossref.referanse_antall", return_value=None):
+        yield
+
+
 REFERANSER = [
     {"id": "1", "doi": "10.1000/sitert-med-doi", "title": "Sitert, matches på DOI"},
     {"id": "2", "title": "Sitert Uten DOI — Matcher På Tittel!"},  # store bokstaver+tegn testet
@@ -123,3 +139,71 @@ def test_manglende_pmid_og_doi_gir_tydelig_feil_ikke_stille_tomt():
             gap_kandidater("41363532", "MED", None)  # PMID-løst id, ikke DOI
     m_pmc.assert_not_called()
     m_oa.assert_not_called()
+
+
+# ---------- Crossref-supplementet: union, aldri erstatning ----------
+
+CROSSREF_EKSTRA = [
+    {"doi": "10.1000/ikke-sitert", "title": "et helt ferskt, usitert funn"},
+    {"doi": "10.1000/bare-hos-crossref", "title": "kun i utgiverens deposit"},
+]
+
+
+def test_crossref_supplement_kan_bare_korte_ned_gap_listen():
+    """Kjernen: en referanse primærkilden ikke kjente gjorde en nabo til et FALSKT gap.
+    Målt live 2026-09-04 — OpenAlex kjente 13 av 20 for 10.1111/jfd.70099."""
+    with patch("citation_gap.europepmc_referanser", return_value=REFERANSER), \
+         patch("citation_gap.crossref.referanser", return_value=CROSSREF_EKSTRA), \
+         patch("citation_gap.crossref.referanse_antall", return_value=None), \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
+    assert ut["gap"] == []           # «c» var et falskt gap, Crossref visste den var sitert
+    assert ut["siterte_antall"] == 4
+    assert "crossref" in ut["referanse_kilde"]
+
+
+def test_crossref_uten_nye_referanser_endrer_ingenting():
+    with patch("citation_gap.europepmc_referanser", return_value=REFERANSER), \
+         patch("citation_gap.crossref.referanser", return_value=REFERANSER), \
+         patch("citation_gap.crossref.referanse_antall", return_value=None), \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
+    assert ut["siterte_antall"] == 2
+    assert "crossref" not in ut["referanse_kilde"]  # ingen falsk kreditt for null bidrag
+
+
+def test_crossref_nede_velter_ikke_et_svar_primaerkilden_alt_ga():
+    with patch("citation_gap.europepmc_referanser", return_value=REFERANSER), \
+         patch("citation_gap.crossref.referanser", side_effect=RuntimeError("503")), \
+         patch("citation_gap.crossref.referanse_antall", return_value=None), \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
+    assert ut["referanse_kilde"] == "europe_pmc"
+    assert len(ut["gap"]) == 1
+
+
+def test_kortere_liste_enn_utgiverens_tall_gir_dekningsforbehold():
+    with patch("citation_gap.europepmc_referanser", return_value=REFERANSER), \
+         patch("citation_gap.crossref.referanser", return_value=[]), \
+         patch("citation_gap.crossref.referanse_antall", return_value=20), \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
+    assert ut["referanse_dekning"] == {"hentet": 2, "oppgitt_av_utgiver": 20}
+
+
+def test_fullstendig_liste_gir_ingen_forbehold():
+    """Forbeholdet må forsvinne når det ikke gjelder — et permanent «kan være
+    ufullstendig» ville blitt lest som støy og sluttet å bety noe."""
+    with patch("citation_gap.europepmc_referanser", return_value=REFERANSER), \
+         patch("citation_gap.crossref.referanser", return_value=[]), \
+         patch("citation_gap.crossref.referanse_antall", return_value=2), \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
+    assert ut["referanse_dekning"] is None
+
+
+def test_dekning_uten_crossref_svar_paastaar_ingenting():
+    with patch("citation_gap.europepmc_referanser", return_value=REFERANSER), \
+         patch("citation_gap.lignende", return_value=NABOER):
+        ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
+    assert ut["referanse_dekning"] is None

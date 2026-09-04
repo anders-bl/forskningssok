@@ -347,6 +347,16 @@ def gap_rapport_blokker(kilde_papir: dict, gap_resultat: dict, *, tittel: str | 
         f"{gap_resultat.get('referanse_kilde', 'ukjent')}). {len(gap)} av {len(naboer)} "
         f"semantiske naboer i cachen er IKKE i den listen. Dette er kandidater for "
         f"menneskelig vurdering, ALDRI en påstand om at noe faktisk mangler i litteraturen."))
+    # Et forbehold som MÅ stå i den delte filen, ikke bare på skjermen: en ufullstendig
+    # referanseliste gjør gap-listen for lang, og en leser som får rapporten videre har
+    # ingen annen måte å vite det på.
+    dekning = gap_resultat.get("referanse_dekning")
+    if dekning:
+        blokker.append(Blokk("meta",
+            f"⚠ Forbehold: referanselisten som ble hentet har {dekning['hentet']} av de "
+            f"{dekning['oppgitt_av_utgiver']} referansene utgiveren selv oppgir. De "
+            f"{dekning['oppgitt_av_utgiver'] - dekning['hentet']} ukjente kan være blant "
+            f"kandidatene under — listen er altså trolig for lang, ikke for kort."))
     if gap:
         blokker.append(Blokk("h2", "Kandidater — ikke sitert av kildepapiret"))
         for g in gap:

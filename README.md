@@ -35,14 +35,44 @@ papirets faktiske referanseliste (Europe PMC `/references`) og viser hvilke av `
 semantiske naboer som IKKE står der — kandidater for menneskelig vurdering, ikke en dom
 (samme ærlighets-prinsipp som resten av verktøyet).
 
-⚠ **`/references`-delressursen er IKKE live-verifisert mot ekte data ennå** — EBIs
-endepunkt var i et vedlikeholdsvindu («temporarily unavailable due to maintenance», 503)
-under hele byggingen 2026-09-02 14:34–14:38 UTC, bekreftet live gjentatte ganger, mens
-`/search` var oppe hele tiden. `RuntimeError`-disiplinen ble likevel live-verifisert:
-kjøring mot ekte 503 gir en tydelig feilmelding, ikke et stille «0 gap» som ville sett ut
-som «alt er sitert». Parsingen følger EBIs dokumenterte reference-schema (se
-`adapters/europe_pmc.py:referanser` sin docstring) — kjør `--gap` på nytt når
-vedlikeholdsvinduet er over for å bekrefte feltene faktisk stemmer.
+✅ **Live-verifisert 2026-09-04** — men ikke slik det var planlagt. EBIs `/references`
+svarte fortsatt 503 «temporarily unavailable due to maintenance» to dager etter at dette
+ble kalt et vedlikeholdsvindu; det er ikke et vindu lenger, og OpenAlex-fallbacken er i
+praksis den eneste armen som kjører. Gap-testen ble kjørt mot ekte data via den, og
+fungerer: 6 cachede naboer, 5 gap, referanselisten parset korrekt.
+
+### Kilde-union + dekningsforbehold (lagt til 2026-09-04)
+
+Verifiseringen avslørte et problem verifiseringen selv var i ferd med å gå glipp av.
+Fallbacken *fungerte* — men den var UFULLSTENDIG: for `10.1111/jfd.70099` kjente OpenAlex
+13 referanser, mens Crossref (Wileys egen deposit) oppga 20. UI-et skrev «Papiret siterer
+13 kilder selv» som et faktum.
+
+Det er ikke en kosmetisk feil. **En for kort referanseliste gjør gap-testen systematisk
+for snill mot seg selv:** hver referanse kilden ikke kjenner, blir en nabo som feilaktig
+framstår som «ikke sitert» — et falskt gap. Nøyaktig den feilen proben er bygget for å
+avsløre hos Elicit/Consensus/Undermind.
+
+To grep, begge nødvendige:
+
+1. **Union, ikke valg** (`adapters/crossref.py` + `citation_gap._forén`). En referanse
+   kjent av én kilde er en referanse. Nøkkelen er DOI når den finnes, normalisert tittel
+   ellers — samme to-trinns identitet som selve matchingen, så ingen telles dobbelt.
+   Målt: 13 → 20, altså nøyaktig utgiverens eget tall, og de 5 gjenværende gapene holdt
+   seg (funnene var ekte — nå også forsvarlige). Crossref er aldri alene nok, siden mange
+   utgivere ikke deponerer referanselister offentlig, og feiler derfor stille: en manglende
+   supplering velter aldri et svar primærkilden alt har levert.
+2. **Dekningsforbehold** når listen fortsatt er kortere enn `reference-count` fra
+   utgiverens egen deposit. Da står det i UI-et OG i den eksporterte rapporten hvor mange
+   som mangler, og at listen derfor er *for lang, ikke for kort*. Verifisert live på
+   `10.1016/j.aquaculture.2022.738104`: 63 av 72. Forbeholdet forsvinner når det ikke
+   gjelder — et permanent «kan være ufullstendig» ville blitt lest som støy.
+
+**Sidefunn verdt å merke:** Crossref-supplementet gjorde tre eksisterende gap-tester
+nettverksavhengige uten at noe sa fra. De gikk grønt fordi maskinen tilfeldigvis hadde
+internett, og `test_europe_pmc_svarer_normalt_bruker_ikke_openalex` sluttet i praksis å
+verifisere det navnet lover. Lukket med en autouse-fixture som gjør at ingen test i fila
+kan nå nettet uten å overstyre den eksplisitt.
 
 ## Arkitektur — de fire trinnene
 
@@ -328,6 +358,21 @@ Markdown på utklippstavlen, «Del» sender PDF-en til systemets egen delingsmen
 Dette er den eneste malen som blander egen prosa med sitert kildetekst, og skillet er
 derfor bygget inn i blokk-typene (`p` mot `sitat` + kildelinje): en delt PDF må aldri
 kunne leses som om du selv skrev det du siterte.
+
+### To feil i skuffen, funnet etter at den var «ferdig» (2026-09-04)
+
+- **Slettedialogen løy.** «Sitatene du har lagret blir liggende som løse» — men
+  `slett_utkast` rørte ikke `sitater`, så `utkast_id` pekte på en rad som ikke fantes.
+  Sitatet forsvant dermed fra BEGGE arbeidslinsene: «Løse» spør på `IS NULL`, «I
+  dokumentet» på en id ingen kan velge. Synlig bare under «Alle». Løsningen skjer nå i
+  `bank.slett_utkast`, der invarianten hører hjemme — ikke ved at frontend husker å rydde.
+- **Sitat-telleren i toppbaren frøs** så snart du byttet til «Løse»-linsen, fordi den ble
+  satt som en bivirkning av «I dokumentet»-linsens henting. Nå har den sin egen.
+
+Og én ytelsessak: «nå»-laget koster en full embedding av utkastteksten (bge-m3 lokalt,
+ai-proxy i Dokploy). Autolagringen fyrer også når bare tittelen endret seg, så den ber nå
+om varme med `{tvungen: false}` og hopper over hentingen når teksten er uendret. Alt annet
+(sitering, festing, fanebytte) endrer det VARIGE laget og må tvinge en henting.
 
 ## Tips for domeneavgrensning
 

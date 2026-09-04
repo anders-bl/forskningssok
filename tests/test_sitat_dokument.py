@@ -102,3 +102,26 @@ def test_to_dokumenter_deler_ikke_sitater(tmp_path):
     lagre_sitat("10.1/2", "til det andre", "", annet, db_path=db)
     assert [s["tekst"] for s in hent_sitater(utkast_id=uid, db_path=db)] == ["til det første"]
     assert [s["tekst"] for s in hent_sitater(utkast_id=annet, db_path=db)] == ["til det andre"]
+
+
+def test_slett_dokument_loser_sitatene_i_stedet_for_a_foreldreloese_dem(tmp_path):
+    """Reprodusert 2026-09-04: uten løsningen pekte utkast_id på en rad som ikke fantes,
+    og sitatet forsvant fra BEGGE arbeidslinsene — «Løse» spør på IS NULL, «I dokumentet»
+    på en id ingen kan velge. Slettedialogen lover det motsatte."""
+    db, uid = _oppsett(tmp_path)
+    lagre_sitat("10.1/1", "overlever dokumentet", "", uid, db_path=db)
+    from bank import slett_utkast
+    assert slett_utkast(uid, db_path=db) is True
+    lose = hent_sitater(kun_lose=True, db_path=db)
+    assert [s["tekst"] for s in lose] == ["overlever dokumentet"]
+    assert lose[0]["utkast_id"] is None
+
+
+def test_sletting_rorer_ikke_andre_dokumenters_sitater(tmp_path):
+    db, uid = _oppsett(tmp_path)
+    from bank import lagre_utkast as nytt, slett_utkast
+    annet = nytt("Annet", "", db_path=db)["id"]
+    lagre_sitat("10.1/1", "mitt", "", uid, db_path=db)
+    lagre_sitat("10.1/2", "det andres", "", annet, db_path=db)
+    slett_utkast(uid, db_path=db)
+    assert [s["tekst"] for s in hent_sitater(utkast_id=annet, db_path=db)] == ["det andres"]

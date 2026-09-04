@@ -426,7 +426,13 @@ def hent_utkast(utkast_id: int, *, db_path: Path = DB) -> dict | None:
 
 
 def slett_utkast(utkast_id: int, *, db_path: Path = DB) -> bool:
+    """Løsner sitatene FØR dokumentet slettes. Uten det ble de foreldreløse: utkast_id
+    pekte på en rad som ikke fantes, så de forsvant fra «Løse» (som spør på IS NULL) OG
+    fra «I dokumentet» (som spør på en id ingen kan velge) — synlige bare under «Alle».
+    UI-ets egen slettedialog lover «sitatene blir liggende som løse», og det løftet må
+    holdes her, i laget som eier invarianten, ikke av at frontend husker å rydde."""
     db = _db(db_path)
+    db.execute("UPDATE sitater SET utkast_id=NULL WHERE utkast_id=?", (utkast_id,))
     cur = db.execute("DELETE FROM utkast WHERE id=?", (utkast_id,))
     db.commit()
     slettet = cur.rowcount > 0

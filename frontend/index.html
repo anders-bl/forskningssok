@@ -473,7 +473,7 @@ svg text{ font-family:system-ui,sans-serif; }
 <script>
 const state = {
   paperId: null, papers: {}, sisteResultat: { ids: [], tittel: '' },
-  lastNaboer: [], varmet: new Set(), sitatLinse: 'dokument',
+  lastNaboer: [], varmet: new Set(), sitatLinse: 'dokument', sisteVarmeTekst: null,
 };
 const dok = { id: null, tittel: '', lagreTimer: null, sisteEksport: null };
 
@@ -771,10 +771,16 @@ function varmeFarge(andel) {
   return `rgb(${fra.map((c, i) => Math.round(c + (til[i] - c) * lokal)).join(',')})`;
 }
 
-async function lastVarme() {
+// tvungen=false brukes KUN fra autolagringen, som fyrer også når bare tittelen endret
+// seg. «Nå»-laget koster en full embedding av utkastteksten (bge-m3 lokalt, ai-proxy i
+// Dokploy — opptil sekunder), så en uendret tekst skal ikke betale for den igjen. Alt
+// annet (sitering, festing, fanebytte) endrer det VARIGE laget og må tvinge en henting.
+async function lastVarme({tvungen = true} = {}) {
   const el = $('#tab-varmt');
   try {
     const tekst = $('#dok-editor').textContent || '';
+    if (!tvungen && tekst === state.sisteVarmeTekst) return;
+    state.sisteVarmeTekst = tekst;
     const data = await api(`/api/varme?k=12&tekst=${encodeURIComponent(tekst)}`);
     $('#c-varmt').textContent = data.papirer.length || '';
     if (!data.papirer.length) {
@@ -823,12 +829,20 @@ async function loadGap(id) {
   el.innerHTML = '<div class="hint">Kjører citation-gap-testen…</div>';
   try {
     const data = await api(`/api/gap/${encodeURIComponent(id)}?k=10`);
-    const kildeMerknad = data.referanse_kilde && data.referanse_kilde.startsWith('openalex')
-      ? ` <span style="color:var(--warn)">(kilde: OpenAlex — Europe PMC var utilgjengelig)</span>` : '';
+    const kildeMerknad = ` <span style="color:var(--muted)">(kilde: ${escapeHtml(data.referanse_kilde || 'ukjent')})</span>`;
+    // Dekningsforbeholdet er ikke pynt: en ufullstendig referanseliste gjør gap-listen
+    // for LANG, og uten dette sto et hentet tall som et faktum der utgiveren oppga et
+    // høyere (målt 13 mot 20, 2026-09-04).
+    const d = data.referanse_dekning;
+    const dekningBanner = d ? `<div class="banner"><b>⚠ Ufullstendig referanseliste</b> —
+      vi fikk ${d.hentet} av de ${d.oppgitt_av_utgiver} referansene utgiveren selv oppgir.
+      De ${d.oppgitt_av_utgiver - d.hentet} ukjente kan være blant kandidatene under, så
+      listen er trolig for lang — ikke for kort.</div>` : '';
     el.innerHTML = `
       <span class="rapport-eksport-gruppe blokk" id="eksport-gap">
         📄 Eksporter gap-rapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
       </span>
+      ${dekningBanner}
       <div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv${kildeMerknad}. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
       (data.gap.length ? data.gap.map(g => `
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
@@ -1018,7 +1032,7 @@ function lagreDokDebounced() {
     $('#dok-lagret').textContent = 'Lagret ' + new Date().toLocaleTimeString('no-NO', {hour:'2-digit', minute:'2-digit'});
     await lastDokListe(u.id);
     oppdaterOmfang(innhold);
-    lastVarme(); // «nå»-laget følger teksten — samme pause som utløser lagringen
+    lastVarme({tvungen: false}); // «nå»-laget følger teksten — samme pause som lagringen
   }, 1200); // debounce ved PAUSE, ikke tastetrykk — FDR-038s eget krav
 }
 $('#dok-tittel').addEventListener('input', lagreDokDebounced);
@@ -1044,10 +1058,7 @@ async function settLinse(linse) {
   }
   try {
     const sitater = await api(url);
-    if (linse === 'dokument') {
-      $('#dok-antall').hidden = sitater.length === 0;
-      $('#dok-antall').textContent = sitater.length;
-    }
+    oppdaterDokMerke();
     if (!sitater.length) {
       el.innerHTML = `<div class="hint">${linse === 'lose'
         ? 'Ingen løse sitater — alt du har sitert er festet til et dokument.'
@@ -1057,6 +1068,18 @@ async function settLinse(linse) {
     el.innerHTML = sitater.map(s => tegnSitat(s)).join('');
     koblSitatHandlinger(el);
   } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
+}
+
+// Telleren i toppbaren viser ALLTID dokumentets antall, uansett hvilken linse som er
+// valgt i skuffen. Den ble tidligere satt som en bivirkning av «I dokumentet»-linsen, så
+// den frøs — eller ble stående skjult — så snart du byttet til «Løse» og siterte derfra.
+async function oppdaterDokMerke() {
+  const merke = $('#dok-antall');
+  if (!dok.id) { merke.hidden = true; return; }
+  const sitater = await api(`/api/sitater?utkast_id=${dok.id}`).catch(() => null);
+  if (!sitater) return;
+  merke.hidden = sitater.length === 0;
+  merke.textContent = sitater.length;
 }
 
 function tegnSitat(s) {
@@ -1109,6 +1132,7 @@ function koblSitatHandlinger(rot) {
         await api(`/api/sitater/${id}`, {method:'DELETE'});
       }
       settLinse(state.sitatLinse);
+      oppdaterDokMerke();
     } catch (err) { si('Feil: ' + err.message); }
   }));
 }
