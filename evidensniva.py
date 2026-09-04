@@ -26,13 +26,43 @@ NIVAAER: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
-def evidensniva(tittel: str, abstract: str) -> str:
-    """tittel+abstract → nivånavn, eller "Ukjent design" hvis ingen mønster treffer.
-    Sjekker nivåene i den rekkefølgen de står i NIVAAER (høyest evidenshierarki-antakelse
-    først) — et abstract som nevner både «systematic review» og «case report» (f.eks. en
-    oversikt SOM DISKUTERER en case-serie) klassifiseres som oversikten, ikke case-serien."""
+# NLMs autoritative publikasjonstyper, kartlagt til samme nivånavn. Kilden INDEKSERER
+# dette; vi gjettet det. Europe PMC har returnert pubTypeList i hvert `resultType=core`-svar
+# hele tiden, i samme kall vi alt gjør — feltet ble bare kastet i adapteren (funnet
+# 2026-09-04). Et menneske hos NLM har lest papiret; en substreng-match i et abstract har
+# ikke. Der begge finnes, vinner NLM.
+NLM_TYPER: dict[str, str] = {
+    "systematic review": "Systematisk oversikt/meta-analyse",
+    "meta-analysis": "Systematisk oversikt/meta-analyse",
+    "randomized controlled trial": "Randomisert kontrollert studie",
+    "controlled clinical trial": "Randomisert kontrollert studie",
+    "observational study": "Kohort-/observasjonsstudie",
+    "case reports": "Case-rapport/case-serie",
+}
+# «Journal Article» og «Review» utelates med vilje. Den første sier ingenting om design
+# (alt er en journal article), og den andre er NLMs merkelapp for enhver oversiktsartikkel
+# — også ikke-systematiske narrative oversikter, som IKKE hører øverst i et evidenshierarki.
+# Å kartlegge «Review» til «Systematisk oversikt» ville løftet en narrativ oversikt til
+# toppen på en autoritet den ikke har.
+
+
+def evidensniva(tittel: str, abstract: str, pubtyper: tuple[str, ...] = ()) -> tuple[str, str]:
+    """(nivånavn, kilde) — kilde er "nlm" eller "monster", eller ("Ukjent design", "").
+
+    Returnerer KILDEN sammen med nivået, ikke bare nivået, fordi de to har helt ulik
+    epistemisk vekt: «indeksert av NLM» er en påstand noen har stått inne for, mens
+    «mønstergjenkjent» er vår heuristikk på ord forfatterne selv brukte. Flaten skal kunne
+    si hvilken den viser — å presentere dem likt ville vært å låne NLMs autoritet til vår
+    egen gjetning.
+
+    NLM først når den finnes. Mønsteret er fallback, ikke erstattet: preprints (PPR) og
+    CORE-treff har ingen pubTypeList i det hele tatt, og for dem er heuristikken fortsatt
+    det beste vi har."""
+    for pt in pubtyper:
+        if (navn := NLM_TYPER.get(pt.strip().lower())):
+            return navn, "nlm"
     t = f" {(tittel or '').lower()} {(abstract or '').lower()} "
     for navn, moenstre in NIVAAER:
         if any(m in t for m in moenstre):
-            return navn
-    return "Ukjent design"
+            return navn, "monster"
+    return "Ukjent design", ""

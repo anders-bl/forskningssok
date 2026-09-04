@@ -93,6 +93,12 @@ def _felt(v) -> str | None:
     return None if not t or t.lower() in _IKKE_VERDI else t
 
 
+def _mesh(r: dict) -> list[dict]:
+    """meshHeadingList.meshHeading, eller tom liste. Preprints (PPR) og arkivtreff har
+    ingen MeSH — de ble aldri indeksert av NLM, og det er et ekte fravær, ikke en feil."""
+    return (r.get("meshHeadingList") or {}).get("meshHeading") or []
+
+
 def _parse(data: dict) -> list[PaperDossier]:
     ut = []
     for r in data.get("resultList", {}).get("result", []):
@@ -118,6 +124,10 @@ def _parse(data: dict) -> list[PaperDossier]:
             hefte=_felt((r.get("journalInfo") or {}).get("issue")),
             sider=_felt(r.get("pageInfo")),
             issn=_felt(((r.get("journalInfo") or {}).get("journal") or {}).get("issn")),
+            pubtyper=tuple((r.get("pubTypeList") or {}).get("pubType") or ()),
+            mesh=tuple(m.get("descriptorName") for m in _mesh(r) if m.get("descriptorName")),
+            mesh_major=tuple(m.get("descriptorName") for m in _mesh(r)
+                             if m.get("majorTopic_YN") == "Y" and m.get("descriptorName")),
         ))
     return ut
 

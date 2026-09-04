@@ -93,6 +93,14 @@ def _varm_stille(paper_id: str, hendelse: str) -> None:
                        paper_id, hendelse, exc_info=True)
 
 
+def _evidens(tittel: str, abstract: str, pubtyper) -> dict:
+    """Nivå OG kilde ut til flaten. Kilden er ikke pynt: «indeksert av NLM» er en påstand
+    noen har stått inne for, «mønstergjenkjent» er vår heuristikk. Å sende bare nivået
+    ville latt UI-et låne NLMs autoritet til vår egen gjetning."""
+    niva, kilde = evidensniva(tittel, abstract, tuple(pubtyper or ()))
+    return {"evidensniva": niva, "evidensniva_kilde": kilde}
+
+
 @app.get("/api/profil")
 def api_profil():
     """Fagfeltet flaten skal beskrive seg selv med. Uten dette endepunktet sto ni steder
@@ -166,7 +174,7 @@ def api_sok(q: str, background_tasks: BackgroundTasks, n: int = 20):
     # id:undefined i frontend, og «siste skrevet vinner»-kollisjonen åpnet alltid det
     # SISTE søkeresultatet uansett hvilket man klikket på.
     return {"query": q, "eksakt_id": eksakt_id, "kilder": kilder,
-            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), "evidensniva": evidensniva(p.tittel, p.abstract)} for p in papirer[:n]]}
+            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), **_evidens(p.tittel, p.abstract, p.pubtyper)} for p in papirer[:n]]}
 
 
 @app.get("/api/papir/{paper_id:path}")
@@ -180,7 +188,7 @@ def api_papir(paper_id: str):
     # til) fordi den regnet på ARTSTERMER selv i stedet for å kalle funksjonen.
     papir["domene_naer"] = domene_naer_tekst(f"{papir['forfattere']} {papir['tidsskrift']}")
     papir["arts_naer"] = arts_naer_tekst(f"{papir['tittel']} {papir['abstract']}")
-    papir["evidensniva"] = evidensniva(papir["tittel"], papir["abstract"])
+    papir.update(_evidens(papir["tittel"], papir["abstract"], ()))
     return papir
 
 
@@ -247,7 +255,7 @@ def api_emne_utforsk(emne_id: str, background_tasks: BackgroundTasks, navn: str 
     # Six-Hats-sveip av hele filen etter samme mønster, ikke ved gjentatt symptom.
     background_tasks.add_task(_lagre_bakgrunn, rangert)
     return {"emne_id": emne_id, "emne_navn": navn,
-            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), "evidensniva": evidensniva(p.tittel, p.abstract)} for p in rangert[:n]]}
+            "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), **_evidens(p.tittel, p.abstract, p.pubtyper)} for p in rangert[:n]]}
 
 
 @app.get("/api/sitater")

@@ -26,6 +26,22 @@ class PaperDossier:
     hefte: str | None = None
     sider: str | None = None
     issn: str | None = None
+    # NLMs egen indeksering, lagt til 2026-09-04. Europe PMC har returnert begge hele
+    # tiden i samme `resultType=core`-svar vi alt gjør — vi kastet dem og gjettet i stedet.
+    #
+    # pubtyper: NLMs autoritative publikasjonstype («Journal Article», «Review»,
+    #   «Randomized Controlled Trial», «Case Reports»). evidensniva.py mønstermatcher
+    #   ord i tittel/abstract for å ANSLÅ nettopp dette.
+    # mesh: Medical Subject Headings — menneske-indeksert kontrollert vokabular, med
+    #   major-topic-flagg. For 10.1111/jfd.70099 sier den «Salmo salar (major)»,
+    #   «Fish Diseases (major)» — sterkere og mer presist enn en substreng-liste.
+    #
+    # Tomme lister, ikke None: et papir UTEN MeSH er som regel et preprint eller et
+    # arkivtreff som aldri ble indeksert, ikke et papir uten emne. Fraværet er ekte og
+    # skal kunne skilles fra «ikke hentet».
+    pubtyper: tuple[str, ...] = ()
+    mesh: tuple[str, ...] = ()
+    mesh_major: tuple[str, ...] = ()
 
     @property
     def id(self) -> str:

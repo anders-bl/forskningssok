@@ -126,7 +126,10 @@ def _kildesamling_papir_blokker(p: dict) -> list[Blokk]:
     ]
     if lenke:
         ut.append(Blokk("lenke", lenke))
-    niva = evidensniva(p.get("tittel", ""), p.get("abstract", ""))
+    niva, niva_kilde = evidensniva(p.get("tittel", ""), p.get("abstract", ""),
+                                    tuple((p.get("pubtyper") or "").split("|")) if p.get("pubtyper") else ())
+    if niva != "Ukjent design":
+        niva += " (NLM-indeksert)" if niva_kilde == "nlm" else " (mønstergjenkjent)"
     # Merketeksten kommer fra profilen, ikke fra denne fila: dette er en EKSPORTERT
     # streng, altså den som følger med ut av huset i en delt PDF. Sto den hardkodet som
     # «laks/oppdrettsfisk», ville en bruker i et annet fagfelt delt en rapport som
