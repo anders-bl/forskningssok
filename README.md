@@ -583,6 +583,38 @@ Det er en manglende **fagfelt**-dimensjon i domeneprofilen, ikke en feil i artsa
 bygget — å legge til en tredje akse endrer rangeringen for alle treff, og det bør måles før
 det gjøres. Notert her så neste person ikke prøver å kurere det med flere kollisjonsfraser.
 
+### Domene-aksen var strukturelt blind for én hel kilde
+
+Eksperiment kjørt for å teste min EGEN påstand over (at det mangler en fagfelt-dimensjon).
+`domene_naer` båndes FØR `arts_naer`, så spørsmålet var om den allerede skiller
+fiskehelse fra lakseøkonomi.
+
+**Delvis.** Den fanget 0 av 6 økonomipapirer — riktig — men løftet bare **7 av 34** ekte
+fiskehelse-papirer. De øvrige 27 havnet i samme bånd som økonomien, sortert på år og
+siteringer: et ferskt prispapir slår da et eldre patologipapir.
+
+Rotårsaken var ikke en kort liste. **15 av 55 papirer kommer fra CORE, og der bærer
+`tidsskrift`-feltet ARKIVNAVNET** — «Bergen Open Research Archive», «NTNU Open»,
+«State Library of Oregon Digital Collections». `domene_naer` matcher på tidsskriftnavn og
+kunne derfor aldri treffe dem; feltet inneholder noe annet enn det predikatet leter etter.
+
+To av arkivnavnene er likevel ekte norske marinmiljøer, og de manglet i `fagmiljoer`:
+**NTNU** og **Bergen/UiB** (Havforskningsinstituttet ligger i Bergen). Lagt til — med
+forhåndsregistrert forventning om at de skulle løfte nøyaktig de to norske og ingen andre.
+Det holdt: begge de løftede er ekte nefrokalsinose-papirer, og Japan/Genova/Cardiff/Oregon
+forble uløftet.
+
+⚠ **Fire tidsskrifter ble bevisst IKKE lagt til**, selv om det ville hevet tallet:
+Pathogens, BMC genomics, Physiological Reviews, Frontiers in veterinary science. De
+publiserer fiskearbeid, men er ikke fiskehelse-tidsskrifter, og en hviteliste med dem ville
+løftet humanmedisinske papirer i samme tidsskrift like høyt. Å legge dem inn ville vært å
+tilpasse instrumentet til korpuset — samme feil som å legge «Fish Proteins» i MeSH-lista
+etter å ha sett resultatet.
+
+**Og en korreksjon av min egen måling:** økonomi-filteret jeg brukte i første runde bommet
+på 3 av 9 (nøkkelordlista var for kort), så «seks økonomipapirer» over er egentlig ni.
+Instrumentet som teller falske positive kan selv være ufullstendig.
+
 ### Og det som IKKE kunne kalibreres
 
 `_KILDE_TERSKEL = 3` (feil på rad før en kilde regnes som nede) står fortsatt ukalibrert.

@@ -119,3 +119,42 @@ def test_lakseokonomi_forblir_et_artstreff_og_det_er_riktig():
     en kollisjonsfrase kan ikke fikse det: «salmon» står med rette i tittelen."""
     from domeneprofil import arts_naer_tekst
     assert arts_naer_tekst("Economic Factors Effecting Salmon Fisheries in Japan") is True
+
+
+# ---------- Korpus-kalibrering av domene-aksen (2026-09-04) ----------
+
+def test_arkivnavn_fra_CORE_kan_baere_domenesignal():
+    """CORE-treff bærer ARKIVNAVNET i tidsskrift-feltet, ikke et tidsskriftnavn. Målt:
+    15 av 55 cachede papirer. domene_naer matcher på tidsskrift, og var derfor strukturelt
+    blind for en hel kilde — ikke fordi lista var kort, men fordi feltet inneholder noe
+    annet enn det predikatet leter etter.
+
+    To av arkivnavnene ER ekte norske marinmiljøer, og de manglet i profilen."""
+    from domeneprofil import domene_naer_tekst
+    assert domene_naer_tekst("Klykken C · NTNU Open (Norwegian University of Science and Technology)")
+    assert domene_naer_tekst("Klykken C · Bergen Open Research Archive (Univ. of Bergen)")
+
+
+def test_utenlandske_arkiv_loftes_IKKE():
+    """Forhåndsregistrert før tillegget: ntnu+bergen skal løfte nøyaktig de to norske og
+    ingen andre. Holdt — Japan/Genova/Cardiff/Oregon/Strathclyde forble uløftet."""
+    from domeneprofil import domene_naer_tekst
+    for arkiv in ("Japan Fisheries Research and Education Agency (FRA) Repository",
+                  "Archivio istituzionale della ricerca - Università di Genova",
+                  "State Library of Oregon Digital Collections",
+                  "University of Strathclyde Institutional Repository"):
+        assert not domene_naer_tekst(f"Forfatter A · {arkiv}"), arkiv
+
+
+def test_generelle_tidsskrifter_hviteliste_IKKE_med():
+    """Målingen fant fiskehelse-papirer i Pathogens, BMC genomics, Physiological Reviews
+    og Frontiers in veterinary science. De ble bevisst IKKE lagt i fagtidsskrifter: de
+    publiserer fiskearbeid, men er ikke fiskehelse-tidsskrifter, og en hviteliste med dem
+    ville løftet humanmedisinske papirer i samme tidsskrift like høyt.
+
+    Å legge dem inn ville vært å tilpasse instrumentet til korpuset — samme feil som å
+    legge «Fish Proteins» i MeSH-lista etter å ha sett resultatet."""
+    from domeneprofil import domene_naer_tekst
+    for j in ("Pathogens (Basel, Switzerland)", "BMC genomics",
+              "Physiological Reviews", "Frontiers in veterinary science"):
+        assert not domene_naer_tekst(f"Forfatter A · {j}"), j

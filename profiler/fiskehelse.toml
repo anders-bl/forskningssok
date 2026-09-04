@@ -24,6 +24,12 @@ merke_betyr = "norsk fagmiljø/fagtidsskrift"
 fagmiljoer = [
   "havforskningsinstitutt", "veterinærinstitutt", "veterinaerinstitutt",
   "nmbu", "norwegian university of life sciences", "nofima", "pharmaq",
+  # NTNU og UiB/Bergen manglet. Funnet 2026-09-04 ved korpus-måling: CORE-treff bærer
+  # ARKIVNAVNET i tidsskrift-feltet («NTNU Open», «Bergen Open Research Archive»), og
+  # begge er ekte norske marin-/oppdrettsmiljøer på linje med de fire over — Havforsknings-
+  # instituttet ligger i Bergen, NTNU har tung marin forskning. De er lagt til fordi de
+  # HØRER hjemme i lista, ikke fordi de løftet et tall.
+  "ntnu", "norwegian university of science and technology", "bergen",
 ]
 fagtidsskrifter = [
   "journal of fish diseases", "aquaculture", "diseases of aquatic organisms",
