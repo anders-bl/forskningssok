@@ -3,3 +3,9 @@ uvicorn
 httpx
 sqlite-vec
 reportlab
+# GlitchTip (feil.lauvasdata.no) — flåte-dekkende feilsporing, ikke noe forskningssok eier.
+# Se integrasjoner/glitchtip i plattformwikien. Lagt til 2026-09-04: 4 av 6 FastAPI-repoer
+# i huset hadde den, forskningssok ikke — mens den STO I PRODUKSJON. Da Anders traff en
+# ekte feil der samme dag («er ikke cachet — søk det opp først»), nådde den meg bare fordi
+# han fortalte det. Ingenting fanget den.
+sentry-sdk[fastapi]>=2.60

@@ -7,6 +7,7 @@ laget serialiserer og feilhåndterer for HTTP.
 Kjør: venv/bin/uvicorn api:app --reload --port 8420
 """
 import logging
+import os
 import re
 import time
 from dataclasses import asdict
@@ -27,6 +28,17 @@ import domeneprofil
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
 from evidensniva import evidensniva
 from ranking import arts_naer, domene_naer, ranger
+
+# Tom DSN = av, uten sentry_sdk.init — samme graceful mønster som rollesok/app/main.py.
+# Lokalt er variabelen aldri satt, så utvikling er upåvirket; i Dokploy settes den i
+# compose. traces_sample_rate=0: vi vil ha FEIL, ikke ytelsessporing — det siste ville
+# sendt hver eneste request til en tredjepart uten at noen ba om det.
+_GLITCHTIP_DSN = os.environ.get("GLITCHTIP_DSN", "")
+if _GLITCHTIP_DSN:
+    import sentry_sdk
+    sentry_sdk.init(dsn=_GLITCHTIP_DSN,
+                    environment=os.environ.get("ENVIRONMENT", "production"),
+                    traces_sample_rate=0)
 
 app = FastAPI(title="forskningssok API")
 logger = logging.getLogger("forskningssok")
@@ -112,9 +124,20 @@ def api_profil():
 
 @app.get("/api/status")
 def api_status():
-    """Helse-/kommandosenter-flate: tenkt som en pluggbar sjekk for
-    silverbullet/ops/kommandosenter.py (koblet ikke inn selv i kveld — den filen
-    hadde ucommittede endringer hos en søsterinstans, se wiki/log 2026-09-02).
+    """Helse-flate for mennesker og for et eventuelt overvåkingskall.
+
+    Kartlagt 2026-09-04 hva som FAKTISK dekker denne tjenesten, i stedet for å bygge en
+    fjerde sjekk oppå tre eksisterende:
+      - crash-loop:  silverbullet/ops/container_helse.py, cron på noden hvert 10. min,
+                     leser `docker ps -a` og dekker dermed enhver container — også denne.
+      - HTTP oppe:   Uptime Kuma (se container_helse sin egen docstring om arbeidsdelingen).
+      - feil INNE i appen: var udekket til GlitchTip ble koblet inn samme dag. Det var
+                     hullet Anders falt i: containeren frisk, forsiden 200, og siteringen
+                     feilet likevel. Verken restart-telling eller en HTTP-sjekk kan se det.
+
+    Docstringen sa «tenkt som pluggbar sjekk for kommandosenter.py, koblet ikke inn» fra
+    2026-09-02 til 09-04. Den koblingen er IKKE bygget, og bør trolig ikke bygges:
+    kommandosenteret diagnostiserer Anders' Mac, mens denne tjenesten kjører på Netcup.
     Kilde-nåbarhet er en fersk PING (millisekunder), ikke resultatet av siste søk —
     en nede-kilde her betyr «akkurat nå», ikke «var nede sist noen søkte»."""
     # CACHE_DB gis eksplisitt (ikke bank._db()s modul-default) — default-argumentet der

@@ -61,6 +61,10 @@ services:
       # lastes ved IMPORT, så en profil som ikke finnes stopper oppstarten (med vilje —
       # stille tomme termlister ville sett ut som «ingen treff i dette fagfeltet»).
       FORSKNINGSSOK_PROFIL: ${FORSKNINGSSOK_PROFIL:-fiskehelse}
+      # GlitchTip-DSN. Tom = feilsporing AV, og appen starter helt normalt — den skal
+      # aldri kunne velte oppstarten fordi en observasjonstjeneste mangler.
+      GLITCHTIP_DSN: ${GLITCHTIP_DSN:-}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
       AI_PROXY_WIKI_ID: ${AI_PROXY_WIKI_ID:-forskningssok}
     volumes:
       - forskningssok_data:/data

@@ -66,3 +66,35 @@ def test_status_skiller_europe_pmc_sok_fra_referanselister(tmp_path, monkeypatch
     assert kilder["europe_pmc"] is True
     assert kilder["europe_pmc_referanser"] is False
     assert kilder["crossref"] is True
+
+
+def test_glitchtip_er_av_uten_dsn_og_velter_aldri_oppstarten():
+    """Feilsporing er en observasjonstjeneste. Den skal ALDRI kunne hindre at appen
+    starter — hverken ved å mangle, ved å ha tom DSN, eller ved at pakken ikke er
+    installert i utviklingsmiljøet. Tom DSN = ingen sentry_sdk.init i det hele tatt."""
+    import importlib
+    import os
+    import api
+    with patch.dict(os.environ, {"GLITCHTIP_DSN": ""}, clear=False):
+        importlib.reload(api)
+    assert api.app is not None
+    assert api._GLITCHTIP_DSN == ""
+    importlib.reload(api)
+
+
+def test_glitchtip_init_kalles_naar_dsn_er_satt():
+    import importlib
+    import os
+    import sys
+    from unittest.mock import MagicMock
+    falsk = MagicMock()
+    with patch.dict(sys.modules, {"sentry_sdk": falsk}), \
+         patch.dict(os.environ, {"GLITCHTIP_DSN": "https://x@feil.lauvasdata.no/1"}, clear=False):
+        import api
+        importlib.reload(api)
+    falsk.init.assert_called_once()
+    # traces_sample_rate=0 med vilje: vi vil ha FEIL, ikke ytelsessporing — det siste ville
+    # sendt hver request til en tredjepart uten at noen ba om det.
+    assert falsk.init.call_args.kwargs["traces_sample_rate"] == 0
+    import api as _a
+    importlib.reload(_a)
