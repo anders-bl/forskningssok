@@ -60,3 +60,41 @@ def test_arts_naer_tekst_ekte_salmon_term_fortsatt_matcher_ved_siden_av_calciton
 def test_arts_naer_tekst_tom_streng_gir_false_ikke_feil():
     assert not arts_naer_tekst("")
     assert not arts_naer_tekst(None)
+
+
+# ---------- MeSH-predikatet: tre utfall, ikke to (2026-09-04) ----------
+
+def test_mesh_predikatet_har_tre_utfall():
+    """«Ikke indeksert» er en ANNEN tilstand enn «indeksert og ikke om målarten».
+    41 av 55 cachede papirer har ingen MeSH — preprints, CORE-treff og tidsskrifter
+    utenfor MEDLINE. Å svare False for dem ville vært å utlede fravær av INDEKSERING til
+    fravær av ART, altså samme tre-utfalls-feil huset jakter på ellers."""
+    from domeneprofil import arts_naer_mesh
+    assert arts_naer_mesh(("Salmo salar", "Fish Diseases")) is True
+    assert arts_naer_mesh(("Humans", "Hypercalcemia", "Calcitonin")) is False
+    assert arts_naer_mesh(()) is None
+    assert arts_naer_mesh("") is None
+    assert arts_naer_mesh(None) is None
+    assert arts_naer_mesh("|||") is None, "tomme rør-felt er heller ikke en indeksering"
+
+
+def test_mesh_predikatet_leser_roerseparert_fra_cachen():
+    from domeneprofil import arts_naer_mesh
+    assert arts_naer_mesh("Animals|Salmo salar|Fish Diseases") is True
+
+
+def test_mesh_feller_salmon_calcitonin_kollisjonen():
+    """Positiv kontroll, kjørt FØR eksperimentets dom ble lest. Er dette tilfellet ikke
+    felt, er predikatet galt og målingen måler instrumentet."""
+    from domeneprofil import arts_naer_mesh
+    human = ("Humans", "Infant", "Hypercalcemia", "Calcitonin",
+             "Vitamin D3 24-Hydroxylase", "Nephrocalcinosis")
+    assert arts_naer_mesh(human) is False
+
+
+def test_animals_alene_er_ikke_et_artstreff():
+    """«Animals» står på nesten alle dyrestudier, også humanmedisinske musemodeller.
+    Den er bevisst utelatt fra profilens mesh_termer — med den ville predikatet vært
+    nesten alltid sant, og et predikat som alltid er sant måler ingenting."""
+    from domeneprofil import arts_naer_mesh
+    assert arts_naer_mesh(("Animals", "Mice", "Hypercalcemia")) is False

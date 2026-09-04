@@ -71,7 +71,11 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
         id TEXT PRIMARY KEY, tittel TEXT, forfattere TEXT, tidsskrift TEXT, aar INTEGER,
         doi TEXT, pmid TEXT, abstract TEXT, siteringstall INTEGER, open_access INTEGER,
         kilde_url TEXT, kilde_kode TEXT)""")
-    for kolonne in ("kilde_kode TEXT", "volum TEXT", "hefte TEXT", "sider TEXT", "issn TEXT"):
+    # Rørseparert tekst, ikke JSON: feltene er korte flate lister, og «|» er trygt i
+    # MeSH-termer og NLM-publikasjonstyper (verifisert mot NLMs vokabular — ingen av dem
+    # inneholder rør). rapport.py splitter allerede på «|».
+    for kolonne in ("kilde_kode TEXT", "volum TEXT", "hefte TEXT", "sider TEXT", "issn TEXT",
+                    "pubtyper TEXT", "mesh TEXT", "mesh_major TEXT"):
         try:  # migrasjon for cache.db skrevet før feltet fantes — idempotent
             db.execute(f"ALTER TABLE papers ADD COLUMN {kolonne}")
             db.commit()
@@ -231,11 +235,13 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
         # Reprodusert live 2026-09-04 (8 samtidige identiske /api/sok-kall).
         cur = db.execute(
             """INSERT OR IGNORE INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
-               siteringstall,open_access,kilde_url,kilde_kode,volum,hefte,sider,issn)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               siteringstall,open_access,kilde_url,kilde_kode,volum,hefte,sider,issn,
+               pubtyper,mesh,mesh_major)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (p.id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid, p.abstract,
              p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode,
-             p.volum, p.hefte, p.sider, p.issn))
+             p.volum, p.hefte, p.sider, p.issn,
+             "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major)))
         if cur.rowcount:
             lagret += 1
     db.commit()
@@ -279,7 +285,7 @@ def embed_manglende(*, embed_fn=None, db_path: Path = DB) -> int:
 
 _PAPER_KOLONNER = ("id", "tittel", "forfattere", "tidsskrift", "aar", "doi", "pmid",
                    "abstract", "siteringstall", "open_access", "kilde_url", "kilde_kode",
-                   "volum", "hefte", "sider", "issn")
+                   "volum", "hefte", "sider", "issn", "pubtyper", "mesh", "mesh_major")
 
 
 def berik_sitasjonsfelt(*, db_path: Path = DB, batch: int = 20, sok_fn=None) -> int:
@@ -299,7 +305,8 @@ def berik_sitasjonsfelt(*, db_path: Path = DB, batch: int = 20, sok_fn=None) -> 
     sok_fn = sok_fn or _sok
     db = _db(db_path)
     doier = [r[0] for r in db.execute(
-        "SELECT doi FROM papers WHERE doi IS NOT NULL AND doi != '' AND volum IS NULL")]
+        """SELECT doi FROM papers WHERE doi IS NOT NULL AND doi != ''
+           AND (volum IS NULL OR mesh IS NULL)""")]
     db.close()
     if not doier:
         return 0
@@ -318,9 +325,13 @@ def berik_sitasjonsfelt(*, db_path: Path = DB, batch: int = 20, sok_fn=None) -> 
                 continue
             cur = db.execute(
                 """UPDATE papers SET volum = COALESCE(volum, ?), hefte = COALESCE(hefte, ?),
-                   sider = COALESCE(sider, ?), issn = COALESCE(issn, ?)
-                   WHERE doi = ? AND volum IS NULL""",
-                (p.volum, p.hefte, p.sider, p.issn, p.doi))
+                   sider = COALESCE(sider, ?), issn = COALESCE(issn, ?),
+                   pubtyper = COALESCE(NULLIF(pubtyper,''), ?),
+                   mesh = COALESCE(NULLIF(mesh,''), ?),
+                   mesh_major = COALESCE(NULLIF(mesh_major,''), ?)
+                   WHERE doi = ?""",
+                (p.volum, p.hefte, p.sider, p.issn,
+                 "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major), p.doi))
             beriket += cur.rowcount
         db.commit()
         db.close()

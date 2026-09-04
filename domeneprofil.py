@@ -71,6 +71,7 @@ FAGMILJOER: tuple[str, ...] = tuple(PROFIL["domene"]["fagmiljoer"])
 FAGTIDSSKRIFTER: tuple[str, ...] = tuple(PROFIL["domene"]["fagtidsskrifter"])
 ARTSTERMER: tuple[str, ...] = tuple(PROFIL["art"]["termer"])
 ARTSKOLLISJONER: tuple[str, ...] = tuple(PROFIL["art"].get("kollisjoner", []))
+MESH_TERMER: tuple[str, ...] = tuple(PROFIL["art"].get("mesh_termer", []))
 AKSER: dict[str, tuple[str, ...]] = {k: tuple(v) for k, v in PROFIL["akser"].items()}
 
 # Bakoverkompatibelt alias: navnet var fagfelt-spesifikt («NORSKE_») på en konstant som
@@ -102,6 +103,23 @@ def arts_naer_tekst(tekst: str) -> bool:
     for frase in ARTSKOLLISJONER:
         t = t.replace(frase, "")
     return any(m in t for m in ARTSTERMER)
+
+
+def arts_naer_mesh(mesh: tuple[str, ...] | str | None) -> bool | None:
+    """MeSH-basert arts-svar, eller None når papiret ikke er MeSH-indeksert.
+
+    TRE utfall, ikke to — og det er hele poenget: «ikke indeksert» er en annen tilstand
+    enn «indeksert og ikke om målarten». Preprints, CORE-treff og tidsskrifter utenfor
+    MEDLINE har ingen MeSH i det hele tatt (målt: 41 av 55 cachede papirer), og å svare
+    False for dem ville vært å utlede fravær av indeksering til fravær av art."""
+    if not mesh:
+        return None
+    termer = mesh.split("|") if isinstance(mesh, str) else list(mesh)
+    termer = [t for t in termer if t]
+    if not termer:
+        return None
+    lav = {t.lower() for t in termer}
+    return any(m.lower() in lav for m in MESH_TERMER)
 
 
 def for_frontend() -> dict:

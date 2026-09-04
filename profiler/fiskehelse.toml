@@ -49,6 +49,15 @@ termer = [
 # kollisjon i NETTOPP dette domenet. Fanget live 2026-09-02 på et ekte pediatrisk
 # case-serie-funn om CYP24A1-mutasjoner.
 kollisjoner = ["salmon calcitonin"]
+# MeSH-descriptorer som betyr «dette handler om målobjektet». Valgt fra NLMs vokabular
+# 2026-09-04, FØR måling og uten å se på hvilke cachede papirer som bærer hvilke —
+# ellers ville lista vært tilpasset svaret (forhåndsregistreringen sier hvorfor).
+# «Animals» er bevisst UTELATT: den står på nesten alle dyrestudier, også humanmedisinske
+# musemodeller, og ville gjort predikatet nesten alltid sant.
+mesh_termer = [
+  "Salmo salar", "Salmonidae", "Oncorhynchus", "Fishes", "Fish Diseases",
+  "Aquaculture", "Fisheries", "Trout", "Salmon",
+]
 
 [akser]
 # Forskningsakser for «Omfang»-panelet (idébank #28: faser/miljøfaktorer/regenerasjon;
