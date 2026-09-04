@@ -474,6 +474,29 @@ ikke et endepunkt oppfunnet her. Første utkast VAR oppfunnet, og det var
 endepunktet er nede. Det er FDR-065-lærdommen — *en monitor mot skallet melder grønt i
 nedetid*. En tom cache kan ikke besvare et eneste søk.
 
+**Live siden 2026-09-04:** Uptime Kuma, `status.lauvasdata.no/dashboard/25`, mot
+`/health/ready` med Basic Auth. Sti-unntak fra auth ble PRØVD og forkastet — se
+`integrasjoner/dokploy` §Path-feltet er DESTRUKTIVT: første forsøk tok ned hele tjenesten,
+andre forsøk (egen Domains-rad, tomt Middlewares-felt) traff ikke. Legitimasjon i
+monitoren er dessuten mer robust: den overlever en rutingsendring, et sti-unntak gjør det
+ikke.
+
+### Hva monitoren IKKE kan se — tre bevisste blindsoner
+
+1. **Kildene.** `/ready` sjekker at cachen har innhold, ikke at Europe PMC svarer. Ligger
+   EBI nede i dagevis (som i september), er monitoren **grønn** mens nye søk ikke gir noe.
+   Det er med vilje — alternativet var å pinge fire tredjeparter hvert 300. sekund for å
+   svare på et spørsmål om VÅR tjeneste. Kilde-nåbarhet hører i «Om»-panelet, som et
+   menneske åpner når det lurer.
+2. **Tom cache = rød, og det er riktig.** Prod starter med et TOMT volum (se §Embedder), så
+   en fersk deploy eller et tapt volum gir 503 til noen har søkt første gang. En
+   søketjeneste med tom cache kan ikke besvare noe, så «nede» er det ærlige svaret — men
+   det betyr at monitoren varsler på en helt ny instans, og det skal ikke leses som en
+   feil.
+3. **Rotert passord = falsk rød.** Byttes Basic Auth-credentialen uten at Kuma oppdateres,
+   svarer monitoren 401 og melder nede mens appen er frisk. Rotasjon av den nøkkelen må
+   derfor alltid ha «oppdater Kuma-monitoren» som eget ledd.
+
 ⚠ **`/api/status` er IKKE en monitor-sti.** Den gjør fem utgående kall (Europe PMC,
 OpenAlex, CORE, Crossref, EBI-referanser) for å svare på «er kildene nåbare nå». Hvert 60.
 sekund blir det 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål om
