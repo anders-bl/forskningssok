@@ -516,24 +516,28 @@ OpenAlex, CORE, Crossref, EBI-referanser) for å svare på «er kildene nåbare 
 sekund blir det 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål om
 VÅR tjeneste.
 
-**Oppsett (valgt 2026-09-04: unnta stien fra auth, så Kuma slipper en hemmelighet):**
+**Oppsett (slik det FAKTISK står, målt 2026-09-05):** hele tjenesten ligger bak
+`forskningssok-auth`, helse-stiene inkludert. Kuma bærer legitimasjonen.
 
-1. Dokploy → forskningssok → Domains: legg til en path-basert regel som unntar
-   `/health` fra `forskningssok-auth`-middlewaren. I Traefik-termer er det en egen router
-   med `PathPrefix(\`/health\`)`, høyere `priority` enn hovedruteren, og TOM
-   `middlewares`-liste.
-2. Redeploy — Domains-innstillinger er «lagret, ikke deployet» til containeren startes på
-   nytt (se §Deploy).
-3. Verifiser at unntaket faktisk traff:
-   `curl -s -o /dev/null -w "%{http_code}\n" https://forskningssok.lauvasdata.no/health/ready`
-   → **200** (ikke 401). Får du 401, traff ikke regelen.
-4. Uptime Kuma: HTTP(s)-monitor mot `https://forskningssok.lauvasdata.no/health/ready`,
-   forventet status 200, intervall 300 s. Ingen legitimasjon nødvendig.
+    $ for p in / /health /health/live /health/ready; do curl -s -o /dev/null \
+        -w "%{http_code}\n" https://forskningssok.lauvasdata.no$p; done
+    401  401  401  401
 
-**Hva stien lekker offentlig:** kun `{"status": "pass"}`. Ingen tall, intet profilnavn,
-intet tjenestenavn — de bor bak `X-Internal-Key` på `/health`. Testdekket
-(`test_helse_lekker_ingen_tall_uten_noekkel`), fordi et offentlig endepunkt som stille
-begynner å lekke er en regresjon ingen ville lagt merke til.
+⚠ Avsnittet som sto her før beskrev sti-unntaket som «valgt» og ba leseren verifisere
+**200**. Det var planen fra tidlig 09-04, forkastet senere samme dag (se avsnittet
+«Live siden 2026-09-04» over) — men instruksen ble stående. En 401 er derfor det
+RIKTIGE svaret her, ikke tegnet på en bom slik den gamle teksten sa. Rettet etter en
+live-måling som først ble lest som en infrastruktur-bug nettopp fordi to steder i dette
+repoet påsto det motsatte.
+
+Uptime Kuma: HTTP(s)-monitor mot `https://forskningssok.lauvasdata.no/health/ready`,
+forventet 200, intervall 300 s, **med** Basic Auth-legitimasjonen.
+
+**Hva stien ville lekket om den var offentlig:** kun `{"status": "pass"}`. Ingen tall,
+intet profilnavn, intet tjenestenavn — de bor bak `X-Internal-Key` på `/health`.
+Testdekket (`test_helse_lekker_ingen_tall_uten_noekkel`). Disiplinen beholdes selv om
+auth-gaten står foran: den er det som gjør et fremtidig sti-unntak trygt å innføre uten
+å måtte revurdere hva som lekker.
 
 ## Kalibrering mot det ekte korpuset (2026-09-04)
 
