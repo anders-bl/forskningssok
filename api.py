@@ -189,8 +189,10 @@ def _evidens(tittel: str, abstract: str, pubtyper) -> dict:
 #
 # Taushetsdisiplinen her forutsetter IKKE at stien er offentlig. Sti-unntaket ble prøvd og
 # forkastet 2026-09-04 (Dokploys Path-felt tok ned tjenesten); hele appen står bak
-# forskningssok-auth, og Kuma bærer legitimasjonen — målt 2026-09-05: /health/ready svarer
-# 401. Kommentaren som sto her påsto det motsatte og fikk en senere lesning av den 401-en
+# forskningssok-forwardauth (portal-SSO siden 09-04), og en maskin kan ikke holde en
+# portal-sesjonscookie — målt 2026-09-05: /health/ready svarer 401 med {"detail":"Ikke
+# autentisert"} fra uvicorn, ikke en Basic Auth-challenge. Kuma-monitoren er derfor blind
+# (se README §Uptime Kuma). Kommentaren som sto her påsto det motsatte og fikk en senere lesning av den 401-en
 # til å se ut som en infrastruktur-bug. /live og /ready lekker likevel NULL — ikke
 # profilnavn, ikke antall papirer, ikke tjenestenavn — fordi det er det som gjør et
 # fremtidig unntak trygt å innføre uten å revurdere hva som slipper ut.

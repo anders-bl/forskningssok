@@ -516,22 +516,41 @@ OpenAlex, CORE, Crossref, EBI-referanser) for å svare på «er kildene nåbare 
 sekund blir det 7 200 kall til fire tredjeparter i døgnet, for å svare på et spørsmål om
 VÅR tjeneste.
 
-**Oppsett (slik det FAKTISK står, målt 2026-09-05):** hele tjenesten ligger bak
-`forskningssok-auth`, helse-stiene inkludert. Kuma bærer legitimasjonen.
+**⚠ Monitoren er død siden ForwardAuth-byttet — målt 2026-09-05.**
 
-    $ for p in / /health /health/live /health/ready; do curl -s -o /dev/null \
-        -w "%{http_code}\n" https://forskningssok.lauvasdata.no$p; done
-    401  401  401  401
+Alle stier, helse-stiene inkludert, svarer 401:
 
-⚠ Avsnittet som sto her før beskrev sti-unntaket som «valgt» og ba leseren verifisere
-**200**. Det var planen fra tidlig 09-04, forkastet senere samme dag (se avsnittet
-«Live siden 2026-09-04» over) — men instruksen ble stående. En 401 er derfor det
-RIKTIGE svaret her, ikke tegnet på en bom slik den gamle teksten sa. Rettet etter en
-live-måling som først ble lest som en infrastruktur-bug nettopp fordi to steder i dette
-repoet påsto det motsatte.
+    $ curl -si https://forskningssok.lauvasdata.no/health/ready | head -3
+    HTTP/2 401
+    content-type: application/json
+    server: uvicorn
+    {"detail":"Ikke autentisert"}
 
-Uptime Kuma: HTTP(s)-monitor mot `https://forskningssok.lauvasdata.no/health/ready`,
-forventet 200, intervall 300 s, **med** Basic Auth-legitimasjonen.
+Signaturen sier hvilken dør som stengte: JSON fra `uvicorn`, ingen
+`WWW-Authenticate: Basic`. Det er **ForwardAuth** (portal-SSO), ikke Basic Auth. Kuma-
+monitoren ble satt opp 09-04 med Basic Auth-legitimasjon — den legitimasjonen ble
+irrelevant samme dag, da Middlewares-referansen ble byttet til
+`forskningssok-forwardauth@docker`. Monitoren har med all sannsynlighet meldt rødt
+sammenhengende siden, på en tjeneste som er frisk.
+
+Det er blindsone 3 under («rotert passord = falsk rød»), utløst av noe teksten ikke
+forutså: ikke en rotasjon, men et bytte av selve auth-MEKANISMEN.
+
+**Og et sti-unntak er ikke lenger en bekvemmelighet — det er den eneste veien.** En
+Basic Auth-gate kan en maskin passere med et credential. ForwardAuth krever en
+portal-SESJONSCOOKIE, som en oppetidsmonitor ikke kan holde. Dette er husets kjente
+`ForwardAuth dreper maskinveien`-mønster, nå i en tredje form: først MCP, så
+smoketesten, nå Kuma.
+
+Konkret forslag (ikke utført — Dokploy-panelet er Anders' hånd, og forsøk 1 tok
+tjenesten ned i sept.): en egen Traefik-router i `docker-compose.yml`s labels, ikke i
+Domains-fanen — `PathPrefix(\`/health\`)`, eksplisitt høyere `priority` enn
+hovedruteren, tom `middlewares`. Det er en TREDJE vei, ikke en gjentakelse: begge de
+forkastede forsøkene gikk gjennom UI-et, der prioriteten ikke kunne settes eksplisitt
+— og prioritet er nettopp det forsøk 2 («egen Domains-rad, tomt Middlewares-felt»)
+manglet da det «ikke traff».
+
+Helse-stiene er allerede bygget for å tåle det: de lekker null tall (se under).
 
 **Hva stien ville lekket om den var offentlig:** kun `{"status": "pass"}`. Ingen tall,
 intet profilnavn, intet tjenestenavn — de bor bak `X-Internal-Key` på `/health`.
