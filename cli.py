@@ -130,7 +130,27 @@ def main():
     ap.add_argument("--gap", metavar="ID", help="citation-gap-testen: cachede naboer IKKE i papirets egen referanseliste")
     ap.add_argument("--evaluer", metavar="SPØRRING", help="LOKAL: måler om rangeringen er god (Ollama-dommer, se evaluer.py)")
     ap.add_argument("--kilder", action="store_true", help="referanse-kildenes liveness (felle 38: skiller «0» fra «nede»)")
+    ap.add_argument("--embed-renhet", action="store_true", dest="embed_renhet", help="LOKAL: er cache.db embeddet av ÉN modell? (re-embed + sammenlign)")
     a = ap.parse_args()
+
+    if a.embed_renhet:
+        import embed_renhet
+        print("Sjekker at cache.db er embeddet av den nåværende modellen "
+              "(re-embedder og sammenligner med lagret vektor) …")
+        r = embed_renhet.sjekk_renhet(n=a.antall)
+        if r["ren"] is None:
+            print("⊘ UMÅLT: ingen embeddede papirer i cachen — kan ikke bevise embed-modellen.")
+            return
+        print(f"Sjekket {r['sjekket']} papirer. Maks avstand {r['maks_avstand']}, "
+              f"snitt {r['snitt_avstand']} (terskel {embed_renhet.TERSKEL}).")
+        if r["ren"]:
+            print("[REN] Alle lagrede vektorer stemmer med den nåværende embedderen.")
+        else:
+            print(f"[BLANDET] {len(r['avvik'])} papir(er) avviker — cachen bærer vektorer fra "
+                  f"en ANNEN modell. Dette er stille korrupt (samme dim, feil rom):")
+            for a2 in r["avvik"][:8]:
+                print(f"    avstand {a2['avstand']}  {a2['tittel']}")
+        return
 
     if a.kilder:
         import kilde_liveness
