@@ -162,7 +162,7 @@ def referanseliste_blokker(papirer: list[dict], *, stil: str = "vancouver") -> l
 
 
 def kildesamling_blokker(papirer: list[dict], *, tittel: str = "Kildesamling",
-                         stil: str = "vancouver") -> list[Blokk]:
+                         stil: str = "vancouver", med_referanser: bool = True) -> list[Blokk]:
     """Grupperer papirer på domene-nærhet FØRST (nordisk fagmiljø/kjerne-fagtidsskrift) —
     samme ADR-013-prinsipp som selve søkerangeringen. Rekkefølgen INNENFOR hver gruppe er
     den input-listen allerede hadde (typisk ranking.py sin). Avsluttes med en formatert
@@ -184,7 +184,8 @@ def kildesamling_blokker(papirer: list[dict], *, tittel: str = "Kildesamling",
         blokker.append(Blokk("h2", "Øvrige treff"))
         for p in andre:
             blokker.extend(_kildesamling_papir_blokker(p))
-    blokker.extend(referanseliste_blokker(papirer, stil=stil))
+    if med_referanser:
+        blokker.extend(referanseliste_blokker(papirer, stil=stil))
     return blokker
 
 
@@ -615,3 +616,93 @@ def omfang_rapport_blokker(akser: dict[str, float], forslag: dict[str, list[dict
 def omfang_rapport(akser: dict[str, float], forslag: dict[str, list[dict]],
                     *, tittel: str = "Omfang-rapport") -> str:
     return til_markdown(omfang_rapport_blokker(akser, forslag, tittel=tittel))
+
+
+# ---------- Konvergens-rapport: de fem flettet til produktets signatur-leveranse ----------
+#
+# Nordstjernen (Anders 2026-09-05): en forskningsplattform som spytter ut fine
+# boilerplate-rapporter en betalende kunde åpner. Denne malen er der brikkene MØTES —
+# kildesamling + citation-gap + omfang + verifisering + proveniens — en kombinasjon ingen
+# konkurrent bunter. rapport.py forblir nettverksfri: den TAR de ferdig-beregnede bitene
+# inn (api.py gjør søket/gap/omfang), assembler dokumentet, og er ærlig om det som mangler.
+
+def _proveniens_linje(revisjon: dict) -> str:
+    """«Hard empiri» gjort synlig: hvilke kilder, cache-alder, dedup — Ulvens salgsargument."""
+    tpk = revisjon.get("treff_per_kilde", {})
+    alder = revisjon.get("cache_alder_s")
+    fersk = "ekte kall" if alder is None else f"cache {alder // 60} min gammel"
+    kilder = revisjon.get("kilder", {})
+    core = "" if kilder.get("core", True) else " (CORE utilgjengelig)"
+    return (f"Proveniens: Europe PMC {tpk.get('europe_pmc', '?')} treff ({fersk}), "
+            f"CORE {tpk.get('core', 0)} treff{core}, "
+            f"{revisjon.get('dubletter_fjernet', 0)} dubletter slått sammen. "
+            f"Profil «{revisjon.get('profil', '?')}».")
+
+
+def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | None = None,
+                       gap: dict | None = None, omfang: dict[str, float] | None = None,
+                       revisjon: dict | None = None, verifisering: dict | None = None,
+                       stil: str = "vancouver", tittel: str | None = None) -> list[Blokk]:
+    """Én forskningsrapport for `query`, bygget av de ferdig-beregnede bitene. Hver seksjon
+    er ærlig om fravær: mangler gap-papiret, står seksjonen ikke; er verifisering ikke
+    tilgjengelig (Mistral-abonnement), sies det rett ut i stedet for å utelates stille."""
+    tittel = tittel or f"Forskningsrapport: {query}"
+    b = [Blokk("h1", tittel),
+         Blokk("meta", f"av Lauvasdata · forskningssok · {_dato()}")]
+    if revisjon:
+        b.append(Blokk("meta", _proveniens_linje(revisjon)))
+    b.append(Blokk("p", f"Et strukturert utgangspunkt for spørringen «{query}» — kildene, "
+                        f"hva litteraturen mangler, dekningen, og formaterte referanser. "
+                        f"Et hjelpemiddel for videre vurdering, ikke en uttømmende gjennomgang."))
+
+    # 1. Kilder (gruppert på domene-nærhet, uten egen referanseliste — samlet til slutt)
+    b.append(Blokk("h2", f"Kilder ({len(papirer)})"))
+    naere = [p for p in papirer if domene_naer_tekst(f"{p.get('forfattere', '')} {p.get('tidsskrift', '')}")]
+    naere_id = {p.get("id") for p in naere}
+    if naere:
+        b.append(Blokk("h3", "Nordisk fagmiljø / kjerne-fagtidsskrift"))
+        for p in naere:
+            b.extend(_kildesamling_papir_blokker(p))
+    andre = [p for p in papirer if p.get("id") not in naere_id]
+    if andre:
+        b.append(Blokk("h3", "Øvrige treff"))
+        for p in andre:
+            b.extend(_kildesamling_papir_blokker(p))
+
+    # 2. Hva litteraturen mangler (citation-gap) — differensieringen (Aaron Tay-proben)
+    if gap and gap_papir:
+        b.append(Blokk("h2", "Hva litteraturen mangler (citation-gap)"))
+        b.append(Blokk("p", f"For «{(gap_papir.get('tittel') or '')[:80]}»: papiret siterer "
+                            f"{gap.get('siterte_antall', 0)} kilder (via "
+                            f"{gap.get('referanse_kilde', 'ukjent')}). "
+                            f"{len(gap.get('gap', []))} semantiske naboer i korpuset er IKKE i "
+                            f"den referanselisten — kandidater å vurdere, ikke en dom."))
+        for g in (gap.get("gap") or [])[:8]:
+            b.append(Blokk("p", f"· {g.get('tittel') or 'Uten tittel'} "
+                                f"({g.get('aar') or '?'}, avstand {g.get('avstand', 0):.3f})"))
+
+    # 3. Omfang — akse-dekning
+    if omfang:
+        b.append(Blokk("h2", "Omfang — dekning per forskningsakse"))
+        b.append(Blokk("meta", "Nøkkelord-basert hjelpemiddel over kildenes tekst, ikke en semantisk dom."))
+        for akse, dekning in omfang.items():
+            merke = "godt dekket" if dekning >= 1.0 else ("tynt/ikke nevnt" if dekning == 0 else "delvis")
+            b.append(Blokk("p", f"· {akse}: {round(dekning * 100)} % ({merke})"))
+
+    # 4. Verifisering — ærlig om at kapabiliteten finnes men kan være gated
+    b.append(Blokk("h2", "Verifisering av påstander"))
+    if verifisering and verifisering.get("tilgjengelig"):
+        b.append(Blokk("p", "Marker en påstand i verktøyet og trykk «Verifiser» for et "
+                            "EU-web-verifisert verdikt med kilder (FDR-028)."))
+    else:
+        b.append(Blokk("p", "Påstands-verifisering (web-kilder, EU-direkte) er en kapabilitet "
+                            "i verktøyet, men er ikke aktivert i dette miljøet ennå. Rapporten "
+                            "gjør derfor ingen verifiserte påstander — kildene over står for seg selv."))
+
+    # 5. Referanser — den formaterte bibliografien (signatur-poleringen)
+    b.extend(referanseliste_blokker(papirer, stil=stil))
+    return b
+
+
+def konvergens(query: str, papirer: list[dict], **kw) -> str:
+    return til_markdown(konvergens_blokker(query, papirer, **kw))

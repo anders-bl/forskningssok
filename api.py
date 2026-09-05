@@ -845,6 +845,52 @@ def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str
     return _rapport_svar(blokker, format, tittel, tittel)
 
 
+@app.get("/api/rapport/konvergens")
+def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", n: int = 12):
+    """Signatur-leveransen: ÉN forskningsrapport for spørringen `q` som fletter kilder +
+    citation-gap + omfang + verifiseringsstatus + proveniens, med formaterte referanser.
+
+    Gjør beregningen (søk, gap på topptreffet, omfang over kildenes tekst) og gir de
+    ferdige bitene til rapport.konvergens_blokker, som er nettverksfri. Ærlig om fravær:
+    en nede gap-kilde gir ingen gap-seksjon, ikke en feil."""
+    if not q.strip():
+        raise HTTPException(400, "tom spørring")
+    try:
+        papirer_d, _, revisjon = sok_og_ranger(q, page_size=max(n, 20))
+    except RuntimeError as e:
+        raise HTTPException(502, f"søk feilet: {e}")
+    if not papirer_d:
+        raise HTTPException(404, f"ingen treff for «{q}»")
+    _lagre_bakgrunn(papirer_d[:n])  # synkront: cacher papirene (gap trenger topptreffets vektor)
+    # Hent den KANONISKE dict-formen fra cachen (samme som alle andre rapporter bruker) —
+    # asdict(PaperDossier) gir pubtyper/mesh som tupler, bank.hent() gir «|»-strenger som
+    # rapport-byggerne forventer. Falt på nettopp det (2026-09-05).
+    papirer = [d for d in (bank.hent(p.id) for p in papirer_d[:n]) if d]
+    if not papirer:
+        raise HTTPException(404, f"ingen av treffene for «{q}» ble cachet")
+
+    # Gap på topptreffet — differensieringen. Faller ærlig bort hvis kilden er nede.
+    gap = gap_papir = None
+    topp = papirer[0]
+    if topp.get("pmid") or topp.get("doi"):
+        try:
+            gap = gap_kandidater(topp["id"], topp.get("kilde_kode") or "MED",
+                                 topp.get("pmid"), k=8, kilde_aar=topp.get("aar"))
+            gap_papir = topp
+        except Exception:
+            gap = gap_papir = None  # gap er en bonus, aldri blokkerende for rapporten
+
+    # Omfang over kildenes samlede tekst (tittel+abstract) — dekning per akse.
+    tekst = " ".join(f"{p.get('tittel', '')} {p.get('abstract', '')}" for p in papirer)
+    omfang = scoping.akse_dekning(tekst)
+
+    verifisering = {"tilgjengelig": verifiser_modul.tilgjengelig()}
+    blokker = rapport.konvergens_blokker(
+        q, papirer, gap_papir=gap_papir, gap=gap, omfang=omfang, revisjon=revisjon,
+        verifisering=verifisering, stil=stil)
+    return _rapport_svar(blokker, format, _slug(q) or "rapport", f"Forskningsrapport: {q}")
+
+
 @app.get("/api/rapport/sitatnotater")
 def api_rapport_sitatnotater(tittel: str = "Sitatnotater", format: str = "md"):
     """Hele leseloggen (ALLE lagrede sitater, ikke filtrert på ett papir) som ett
