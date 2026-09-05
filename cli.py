@@ -129,7 +129,39 @@ def main():
     ap.add_argument("--lignende", metavar="ID", help="vis cachede papirer semantisk nærmest DOI/PMID")
     ap.add_argument("--gap", metavar="ID", help="citation-gap-testen: cachede naboer IKKE i papirets egen referanseliste")
     ap.add_argument("--evaluer", metavar="SPØRRING", help="LOKAL: måler om rangeringen er god (Ollama-dommer, se evaluer.py)")
+    ap.add_argument("--kilder", action="store_true", help="referanse-kildenes liveness (felle 38: skiller «0» fra «nede»)")
     a = ap.parse_args()
+
+    if a.kilder:
+        import kilde_liveness
+        # Kontroll-papiret fra profilen: kjent-referert (~79 ref), så et tomt svar er en
+        # svikt, ikke et gyldig 0. Hentes fra cachen for pmid/kilde_kode.
+        kid = domeneprofil.EVAL_KONTROLL.get("kontroll_relevant_id")
+        kp = hent(kid) if kid else None
+        if not kp:
+            print("Kontroll-papiret er ikke cachet — kjør et domene-kjerne-søk først "
+                  "(profilens EVAL_KONTROLL.kontroll_relevant_id).", file=sys.stderr)
+            sys.exit(1)
+        print(f"Referanse-kilde-liveness, kontroll: {kp['tittel'][:60]} "
+              f"(DOI {kp['doi']}, PMID {kp['pmid']}) — kjent-referert.\n")
+        svar = kilde_liveness.alle_kilder(doi=kp["doi"], pmid=kp["pmid"],
+                                          kilde_kode=kp["kilde_kode"] or "MED")
+        for s in svar:
+            merke = {"OPPE": "[OPPE]", "NEDE": "[NEDE]", "MISTENKT_NEDE": "[TOM/NEDE]",
+                     "IKKE_SJEKKBAR": "[-]"}.get(s.status, s.status)
+            linje = f"  {merke:11} {s.navn:12} {f'{s.antall} referanser' if s.antall else s.feil}"
+            print(linje)
+        o = kilde_liveness.oppsummer(svar)
+        print()
+        if o["alle_oppe"]:
+            print("Alle sjekkbare kilder oppe.")
+        else:
+            if o["nede"]:
+                print(f"NEDE (svarte ikke): {', '.join(o['nede'])}")
+            if o["mistenkt_nede"]:
+                print(f"MISTENKT NEDE (tomt svar på et kjent-referert papir — dette er felle "
+                      f"38: ser ut som «0 referanser», er egentlig nede): {', '.join(o['mistenkt_nede'])}")
+        return
 
     if a.evaluer:
         import evaluer
