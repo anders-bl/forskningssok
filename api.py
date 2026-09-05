@@ -15,11 +15,12 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import bank
+import dokumenter
 import rapport
 import scoping
 from adapters import openalex
@@ -537,6 +538,68 @@ def api_utkast_slett(utkast_id: int):
     if not bank.slett_utkast(utkast_id):
         raise HTTPException(404, "utkast finnes ikke")
     return {"ok": True}
+
+
+@app.post("/api/dokument")
+async def api_dokument_last_opp(fil: UploadFile = File(...), paper_id: str = Form("")):
+    """Ulvens egen PDF inn i korpuset. Se dokumenter.py for hvorfor den blir et ekte
+    papir og ikke en sidevogn.
+
+    Oppslaget mot Europe PMC (for en DOI vi ikke har cachet) kjøres SYNKRONT her, ikke i
+    en BackgroundTask som resten av caching-arbeidet: svaret må si hvilket papir fila
+    faktisk landet på, og et «vi finner ut av det etterpå» ville latt flaten vise fila
+    under feil tittel i mellomtiden."""
+    data = await fil.read()
+    try:
+        d = dokumenter.lagre(fil.filename or "dokument.pdf", data,
+                             paper_id=paper_id or None, db_path=CACHE_DB)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:  # embedder nede — samme klasse api.py fanger ellers
+        raise HTTPException(502, str(e))
+    _varm_stille(d["paper_id"], "dokument")
+    return d
+
+
+@app.get("/api/dokumenter")
+def api_dokumenter(paper_id: str = ""):
+    """Hele skuffen, eller ett papirs vedlegg.
+
+    Papir-filteret er et QUERY-parameter, ikke `/api/papir/{id}/dokumenter`: den stien
+    ville aldri blitt truffet. `/api/papir/{paper_id:path}` er registrert lenger opp, og
+    en `:path`-konverter sluker resten av URL-en — DOI-er inneholder skråstrek, så
+    «/api/papir/10.1111/jfd.70099/dokumenter» ville endt som et papir-oppslag på
+    paper_id «10.1111/jfd.70099/dokumenter» og gitt 404 i stedet for vedleggslista."""
+    if paper_id:
+        return {"dokumenter": dokumenter.for_papir(paper_id, db_path=CACHE_DB)}
+    return {"dokumenter": dokumenter.liste(db_path=CACHE_DB)}
+
+
+@app.get("/api/dokument/{doc_id}")
+def api_dokument(doc_id: str):
+    d = dokumenter.hent(doc_id, db_path=CACHE_DB)
+    if not d:
+        raise HTTPException(404, "ukjent dokument")
+    return d
+
+
+@app.get("/api/dokument/{doc_id}/fil")
+def api_dokument_fil(doc_id: str):
+    """Selve PDF-en. Går gjennom dokument-ID-en, aldri et sti-parameter fra klienten —
+    ID-en er en sha256-prefiks slått opp i basen, så det finnes ingen streng en klient
+    kan sende som blir til en sti utenfor mappen."""
+    d = dokumenter.hent(doc_id, db_path=CACHE_DB)
+    sti = dokumenter.fil_sti(doc_id)
+    if not d or not sti.exists():
+        raise HTTPException(404, "ukjent dokument")
+    return FileResponse(sti, media_type="application/pdf", filename=d["filnavn"])
+
+
+@app.delete("/api/dokument/{doc_id}")
+def api_dokument_slett(doc_id: str):
+    if not dokumenter.slett(doc_id, db_path=CACHE_DB):
+        raise HTTPException(404, "ukjent dokument")
+    return {"slettet": doc_id}
 
 
 @app.get("/api/relevans")

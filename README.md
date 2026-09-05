@@ -428,6 +428,58 @@ testfixtur, ikke et fagfelt noen bruker. Mekanismen er verifisert; at et VILKÅR
 gir gode treff er ikke — kildene (Europe PMC, CORE) er biomedisinsk tunge, og et fagfelt
 utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
+## Egne PDF-er — fulltekst for papirene som ikke er open access (2026-09-05)
+
+Nesten alle Europe PMC-treff i dette korpuset er `isOpenAccess: N`. For dem hadde
+leseflaten bare abstractet, og en forsker som FAKTISK har papiret gjennom
+institusjonstilgang hadde ingen vei inn. Det var det største gjenstående produkt-gapet.
+
+Dra en PDF inn i leseflaten (eller bruk filvelgeren). `dokumenter.py` trekker ut teksten
+med pypdf, og fulltekst rendres som vanlige avsnitt i leseflaten — der utvalgs-
+verktøylinjen alt bor, så «Sitér» virker på den uten en linje ny siteringskode.
+
+**Den ene beslutningen som gjør resten gratis:** en dratt-inn PDF blir en **ekte rad i
+`papers`**, ikke en sidevogn. «Lignende», ambient relevans, banding, varme, sitatbanken og
+alle fire rapportmalene ser den fra første sekund uten å vite at den finnes.
+
+**Identiteten er DOI-en inne i dokumentet, ikke filnavnet** (`Downloads (3).pdf` sier
+ingenting). Fire veier, i prioritert rekkefølge:
+
+| situasjon | resultat |
+|---|---|
+| du har et papir åpent | fila festes der — ditt valg slår DOI-en i fila |
+| DOI på forsiden, papiret alt cachet | fulltekst fester seg på den raden, ingen dublett |
+| DOI på forsiden, ikke cachet | DOI-en slås opp hos kilden, ekte metadata inn |
+| ingen DOI | `lokal:<sha256>`, merket `kilde_kode=LOKAL`, tomt abstract |
+
+DOI-en leses kun fra de **tre første sidene**. En DOI i referanselista på side 12 er en
+ANNEN artikkels DOI, og å plukke den ville festet fulltekst på feil papir — den verste
+feilen modulen kan gjøre. Egen test bygger et 6-siders dokument for å felle nettopp det.
+
+**Tre ærlige grenser, sagt høyt i stedet for å oppdages senere:**
+
+1. **Ingen OCR.** En skannet PDF har intet tekstlag. Fila lagres og kan åpnes, men flaten
+   sier eksplisitt «ingen tekst kunne hentes ut» — et stille tomt panel ville sett
+   nøyaktig ut som et papir uten innhold.
+2. **Et lokalt papir får ALDRI et oppdiktet abstract.** Fulltekstens første avsnitt ville
+   vært fristende, og er nøyaktig plassholder-som-verdi-fella §Metadata-gapet dokumenterer.
+3. **Dokument-identitet er sha256 av BYTENE.** Samme fil to ganger er ett dokument; to
+   ULIKE eksporter av samme artikkel er to. Å hashe den uttrukne teksten ville løst det
+   og samtidig kollapset hver eneste skannede PDF til samme id — byte-identitet er den
+   trygge av de to.
+
+Sletting fjerner fila, men **beholder sitatene**: et sitat Ulven har kommentert er hans
+arbeid, ikke en avledning av fila.
+
+PDF-ene bor i `vedlegg/` ved siden av `cache.db` — altså i Dokploy-volumet, uten en andre
+volum-beslutning — aldri som blobs i sqlite, og `vedlegg/` er gitignorert.
+
+Live-verifisert i nettleser mot den ekte cachen, ikke bare enhetstestet: opplasting av
+PDF-en til `10.1111/jfd.70099` (ikke-OA) → fulltekst i leseflaten → markert en setning →
+«Sitér» → sitatet i banken med korrekt forfatter/DOI → overlevde reload → sletting av
+vedlegget lot sitatet stå. En skannet PDF ga den ærlige meldingen. Null konsollfeil.
+Fanget underveis: «1 sider».
+
 ## Overvåking — hva som dekker hva (2026-09-04)
 
 Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en
@@ -655,7 +707,7 @@ Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke f
 
 ## Testet
 
-151/151 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+296/296 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
 README-en. Dekker: embedder-valget (AI_PROXY_URL → ai-proxy, ellers lokal bge-m3 — se
 §Embedder), delt DB-sti på tvers av bank.py/adapters (§Deploy), parsing av ekte Europe
 PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),

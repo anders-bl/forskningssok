@@ -176,6 +176,19 @@ button{ font:inherit; }
 .gutter-dot{ display:flex; justify-content:center; padding-top:.5rem; }
 .gutter-dot i{ width:8px; height:8px; border-radius:50%; background:var(--accent); display:block; }
 .reader-body p{ grid-column:2; font-size:1.0625rem; line-height:1.7; margin:0 0 1.2rem; }
+
+/* Vedlegg: egne PDF-er i leseflaten. Fulltekst rendres som vanlige <p> INNE i
+   #reader-body, ikke i et eget panel — utvalgs-verktøylinjen krever nettopp det for at
+   «Sitér» skal virke, så et sidepanel ville kostet en andre siteringsvei. */
+.vedlegg{ grid-column:2; margin:0 0 1.4rem; border-top:1px solid var(--border); padding-top:.9rem; }
+.vedlegg-linje{ display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; font-size:.75rem; color:var(--muted); }
+.vedlegg-navn{ color:var(--text); font-weight:600; }
+.vedlegg-knapp{ background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:5px; padding:.15rem .5rem; font-size:.6875rem; cursor:pointer; }
+.vedlegg-knapp:hover{ color:var(--text); }
+.vedlegg-advarsel{ color:var(--warn, #a86); }
+.fulltekst{ margin-top:.9rem; }
+.fulltekst p{ grid-column:auto; }
+.slippsone{ position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 12%, transparent); border:2px dashed var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.9375rem; color:var(--accent); font-weight:600; pointer-events:none; z-index:20; }
 #empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; }
 .tomflate{ max-width:22rem; margin:0 auto; }
 .tomflate b{ display:block; color:var(--text); font-size:1rem; margin-bottom:.4rem; }
@@ -379,7 +392,9 @@ svg text{ font-family:system-ui,sans-serif; }
     </div>
 
     <!-- Midten: leseflaten -->
-    <div class="pane">
+    <div class="pane" id="lesepane" style="position:relative">
+      <div class="slippsone" id="slippsone" hidden>Slipp PDF-en her</div>
+      <input type="file" id="pdf-input" accept="application/pdf" multiple hidden>
       <div id="reader-head" class="reader-head" hidden>
         <div class="reader-kicker" id="reader-kicker"></div>
         <div class="reader-title" id="reader-title"></div>
@@ -392,6 +407,8 @@ svg text{ font-family:system-ui,sans-serif; }
           <b>Ingen papir åpent</b>
           Søk til venstre og velg et treff. Merk tekst i abstractet for å sitere det —
           sitatet lander i dokumentskuffen under.
+          <div style="margin-top:1rem">Har du PDF-en selv? Dra den hit — den blir et papir
+          i korpuset, med fulltekst du kan sitere fra.</div>
         </div></div>
         <div class="reader-body" id="reader-body" hidden></div>
       </div>
@@ -692,6 +709,8 @@ async function openPaper(id) {
     body.innerHTML = `<div class="hint">Ingen abstract hentet for dette papiret.</div>`;
   }
 
+  visVedlegg(id);
+
   $('#reader-emner').innerHTML = '';
   if (id.startsWith('10.')) {
     api(`/api/emner/${encodeURIComponent(id)}`).then(d => {
@@ -889,6 +908,108 @@ function renderKart() {
   el.innerHTML = svg + '<div class="hint" style="margin-top:.6rem">Node-link av samme naboer som «Lignende» (Ghoniem et al. 2005: graf for nabolag, liste for eksakt avstand).</div>';
   $$('.kart-node', el).forEach(c => c.addEventListener('click', () => openPaper(c.dataset.id)));
 }
+
+
+// ---------- Vedlegg: egne PDF-er ----------
+// Fulltekst for et papir som ikke er open access er hele grunnen til at dette finnes:
+// nesten alle treff er isOpenAccess:N, og for dem har leseflaten bare abstractet.
+
+async function visVedlegg(paperId) {
+  const body = $('#reader-body');
+  $$('.vedlegg', body).forEach(el => el.remove());
+  let liste;
+  try {
+    liste = (await api(`/api/dokumenter?paper_id=${encodeURIComponent(paperId)}`)).dokumenter;
+  } catch { return; }  // vedlegg er en berikelse; en feil her skal aldri skjule abstractet
+  if (!liste.length) return;
+
+  const grid = $('.reader-grid', body) || body;
+  for (const d of liste) {
+    const el = document.createElement('div');
+    el.className = 'vedlegg';
+    el.innerHTML = `<div class="vedlegg-linje">
+        <span class="vedlegg-navn">📎 ${escapeHtml(d.filnavn)}</span>
+        <span>${d.sider} ${d.sider === 1 ? 'side' : 'sider'}</span>
+        <a class="vedlegg-knapp" href="/api/dokument/${d.id}/fil" target="_blank" rel="noopener">Åpne PDF</a>
+        <button class="vedlegg-knapp" data-slett="${d.id}">Fjern</button>
+      </div>`;
+    grid.appendChild(el);
+
+    if (d.tegn > 0) {
+      const full = document.createElement('div');
+      full.className = 'fulltekst';
+      const tekst = (await api(`/api/dokument/${d.id}`)).tekst;
+      // Ett avsnitt per blankline-separert blokk, som pypdf gir dem. Ingen omskriving,
+      // ingen sammendrag — samme «vi viser rå kilde»-disiplin som abstractet.
+      full.innerHTML = tekst.split(/\n{2,}/).filter(t => t.trim())
+        .map(t => `<p>${escapeHtml(t)}</p>`).join('');
+      el.appendChild(full);
+    } else {
+      // Se dokumenter.py: stillhet her ville sett ut som et papir uten innhold.
+      const adv = document.createElement('div');
+      adv.className = 'vedlegg-linje vedlegg-advarsel';
+      adv.style.marginTop = '.4rem';
+      adv.textContent = 'Ingen tekst kunne hentes ut — sannsynligvis en skannet PDF. '
+        + 'Fila er lagret og kan åpnes, men det finnes ingen OCR her, så det er ingenting å sitere fra.';
+      el.appendChild(adv);
+    }
+  }
+
+  $$('[data-slett]', body).forEach(b => b.addEventListener('click', async () => {
+    try {
+      await api(`/api/dokument/${b.dataset.slett}`, {method: 'DELETE'});
+      si('Vedlegget er fjernet — sitatene dine står igjen');
+      visVedlegg(paperId);
+    } catch (err) { si('Kunne ikke fjerne: ' + err.message); }
+  }));
+}
+
+async function lastOppPdf(filer) {
+  for (const f of filer) {
+    if (f.type && f.type !== 'application/pdf') { si(`${f.name} er ikke en PDF`); continue; }
+    si(`Leser ${f.name} …`);
+    const fd = new FormData();
+    fd.append('fil', f, f.name);
+    // Er et papir åpent, er det Ulvens eget valg om hvor fila hører hjemme, og det slår
+    // DOI-en i fila (se dokumenter.py:lagre). Er ingenting åpent, bestemmer dokumentet selv.
+    if (state.paperId) fd.append('paper_id', state.paperId);
+    try {
+      const d = await api('/api/dokument', {method: 'POST', body: fd});
+      const hvor = {
+        'valgt': 'lagt på papiret du har åpent',
+        'doi-i-cache': 'kjent igjen på DOI-en og festet på papiret du alt hadde',
+        'doi-slatt-opp': 'DOI-en ble slått opp hos kilden — papiret er nå i korpuset',
+        'lokal-doi': 'kilden svarte ikke, så papiret er lagt inn som lokalt',
+        'lokal': 'ingen DOI i dokumentet — lagt inn som et lokalt papir',
+      }[d.knyttet_via] || 'lagt inn';
+      si(`${f.name}: ${hvor}${d.tekstlag ? '' : ' (ingen tekst å hente ut)'}`);
+      await openPaper(d.paper_id);
+      lastVarme();
+    } catch (err) { si(`${f.name}: ${err.message}`); }
+  }
+}
+
+const lesepane = $('#lesepane');
+let dragDybde = 0;  // dragenter/-leave fyrer per underelement; en teller er det som
+                    // hindrer at sonen blinker når markøren passerer over et avsnitt.
+lesepane.addEventListener('dragenter', e => {
+  if (![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); dragDybde++; $('#slippsone').hidden = false;
+});
+lesepane.addEventListener('dragover', e => {
+  if ([...e.dataTransfer.types].includes('Files')) e.preventDefault();
+});
+lesepane.addEventListener('dragleave', () => {
+  if (--dragDybde <= 0) { dragDybde = 0; $('#slippsone').hidden = true; }
+});
+lesepane.addEventListener('drop', e => {
+  e.preventDefault(); dragDybde = 0; $('#slippsone').hidden = true;
+  if (e.dataTransfer.files.length) lastOppPdf([...e.dataTransfer.files]);
+});
+$('#pdf-input').addEventListener('change', e => {
+  if (e.target.files.length) lastOppPdf([...e.target.files]);
+  e.target.value = '';  // samme fil to ganger på rad fyrer ellers ikke change
+});
 
 // ---------- Utvalgs-verktøylinje (ekte tekstmarkering, ikke simulert) ----------
 const toolbar = $('#seltoolbar');

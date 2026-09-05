@@ -3,6 +3,12 @@ uvicorn
 httpx
 sqlite-vec
 reportlab
+# Egne PDF-er inn i korpuset (dokumenter.py, 2026-09-05). pypdf er ren Python — ingen
+# systembinær, så Dockerfilen er uendret. python-multipart er FastAPIs krav for
+# multipart/form-data; uten den svarer opplastingsendepunktet 500 på FØRSTE ekte
+# forsøk, ikke ved import.
+pypdf
+python-multipart
 # GlitchTip (feil.lauvasdata.no) — flåte-dekkende feilsporing, ikke noe forskningssok eier.
 # Se integrasjoner/glitchtip i plattformwikien. Lagt til 2026-09-04: 4 av 6 FastAPI-repoer
 # i huset hadde den, forskningssok ikke — mens den STO I PRODUKSJON. Da Anders traff en
