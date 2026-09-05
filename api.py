@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 import bank
 import dokumenter
+import versjon
 import sti as sti_modul
 import rapport
 import scoping
@@ -257,6 +258,10 @@ def _helse_bygg() -> dict:
     statuser = {sjekk["status"], kilder["status"]}
     samlet = "fail" if "fail" in statuser else ("warn" if "warn" in statuser else "pass")
     return {"status": samlet,
+            # «version»/«releaseId» er husstandardens egne felt (konsepter/helsesjekk,
+            # arvet fra IETF-utkastet) — de bor bak X-Internal-Key sammen med resten av
+            # detaljen, aldri i det offentlige svaret som kun sier status.
+            "version": versjon.VERSJON, "releaseId": versjon.BYGG,
             "checks": {"cache:innhold": [sjekk], "kilder:naabarhet": [kilder]}}
 
 
@@ -282,6 +287,11 @@ def health_detail(x_internal_key: str = Header(None)):
     if nokkel and x_internal_key and hmac.compare_digest(x_internal_key, nokkel):
         return _helse_svar(payload)
     return _helse_svar({"status": payload["status"]})
+
+
+@app.get("/api/versjon")
+def api_versjon():
+    return versjon.info()
 
 
 @app.get("/api/profil")

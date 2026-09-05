@@ -428,6 +428,39 @@ testfixtur, ikke et fagfelt noen bruker. Mekanismen er verifisert; at et VILKÅR
 gir gode treff er ikke — kildene (Europe PMC, CORE) er biomedisinsk tunge, og et fagfelt
 utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
+## Versjon — to tall, fordi de svarer på to ulike spørsmål (2026-09-05)
+
+`v1.0.0` i toppbaren, med byggnummeret og Anders' tagline i tooltipen og i «Om».
+
+**«Vi er alle en versjon fram til vi dør.»**
+
+`VERSJON` er semantisk og settes for hånd — den sier hva utgaven BETYR, og er det Anders
+og Ulven snakker om. `BYGG` er en hash over kildefilene, beregnet ved import, og sier
+hvilken KODE som faktisk kjører. Det er det en feilrapport trenger.
+
+**En versjon som bare er semantisk, lyver:** ingen husker å bumpe den, og «v1.0.0» sitter
+da på tjue ulike utgaver. Et tall ingen KAN glemme å oppdatere er det eneste som holder.
+
+Hvorfor ikke git-sha, som var det åpenbare: `.dockerignore` ekskluderer `.git/`, så et
+`git rev-parse` i containeren har ingenting å lese. Det ville gitt tom streng i
+PRODUKSJON og riktig svar lokalt — verste kombinasjon, siden feilen først viser seg der
+den betyr noe. En build-ARG ville fungert, men krever at hver deploy husker å sende den.
+Innholdshashen krever ingen av delene og er sann i begge miljøer.
+
+To utelatelser som begge er testdekket, fordi de er det tallet betyr:
+
+- **`versjon.py` teller ikke med i sin egen hash.** Ellers ville en ren `VERSJON`-bump
+  endret byggnummeret uten at én kjørende linje ble annerledes.
+- **`tests/` teller ikke med.** De er ikke i imaget, så samme kjørende kode ville fått
+  ulikt byggnummer lokalt og i prod — nøyaktig forvirringen tallet skal fjerne.
+
+Filnavnet hashes sammen med innholdet: en fil som bytter navn uten innholdsendring er en
+annen utgave, og uten navnet ville de to hashet likt.
+
+`/health`-detaljen bærer nå `version`/`releaseId` (husstandardens egne felt) **bak
+X-Internal-Key**. Det offentlige svaret sier fortsatt kun `status`, og en egen test låser
+at versjonen ikke lekker dit.
+
 ## Citation-gap-testen kjørt live — proben overdrev med mer enn det dobbelte (2026-09-05)
 
 Første ekte kjøring mot cachen, ikke bare mot mocks. `10.1111/jfd.13815` (2023) meldte
@@ -792,7 +825,7 @@ Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke f
 
 ## Testet
 
-314/314 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+322/322 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
 README-en. Dekker: embedder-valget (AI_PROXY_URL → ai-proxy, ellers lokal bge-m3 — se
 §Embedder), delt DB-sti på tvers av bank.py/adapters (§Deploy), parsing av ekte Europe
 PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),
