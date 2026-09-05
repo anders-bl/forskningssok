@@ -59,7 +59,6 @@ def test_dommer_er_blind_for_rangeringen():
 
 def test_positiv_kontroll_bestaar_naar_dommeren_skiller_arten():
     res = evaluer.positiv_kontroll(
-        "nefrokalsinose laks",
         relevant={"tittel": "Nephrocalcinosis in Atlantic salmon", "abstract": "fisk"},
         felle={"tittel": "CYP24A1 nephrocalcinosis in human infants", "abstract": "menneske"},
         dommer_fn=_dommer({"salmon": 3, "human": 0}))
@@ -70,7 +69,6 @@ def test_positiv_kontroll_FEILER_naar_dommeren_lures_av_ordet():
     """Species-trap: samme ord «nephrocalcinosis», feil art. En dommer som gir fella like
     høyt som det ekte papiret har falt for nøyaktig det rangeringen bander mot."""
     res = evaluer.positiv_kontroll(
-        "nefrokalsinose laks",
         relevant={"tittel": "Nephrocalcinosis in Atlantic salmon", "abstract": "fisk"},
         felle={"tittel": "CYP24A1 nephrocalcinosis in human infants", "abstract": "menneske"},
         dommer_fn=_dommer({"nephrocalcinosis": 3}))  # gir BEGGE 3 — lurt av ordet

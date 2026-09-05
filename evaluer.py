@@ -85,10 +85,18 @@ def doem_relevans(query: str, tittel: str, abstract: str, *, dommer_fn=None) -> 
     return _parse_grad(svar)
 
 
-def positiv_kontroll(query: str, relevant: dict, felle: dict, *, dommer_fn=None) -> dict:
-    """Dommeren MÅ gi det ekte fiskehelse-papiret høyere grad enn species-trap-fella.
-    Består ikke den, er dommeren lurt av samme ordoverlapp rangeringen bander mot, og
-    hovedmålingen skal ikke leses. Returnerer {bestått, grad_relevant, grad_felle}."""
+# Kontrollen har sin EGEN spørring, uavhengig av eval-spørringen: den tester om DOMMEREN
+# kan skille art (fisk vs. menneske) på et tema der svaret er utvetydig, ikke om et
+# nefrokalsinose-papir er relevant for en lever-spørring. Hardkodet til eval-spørringen
+# ville voidet enhver ikke-nefrokalsinose-kjøring falskt (funnet 2026-09-05 ved å prøve
+# en lever-spørring).
+KONTROLL_QUERY = "nefrokalsinose hos oppdrettslaks"
+
+
+def positiv_kontroll(relevant: dict, felle: dict, *, dommer_fn=None, query: str = KONTROLL_QUERY) -> dict:
+    """Dommeren MÅ gi det ekte fiskehelse-papiret høyere grad enn species-trap-fella på
+    kontroll-spørringen. Består ikke den, er dommeren lurt av samme ordoverlapp rangeringen
+    bander mot, og hovedmålingen skal ikke leses. {bestått, grad_relevant, grad_felle}."""
     gr = doem_relevans(query, relevant["tittel"], relevant.get("abstract", ""), dommer_fn=dommer_fn)
     gf = doem_relevans(query, felle["tittel"], felle.get("abstract", ""), dommer_fn=dommer_fn)
     bestått = gr is not None and gf is not None and gr > gf
@@ -132,7 +140,7 @@ def evaluer_rangering(query: str, papirer: list, *, dommer_fn=None, kontroll: di
         detaljer.append({"tittel": (felt(p, "tittel") or "")[:70], "grad": g})
 
     konk, enige, total = _konkordans(grader)
-    kontroll_res = positiv_kontroll(query, kontroll["relevant"], kontroll["felle"],
+    kontroll_res = positiv_kontroll(kontroll["relevant"], kontroll["felle"],
                                     dommer_fn=dommer_fn) if kontroll else None
     kontroll_ok = kontroll_res["bestått"] if kontroll_res else None
 
