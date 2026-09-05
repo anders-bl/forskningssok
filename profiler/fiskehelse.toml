@@ -96,3 +96,11 @@ hentet fra profiler/fiskehelse.toml. Et ★ betyr «norsk fagmiljø/fagtidsskrif
 «nevner ikke laks/oppdrettsfisk i tittel/abstract» — begge er signaler for DEG å vurdere,
 ikke en dom verktøyet feller.
 """
+
+[evaluering]
+# Positiv kontroll for evaluer.py: dommeren MÅ gi det ekte fiskehelse-papiret høyere grad
+# enn species-trap-fella (samme ord «nephrocalcinosis», feil art) på denne spørringen.
+# Domenekunnskap, derfor her og ikke i kjørende kode (samme regel som resten av profilen).
+kontroll_query = "nefrokalsinose hos oppdrettslaks"
+kontroll_relevant_id = "10.1111/jfd.13815"          # Nephrocalcinosis in Atlantic salmon
+kontroll_felle_id = "10.21203/rs.3.rs-2150486/v1"   # CYP24A1, menneske-nefrokalsinose

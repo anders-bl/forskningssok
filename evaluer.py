@@ -86,14 +86,12 @@ def doem_relevans(query: str, tittel: str, abstract: str, *, dommer_fn=None) -> 
 
 
 # Kontrollen har sin EGEN spørring, uavhengig av eval-spørringen: den tester om DOMMEREN
-# kan skille art (fisk vs. menneske) på et tema der svaret er utvetydig, ikke om et
-# nefrokalsinose-papir er relevant for en lever-spørring. Hardkodet til eval-spørringen
-# ville voidet enhver ikke-nefrokalsinose-kjøring falskt (funnet 2026-09-05 ved å prøve
-# en lever-spørring).
-KONTROLL_QUERY = "nefrokalsinose hos oppdrettslaks"
-
-
-def positiv_kontroll(relevant: dict, felle: dict, *, dommer_fn=None, query: str = KONTROLL_QUERY) -> dict:
+# kan skille art (fisk vs. menneske) på et tema der svaret er utvetydig, ikke om
+# domene-kjerne-papiret er relevant for en tilgrensende spørring. Hardkodet til
+# eval-spørringen ville voidet enhver tilgrensende kjøring falskt (funnet 2026-09-05).
+# `query` er en ren parameter — den fagfelt-spesifikke verdien bor i profilen
+# (domeneprofil.EVAL_KONTROLL), ikke i denne modulen.
+def positiv_kontroll(relevant: dict, felle: dict, *, query: str, dommer_fn=None) -> dict:
     """Dommeren MÅ gi det ekte fiskehelse-papiret høyere grad enn species-trap-fella på
     kontroll-spørringen. Består ikke den, er dommeren lurt av samme ordoverlapp rangeringen
     bander mot, og hovedmålingen skal ikke leses. {bestått, grad_relevant, grad_felle}."""
@@ -141,7 +139,7 @@ def evaluer_rangering(query: str, papirer: list, *, dommer_fn=None, kontroll: di
 
     konk, enige, total = _konkordans(grader)
     kontroll_res = positiv_kontroll(kontroll["relevant"], kontroll["felle"],
-                                    dommer_fn=dommer_fn) if kontroll else None
+                                    query=kontroll["query"], dommer_fn=dommer_fn) if kontroll else None
     kontroll_ok = kontroll_res["bestått"] if kontroll_res else None
 
     return {

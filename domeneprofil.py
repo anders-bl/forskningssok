@@ -74,6 +74,11 @@ ARTSKOLLISJONER: tuple[str, ...] = tuple(PROFIL["art"].get("kollisjoner", []))
 MESH_TERMER: tuple[str, ...] = tuple(PROFIL["art"].get("mesh_termer", []))
 AKSER: dict[str, tuple[str, ...]] = {k: tuple(v) for k, v in PROFIL["akser"].items()}
 
+# Evaluerings-kontroll (evaluer.py): den positive kontrollens spørring + de to papir-id-ene.
+# Domenekunnskap, lest herfra så evaluer.py forblir fagfelt-agnostisk. Tom dict hvis profilen
+# ikke definerer den — da kjører evaluer uten kontroll (gyldig=None), ikke med en gjettet.
+EVAL_KONTROLL: dict = dict(PROFIL.get("evaluering", {}))
+
 # Bakoverkompatibelt alias: navnet var fagfelt-spesifikt («NORSKE_») på en konstant som
 # ikke er det. Beholdt fordi ranking.py re-eksporterer det og eldre importer finnes.
 NORSKE_FAGMILJOER = FAGMILJOER

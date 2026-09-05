@@ -61,7 +61,7 @@ def test_positiv_kontroll_bestaar_naar_dommeren_skiller_arten():
     res = evaluer.positiv_kontroll(
         relevant={"tittel": "Nephrocalcinosis in Atlantic salmon", "abstract": "fisk"},
         felle={"tittel": "CYP24A1 nephrocalcinosis in human infants", "abstract": "menneske"},
-        dommer_fn=_dommer({"salmon": 3, "human": 0}))
+        query="kontroll", dommer_fn=_dommer({"salmon": 3, "human": 0}))
     assert res["bestått"] is True and res["grad_relevant"] == 3 and res["grad_felle"] == 0
 
 
@@ -71,7 +71,7 @@ def test_positiv_kontroll_FEILER_naar_dommeren_lures_av_ordet():
     res = evaluer.positiv_kontroll(
         relevant={"tittel": "Nephrocalcinosis in Atlantic salmon", "abstract": "fisk"},
         felle={"tittel": "CYP24A1 nephrocalcinosis in human infants", "abstract": "menneske"},
-        dommer_fn=_dommer({"nephrocalcinosis": 3}))  # gir BEGGE 3 — lurt av ordet
+        query="kontroll", dommer_fn=_dommer({"nephrocalcinosis": 3}))  # gir BEGGE 3 — lurt av ordet
     assert res["bestått"] is False
 
 
@@ -82,7 +82,7 @@ def test_evaluer_voider_maalingen_naar_kontrollen_feiler():
     ut = evaluer.evaluer_rangering(
         "laks", papirer,
         dommer_fn=_dommer({"ZA": 3, "ZB": 3, "ZTRAP": 3}),
-        kontroll={"relevant": {"tittel": "ZREAL", "abstract": ""},
+        kontroll={"query": "kontroll", "relevant": {"tittel": "ZREAL", "abstract": ""},
                   "felle": {"tittel": "ZTRAP", "abstract": ""}})
     assert ut["konkordans"] == 1.0        # rangeringen ser perfekt ut ...
     assert ut["gyldig"] is False          # ... men dommeren er ikke til å stole på
@@ -96,7 +96,7 @@ def test_evaluer_gyldig_naar_kontroll_bestaar():
     ut = evaluer.evaluer_rangering(
         "laks", papirer,
         dommer_fn=_dommer({"ZTOPP": 3, "ZBUNN": 1, "ZEKTE": 3, "ZFELLE": 0}),
-        kontroll={"relevant": {"tittel": "ZEKTE", "abstract": ""},
+        kontroll={"query": "kontroll", "relevant": {"tittel": "ZEKTE", "abstract": ""},
                   "felle": {"tittel": "ZFELLE", "abstract": ""}})
     assert ut["konkordans"] == 1.0 and ut["gyldig"] is True
     assert ut["bestått"] is True

@@ -141,15 +141,18 @@ def main():
         papirer = papirer[:a.antall]
         lagre(papirer)  # sørg for at kontroll-papirene kan hentes fra cachen
 
-        # Positiv kontroll = species-trap: et ekte fiskehelse-papir vs. et menneske-
-        # papir med samme ord. Dommeren MÅ skille dem, ellers voides målingen. Hentes
-        # fra cachen (ekte papirer), faller tilbake til None hvis de ikke er cachet.
-        rel = hent("10.1111/jfd.13815")            # Nephrocalcinosis in Atlantic salmon
-        fel = hent("10.21203/rs.3.rs-2150486/v1")  # CYP24A1 nephrocalcinosis, MENNESKE
-        kontroll = ({"relevant": rel, "felle": fel} if rel and fel else None)
+        # Positiv kontroll = species-trap, definert i PROFILEN (domeneprofil.EVAL_KONTROLL),
+        # ikke her — samme regel som resten av fagfelt-kunnskapen. Dommeren MÅ skille det
+        # ekte papiret fra fella, ellers voides målingen. Papirene hentes fra cachen.
+        kk = domeneprofil.EVAL_KONTROLL
+        rel = hent(kk["kontroll_relevant_id"]) if kk.get("kontroll_relevant_id") else None
+        fel = hent(kk["kontroll_felle_id"]) if kk.get("kontroll_felle_id") else None
+        kontroll = ({"query": kk["kontroll_query"], "relevant": rel, "felle": fel}
+                    if rel and fel and kk.get("kontroll_query") else None)
         if not kontroll:
-            print("⚠ Kontroll-papirene er ikke cachet — kjør et nefrokalsinose-søk først. "
-                  "Måler uten positiv kontroll (gyldig=None).", file=sys.stderr)
+            print("⚠ Kontroll-papirene (profilens EVAL_KONTROLL) er ikke cachet — kjør et "
+                  "domene-kjerne-søk først. Måler uten positiv kontroll (gyldig=None).",
+                  file=sys.stderr)
 
         print(f"Måler rangeringen for «{a.evaluer}» mot en uavhengig Ollama-dommer "
               f"({evaluer.DEFAULT_MODELL}, blind for rekkefølgen). Kan ta et minutt …\n")
