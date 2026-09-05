@@ -428,6 +428,34 @@ testfixtur, ikke et fagfelt noen bruker. Mekanismen er verifisert; at et VILKÅR
 gir gode treff er ikke — kildene (Europe PMC, CORE) er biomedisinsk tunge, og et fagfelt
 utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
+## Verifiser påstand mot web-kilder (FDR-028, gjenbrukt) (2026-09-05)
+
+Ulven krever hard empiri. Verktøyet viser ellers KUN rå litteratur, aldri en LLM-parafrase.
+Denne funksjonen er det ENESTE unntaket, og den er bevisst bygget som et strengt avgrenset,
+tydelig merket lag ved siden av søket, aldri blandet inn i det rå treffet.
+
+Marker en setning i leseflaten, trykk «Verifiser». Påstanden går til `ai-proxy` sitt
+`/research`-endepunkt (FDR-028): EU-direkte Mistral med web_search, budsjettsporet per
+`wiki_id`, ingen US-transit-fallback. Ikke oppfunnet her, portalen kaller det alt fra
+`note_verify.py`. Vi arver mønsteret og gjenbruker samme `AI_PROXY_URL` som embeddingen.
+
+**Den bærende disiplinen, arvet ordrett fra FDR-028: et verdikt UTEN kilder er uverifisert,
+ikke et falskt grønt flagg.** Mistral svarer noen ganger fra egen trening uten å faktisk
+kalle web_search, og da er kildelista tom. Flaten viser det da som «Uverifisert, modellen
+hentet ingen kilder» i gult, aldri som en bekreftelse. `verifisert` i svaret er `bool(kilder)`,
+aldri noe modellen selv sier. Verdikt-kortet bærer et «LLM-syntese mot web-kilder, ikke rå
+litteratur»-merke øverst, og kildene vises alltid med lenke.
+
+Kun tilgjengelig i Dokploy (der `AI_PROXY_URL` er satt), samme bryter som embeddingen.
+Lokalt er knappen skjult framfor å feile ved klikk. ai-proxy rate-limiterer selv til 5/min
+per wiki_id, som flaten forplanter lesbart.
+
+**Live-verifisert i nettleser mot en lokal mock-ai-proxy** (ikke ekte penger): begge
+tilstander, verifisert-med-kilder OG uverifisert-uten-kilder, med riktig merking og
+Escape/bakgrunn/x-lukking. Enhetstestene mocker `/research` (suiten er nettverksfri).
+Live ende-til-ende mot den deployerte ai-proxy gjenstår som Anders' hånd: verken den interne
+dokploy-network-adressen eller en betalende Mistral-nøkkel er nåbar fra Mac-en (målt: 402).
+
 ## Versjon — to tall, fordi de svarer på to ulike spørsmål (2026-09-05)
 
 `v1.0.0` i toppbaren, og Anders' tagline i masthead-en ved siden av fagfeltet:

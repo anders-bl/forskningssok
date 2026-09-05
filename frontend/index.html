@@ -195,6 +195,20 @@ button{ font:inherit; }
 .revisjon .nede{ color:var(--warn,#a86); }
 .sti-velg{ width:100%; margin:.2rem 0 .5rem; font-size:.75rem; padding:.3rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:5px; }
 .fulltekst p{ grid-column:auto; }
+.verifiser-overlay[hidden]{ display:none; }
+.verifiser-overlay{ position:fixed; inset:0; background:rgba(20,20,18,.5); display:flex; align-items:center; justify-content:center; z-index:50; padding:1rem; }
+.verifiser-kort{ background:var(--surface); border:1px solid var(--border); border-radius:10px; max-width:38rem; width:100%; max-height:82vh; overflow:auto; padding:1.3rem 1.5rem; position:relative; }
+.verifiser-lukk{ position:absolute; top:.7rem; right:.8rem; background:none; border:none; color:var(--muted); font-size:1.1rem; cursor:pointer; }
+.verifiser-merke{ display:inline-block; font-size:.625rem; text-transform:uppercase; letter-spacing:.04em; color:var(--warn,#a86); border:1px solid var(--warn,#a86); border-radius:99px; padding:.1rem .5rem; margin-bottom:.7rem; }
+.verifiser-paastand{ font-style:italic; color:var(--muted); border-left:2px solid var(--border); padding-left:.7rem; margin-bottom:1rem; font-size:.8125rem; }
+.verifiser-verdikt{ font-size:.9375rem; line-height:1.6; white-space:pre-wrap; }
+.verifiser-status{ display:inline-block; font-size:.6875rem; font-weight:600; border-radius:5px; padding:.1rem .5rem; margin-bottom:.7rem; }
+.verifiser-status.ja{ background:color-mix(in srgb, var(--accent) 20%, transparent); color:var(--accent); }
+.verifiser-status.nei{ background:color-mix(in srgb, var(--warn,#a86) 22%, transparent); color:var(--warn,#a86); }
+.verifiser-kilder{ margin-top:1rem; border-top:1px solid var(--border); padding-top:.8rem; }
+.verifiser-kilder h4{ margin:0 0 .5rem; font-size:.75rem; color:var(--muted); }
+.verifiser-kilder a{ display:block; color:var(--accent); font-size:.8125rem; text-decoration:none; margin-bottom:.35rem; }
+.verifiser-kilder a:hover{ text-decoration:underline; }
 .slippsone{ position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 12%, transparent); border:2px dashed var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.9375rem; color:var(--accent); font-weight:600; pointer-events:none; z-index:20; }
 #empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; }
 .tomflate{ max-width:22rem; margin:0 auto; }
@@ -495,6 +509,19 @@ svg text{ font-family:system-ui,sans-serif; }
 
 <div class="seltoolbar" id="seltoolbar" hidden>
   <button class="selbtn" id="btn-siter">✚ Sitér</button>
+  <button class="selbtn" id="btn-verifiser" hidden title="Verifiser påstanden mot web-kilder (EU-direkte)">⌕ Verifiser</button>
+</div>
+
+<!-- Verifiser-kort. Bevisst SKILT fra det rå søket og tydelig merket som LLM-syntese:
+     forskningssøk viser ellers kun rå litteratur. Et verdikt UTEN kilder rendres som
+     «uverifisert», aldri som en bekreftelse (FDR-028). -->
+<div class="verifiser-overlay" id="verifiser-overlay" hidden>
+  <div class="verifiser-kort">
+    <button class="verifiser-lukk" id="verifiser-lukk" aria-label="Lukk">✕</button>
+    <div class="verifiser-merke">LLM-syntese mot web-kilder — ikke rå litteratur</div>
+    <div class="verifiser-paastand" id="verifiser-paastand"></div>
+    <div id="verifiser-kropp"></div>
+  </div>
 </div>
 
 <div class="varsel" id="varsel" hidden></div>
@@ -1171,7 +1198,49 @@ document.addEventListener('mouseup', (e) => {
   toolbar.hidden = false;
   toolbar.dataset.tekst = text;
 });
+
+// Verifiser-knappen dukker opp kun der ai-proxy finnes (Dokploy). Lokalt er den skjult
+// framfor å feile ved klikk — samme «si det, ikke feil stygt»-linje som embeddingen.
+let verifiserPaa = false;
+api('/api/verifiser/tilgjengelig').then(d => { verifiserPaa = !!d.tilgjengelig; }).catch(()=>{});
+
 document.addEventListener('mousedown', (e) => { if (!toolbar.contains(e.target)) toolbar.hidden = true; });
+// oppdater synligheten hver gang linjen vises
+new MutationObserver(() => {
+  if (!toolbar.hidden) $('#btn-verifiser').hidden = !verifiserPaa;
+}).observe(toolbar, {attributes:true, attributeFilter:['hidden']});
+
+$('#btn-verifiser').addEventListener('click', async () => {
+  const tekst = toolbar.dataset.tekst;
+  if (!tekst) return;
+  toolbar.hidden = true;
+  $('#verifiser-paastand').textContent = '«' + tekst + '»';
+  $('#verifiser-kropp').innerHTML = '<div class="hint">Søker web-kilder (EU-direkte, kan ta noen sekunder) …</div>';
+  $('#verifiser-overlay').hidden = false;
+  try {
+    const d = await api('/api/verifiser', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({paastand: tekst})});
+    // Statuslinjen sier RETT UT om noe faktisk ble hentet. Et verdikt uten kilder er
+    // uverifisert, aldri grønt (FDR-028) — det er hele grunnen til at dette laget får
+    // finnes i et verktøy som ellers aldri synteserer.
+    const status = d.verifisert
+      ? '<span class="verifiser-status ja">Verifisert mot ' + d.kilder.length + ' kilde(r)</span>'
+      : '<span class="verifiser-status nei">Uverifisert — modellen hentet ingen kilder</span>';
+    const kilder = d.kilder.length
+      ? '<div class="verifiser-kilder"><h4>Kilder</h4>' + d.kilder.map(k =>
+          `<a href="${escapeHtml(k.url)}" target="_blank" rel="noopener">${escapeHtml(k.title || k.url)}</a>`).join('') + '</div>'
+      : '';
+    $('#verifiser-kropp').innerHTML = status +
+      `<div class="verifiser-verdikt">${escapeHtml(d.verdikt || '(tomt svar)')}</div>` + kilder;
+  } catch (err) {
+    $('#verifiser-kropp').innerHTML = `<div class="hint">Kunne ikke verifisere: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
+function lukkVerifiser() { $('#verifiser-overlay').hidden = true; }
+$('#verifiser-lukk').addEventListener('click', lukkVerifiser);
+$('#verifiser-overlay').addEventListener('click', e => { if (e.target.id === 'verifiser-overlay') lukkVerifiser(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#verifiser-overlay').hidden) lukkVerifiser(); });
 
 $('#btn-siter').addEventListener('click', async () => {
   const tekst = toolbar.dataset.tekst;

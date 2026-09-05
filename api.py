@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 import bank
 import dokumenter
 import versjon
+import verifiser as verifiser_modul
 import sti as sti_modul
 import rapport
 import scoping
@@ -644,6 +645,26 @@ def api_cachede():
                           ORDER BY aar DESC NULLS LAST, tittel""").fetchall()
     db.close()
     return {"papirer": [{"id": r[0], "tittel": r[1], "aar": r[2]} for r in rader]}
+
+
+@app.get("/api/verifiser/tilgjengelig")
+def api_verifiser_tilgjengelig():
+    """Flaten spør FØR den viser knappen: verifisering finnes kun i Dokploy (AI_PROXY_URL).
+    Lokalt er den av, og da skal knappen si det, ikke feile ved klikk."""
+    return {"tilgjengelig": verifiser_modul.tilgjengelig()}
+
+
+@app.post("/api/verifiser")
+def api_verifiser(body: dict):
+    """Påstand → EU-web-verifisert verdikt + kilder (FDR-028, se verifiser.py).
+
+    Dette er verktøyets ENESTE LLM-syntese, bevisst avgrenset: et verdikt uten kilder
+    meldes `verifisert: false`, og flaten viser det som «modellen hentet ingen kilder»,
+    aldri som en bekreftelse."""
+    try:
+        return verifiser_modul.verifiser(body.get("paastand", ""))
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
 
 
 @app.get("/api/relevans")
