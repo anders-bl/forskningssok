@@ -128,7 +128,60 @@ def main():
     ap.add_argument("-n", "--antall", type=int, default=10, help="maks treff å vise")
     ap.add_argument("--lignende", metavar="ID", help="vis cachede papirer semantisk nærmest DOI/PMID")
     ap.add_argument("--gap", metavar="ID", help="citation-gap-testen: cachede naboer IKKE i papirets egen referanseliste")
+    ap.add_argument("--evaluer", metavar="SPØRRING", help="LOKAL: måler om rangeringen er god (Ollama-dommer, se evaluer.py)")
     a = ap.parse_args()
+
+    if a.evaluer:
+        import evaluer
+        # Ekte søk → ranking.py-ordnet liste, akkurat det flaten viser.
+        try:
+            papirer, _, _ = sok_og_ranger(a.evaluer, page_size=max(a.antall, 12))
+        except RuntimeError as e:
+            print(f"Feil under søk: {e}", file=sys.stderr); sys.exit(1)
+        papirer = papirer[:a.antall]
+        lagre(papirer)  # sørg for at kontroll-papirene kan hentes fra cachen
+
+        # Positiv kontroll = species-trap: et ekte fiskehelse-papir vs. et menneske-
+        # papir med samme ord. Dommeren MÅ skille dem, ellers voides målingen. Hentes
+        # fra cachen (ekte papirer), faller tilbake til None hvis de ikke er cachet.
+        rel = hent("10.1111/jfd.13815")            # Nephrocalcinosis in Atlantic salmon
+        fel = hent("10.21203/rs.3.rs-2150486/v1")  # CYP24A1 nephrocalcinosis, MENNESKE
+        kontroll = ({"relevant": rel, "felle": fel} if rel and fel else None)
+        if not kontroll:
+            print("⚠ Kontroll-papirene er ikke cachet — kjør et nefrokalsinose-søk først. "
+                  "Måler uten positiv kontroll (gyldig=None).", file=sys.stderr)
+
+        print(f"Måler rangeringen for «{a.evaluer}» mot en uavhengig Ollama-dommer "
+              f"({evaluer.DEFAULT_MODELL}, blind for rekkefølgen). Kan ta et minutt …\n")
+        try:
+            r = evaluer.evaluer_rangering(a.evaluer, papirer, kontroll=kontroll)
+        except Exception as e:
+            print(f"Dommeren er ikke nåbar ({type(e).__name__}: {e}). Kjører Ollama lokalt?",
+                  file=sys.stderr); sys.exit(1)
+
+        for d in r["detaljer"]:
+            merke = "?" if d["grad"] is None else str(d["grad"])
+            print(f"  [{merke}] {d['tittel']}")
+        k = r["kontroll"]
+        if k:
+            ok = "BESTÅTT" if k["bestått"] else "FEILET"
+            print(f"\nPositiv kontroll ({ok}): ekte «{k['relevant_tittel']}» fikk "
+                  f"{k['grad_relevant']}, fella «{k['felle_tittel']}» fikk {k['grad_felle']}.")
+        print(f"\nKonkordans med dommeren: {r['konkordans']} "
+              f"({r['enige_par']}/{r['totale_par']} par enige) · terskel {r['terskel']}")
+        if r["umålte"]:
+            print(f"⚠ {r['umålte']} papir(er) fikk ingen tolkbar dom (talt som umålt, ikke 0).")
+        if r["gyldig"] is False:
+            print("⛔ MÅLINGEN ER UGYLDIG: dommeren besto ikke den positive kontrollen — "
+                  "den er lurt av samme species-trap rangeringen bander mot. Konkordansen "
+                  "over betyr ingenting.")
+        elif r["gyldig"] is None:
+            print("Målt uten positiv kontroll — les konkordansen med forbehold.")
+        else:
+            dom = "GOD" if r["bestått"] else "UNDER TERSKEL"
+            print(f"Rangeringen er {dom} mot denne dommeren (n={r['n']}, ett datapunkt — "
+                  f"ikke en dom over rangeringen generelt).")
+        return
 
     if a.gap:
         papir = hent(a.gap)
