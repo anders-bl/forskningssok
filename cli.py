@@ -131,7 +131,32 @@ def main():
     ap.add_argument("--evaluer", metavar="SPØRRING", help="LOKAL: måler om rangeringen er god (Ollama-dommer, se evaluer.py)")
     ap.add_argument("--kilder", action="store_true", help="referanse-kildenes liveness (felle 38: skiller «0» fra «nede»)")
     ap.add_argument("--embed-renhet", action="store_true", dest="embed_renhet", help="LOKAL: er cache.db embeddet av ÉN modell? (re-embed + sammenlign)")
+    ap.add_argument("--konformans", action="store_true", help="følger eget /health husstandarden? (konsepter/helsesjekk)")
     a = ap.parse_args()
+
+    if a.konformans:
+        import os
+        import konformans
+        from fastapi.testclient import TestClient
+        from api import app as fastapi_app
+        c = TestClient(fastapi_app)
+        off = konformans.sjekk_offentlig(c.get("/health").json())
+        nokkel = os.environ.get("INTERNAL_API_KEY")
+        if nokkel:
+            detalj = konformans.sjekk_detalj(
+                c.get("/health", headers={"X-Internal-Key": nokkel}).json())
+        else:
+            detalj = None
+            print("(INTERNAL_API_KEY ikke satt — sjekker kun det offentlige svaret. "
+                  "Sett den for å validere detalj-varianten.)")
+        print(f"Offentlig /health: {'KONFORM' if not off else 'AVVIK'}")
+        for a2 in off:
+            print(f"    - {a2}")
+        if detalj is not None:
+            print(f"Detalj /health:    {'KONFORM' if not detalj else 'AVVIK'}")
+            for a2 in detalj:
+                print(f"    - {a2}")
+        return
 
     if a.embed_renhet:
         import embed_renhet
