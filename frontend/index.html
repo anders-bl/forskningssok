@@ -348,7 +348,7 @@ svg text{ font-family:system-ui,sans-serif; }
     <span id="versjon" class="versjonsbrikke" title="Laster …">—</span>
     <span id="cache-meta">bank.db · —</span>
     <button class="pilleknapp" id="skuff-knapp" title="Sitatbanken — alt du har sitert, og hva som henger sammen">
-      ✎ Sitatbank <span class="tall" id="dok-antall" hidden>0</span>
+      Sitatbank <span class="tall" id="dok-antall" hidden>0</span>
     </button>
     <button class="pilleknapp" id="om-knapp" title="Kilder, hva verktøyet ikke gjør, og hvor dataen din lever">ℹ Om</button>
   </div>
@@ -356,7 +356,7 @@ svg text{ font-family:system-ui,sans-serif; }
 
 <div class="om-overlay" id="om-overlay" hidden>
   <div class="om-panel" role="dialog" aria-labelledby="om-tittel">
-    <button class="om-lukk" id="om-lukk" aria-label="Lukk">✕</button>
+    <button class="om-lukk" id="om-lukk" aria-label="Lukk">x</button>
     <h2 id="om-tittel">Om dette verktøyet</h2>
     <p id="om-kort">Litteratursøk — se §Domeneprofil under for hvilket fagfelt denne
       instansen er scopet til.</p>
@@ -488,7 +488,7 @@ svg text{ font-family:system-ui,sans-serif; }
     <div class="skuff-grep" id="skuff-grep" title="Dra for å endre høyde"></div>
     <div class="skuff-linje">
       <button class="skuff-tittelknapp" id="skuff-toggle">
-        <span class="skuff-pil" id="skuff-pil">▲</span>
+        <span class="skuff-pil" id="skuff-pil"></span>
         <span id="skuff-navn">Sitatbank</span>
       </button>
       <span class="hint" id="bank-sammendrag" style="font-size:.6875rem"></span>
@@ -508,8 +508,8 @@ svg text{ font-family:system-ui,sans-serif; }
 </div>
 
 <div class="seltoolbar" id="seltoolbar" hidden>
-  <button class="selbtn" id="btn-siter">✚ Sitér</button>
-  <button class="selbtn" id="btn-verifiser" hidden title="Verifiser påstanden mot web-kilder (EU-direkte)">⌕ Verifiser</button>
+  <button class="selbtn" id="btn-siter">+ Sitér</button>
+  <button class="selbtn" id="btn-verifiser" hidden title="Verifiser påstanden mot web-kilder (EU-direkte)">Verifiser</button>
 </div>
 
 <!-- Verifiser-kort. Bevisst SKILT fra det rå søket og tydelig merket som LLM-syntese:
@@ -517,7 +517,7 @@ svg text{ font-family:system-ui,sans-serif; }
      «uverifisert», aldri som en bekreftelse (FDR-028). -->
 <div class="verifiser-overlay" id="verifiser-overlay" hidden>
   <div class="verifiser-kort">
-    <button class="verifiser-lukk" id="verifiser-lukk" aria-label="Lukk">✕</button>
+    <button class="verifiser-lukk" id="verifiser-lukk" aria-label="Lukk">x</button>
     <div class="verifiser-merke">LLM-syntese mot web-kilder — ikke rå litteratur</div>
     <div class="verifiser-paastand" id="verifiser-paastand"></div>
     <div id="verifiser-kropp"></div>
@@ -1270,13 +1270,13 @@ function apneSkuff() {
   if (skuffErApen()) return;
   skuff.classList.add('apen');
   if (skuffHoyde) skuff.style.height = skuffHoyde + 'px';
-  $('#skuff-pil').textContent = '▼';
+  $('#skuff-pil').textContent = '';
   $('#skuff-knapp').classList.add('aktiv');
 }
 function lukkSkuff() {
   skuff.classList.remove('apen');
   skuff.style.height = '';
-  $('#skuff-pil').textContent = '▲';
+  $('#skuff-pil').textContent = '';
   $('#skuff-knapp').classList.remove('aktiv');
 }
 function vekslSkuff() { skuffErApen() ? lukkSkuff() : apneSkuff(); }
