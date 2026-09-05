@@ -4,3 +4,16 @@ __pycache__/
 .pytest_cache/
 cache.db
 vedlegg/
+
+# --- hus-baseline (auto: ops/gitignore_baseline_lint.py --fiks) ---
+*.pyo
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.db
+node_modules/
+dist/
+build/
+*.log
