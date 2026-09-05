@@ -489,7 +489,22 @@ def gap_rapport_blokker(kilde_papir: dict, gap_resultat: dict, *, tittel: str | 
                 blokker.append(Blokk("lenke", g["kilde_url"]))
     else:
         blokker.append(Blokk("p", "Ingen kandidater — alle semantiske naboer i cachen er allerede sitert."))
-    sitert = [n for n in naboer if n.get("id") not in gap_id]
+
+    # Naboer utgitt ETTER kildepapiret er verken gap eller sitert; de er en tredje ting.
+    # Uten denne seksjonen ville de falt i «allerede sitert» nedenfor bare fordi de ikke
+    # sto i gap-listen — en stille feilklassifisering innført samme dag som årsskillet.
+    ferske = gap_resultat.get("publisert_etter") or []
+    if ferske:
+        blokker.append(Blokk("h2", "Publisert etter kildepapiret — kunne ikke vært sitert"))
+        blokker.append(Blokk("p", "Ikke et gap: kildepapiret er eldre enn disse. Les dem som "
+                                  "«dette har kommet siden», ikke som noe forfatteren overså."))
+        for n in ferske:
+            blokker.append(Blokk("p", f"{n.get('tittel') or 'Uten tittel'} — "
+                                       f"{n.get('tidsskrift') or '?'}, {n.get('aar') or '?'} "
+                                       f"· avstand {n.get('avstand', 0):.3f}"))
+
+    fersk_id = {n.get("id") for n in ferske}
+    sitert = [n for n in naboer if n.get("id") not in gap_id and n.get("id") not in fersk_id]
     if sitert:
         blokker.append(Blokk("h2", "Allerede sitert av kildepapiret (til referanse)"))
         for n in sitert:

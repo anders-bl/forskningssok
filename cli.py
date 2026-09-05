@@ -12,14 +12,15 @@ Kjør:
 """
 import argparse
 import sys
+import time
 
 from adapters import core as core_adapter
-from adapters.europe_pmc import sok
+from adapters.europe_pmc import cache_alder as europe_pmc_cache_alder, sok
 from bank import hent, lagre, lignende
 from citation_gap import gap_kandidater
 import domeneprofil
 from dedup import dedupliser
-from ranking import domene_naer, ranger
+from ranking import arts_naer, domene_naer, ranger
 from resolve import resolve
 from schemas import PaperDossier
 
@@ -39,6 +40,9 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     skal heller ikke skjules: returnerte `kilder`-dict rapporterer om den lyktes, samme
     transparens-prinsipp som citation_gap.py sin `referanse_kilde`.
 
+    Tredje returverdi er REVISJONEN, ikke lenger bare `kilder` (kontraktendring
+    2026-09-05). Den gamle dicten ligger uendret under nøkkelen `kilder`; resten er nytt.
+
     Kaller IKKE `lagre()` selv — cache/embed for fremtidig --lignende-søk er kallerens
     ansvar (synkront i CLI-en, som en fire-and-forget BackgroundTask i api.py). Denne
     funksjonen kalte lagre() synkront FØR return til 2026-09-04: embed_fn kan ta opptil
@@ -46,17 +50,55 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     caching-bivirkning ingen bruker faktisk trengte for å se resultatet sitt — reell
     årsak til at søk så ut som de hang, og til at overlappende (reload-utløste) søk
     kappløp mot samme cache-rader (se bank.py sin lagre()-fiks samme kveld)."""
-    kandidater = sok(query, page_size=page_size)
+    # Cache-alderen leses FØR søket, ellers ville sok() alt ha skrevet en fersk rad og
+    # svaret blitt «0 sekunder gammel» for hvert eneste søk — et tall som alltid ser likt
+    # ut måler ingenting.
+    alder = europe_pmc_cache_alder(query, page_size)
+    start = time.perf_counter()
+
+    epmc = sok(query, page_size=page_size)
     kilder = {"europe_pmc": True, "core": True}
+    kjerne = []
     try:
-        kandidater = kandidater + core_adapter.sok(query, limit=page_size)
+        kjerne = core_adapter.sok(query, limit=page_size)
     except RuntimeError:
         kilder["core"] = False
-    kandidater = dedupliser(kandidater)
+    kandidater = dedupliser(epmc + kjerne)
     rangert = ranger(kandidater)
     resultat = resolve(query, rangert, tekst=lambda p: p.tittel)
     eksakt_id = resultat.eksakt.id if resultat.eksakt else None
-    return rangert, eksakt_id, kilder
+
+    # Revisjonssporet (idébank #29 §Kritikk C/D): bibliotekar-fagmiljøet ber eksplisitt om
+    # å få dokumentert HVERT filtreringslag per spørring, ikke bare resultatet. Uten dette
+    # kunne verktøyet svare «20 treff» der sannheten var «CORE var nede, Europe PMC svarte
+    # fra en 22 timer gammel cache, og fire dubletter ble slått sammen» — tre forskjeller
+    # som alle endrer hvordan et menneske skal lese lista.
+    return rangert, eksakt_id, {
+        "kilder": kilder,
+        "treff_per_kilde": {"europe_pmc": len(epmc), "core": len(kjerne)},
+        "etter_dedup": len(kandidater),
+        "dubletter_fjernet": len(epmc) + len(kjerne) - len(kandidater),
+        "cache_alder_s": round(alder) if alder is not None else None,
+        "profil": domeneprofil.NAVN,
+        "baand": {
+            "domene_naer": sum(1 for p in rangert if domene_naer(p)),
+            "arts_naer": sum(1 for p in rangert if arts_naer(p)),
+        },
+        "ms": round((time.perf_counter() - start) * 1000),
+    }
+
+
+def _print_revisjon(r: dict) -> None:
+    """Hva som FAKTISK kjørte for dette søket. «20 treff» kan bety fire ulike ting, og
+    forskjellen endrer hvordan lista skal leses."""
+    tpk = r["treff_per_kilde"]
+    alder = r["cache_alder_s"]
+    fersk = "ekte kall" if alder is None else f"cache, {alder // 60} min gammel"
+    print(f"— revisjon: Europe PMC {tpk['europe_pmc']} treff ({fersk}) · "
+          f"CORE {tpk['core']} treff{'' if r['kilder']['core'] else ' (UTILGJENGELIG)'} · "
+          f"{r['dubletter_fjernet']} dubletter slått sammen · "
+          f"{r['baand']['domene_naer']} domene-nære, {r['baand']['arts_naer']} artsnære · "
+          f"profil «{r['profil']}» · {r['ms']} ms")
 
 
 def _print_papirer(papirer: list[PaperDossier], antall: int, query: str, eksakt_id: str | None):
@@ -97,17 +139,34 @@ def main():
             print(f"{a.gap} mangler både PMID og DOI i cachen — ingen referanse-kilde tilgjengelig.")
             return
         try:
-            resultat = gap_kandidater(a.gap, papir["kilde_kode"] or "MED", papir["pmid"], k=a.antall)
+            resultat = gap_kandidater(a.gap, papir["kilde_kode"] or "MED", papir["pmid"],
+                                      k=a.antall, kilde_aar=papir["aar"])
         except RuntimeError as e:
             print(f"Feil mot Europe PMC /references: {e}", file=sys.stderr)
             sys.exit(1)
-        print(f"«{papir['tittel']}» siterer {resultat['siterte_antall']} kilder selv.")
-        print(f"{len(resultat['naboer'])} semantiske naboer i cachen, "
+        print(f"«{papir['tittel']}» ({papir['aar'] or '?'}) siterer "
+              f"{resultat['siterte_antall']} kilder selv.")
+        # Modulen har rapportert referanse_kilde siden den ble bygget, men CLI-en skrev
+        # den aldri ut — transparens-prinsippet gjaldt returverdien og ikke flaten noen
+        # faktisk leser. Fanget da EBIs /references hadde ligget nede i tre døgn og
+        # utskriften ikke røpet at hele svaret kom fra OpenAlex.
+        print(f"Referanselisten kom fra: {resultat['referanse_kilde']}")
+        d = resultat.get("referanse_dekning")
+        if d:
+            print(f"⚠ Delvis dekning: {d['hentet']} hentet av {d['oppgitt_av_utgiver']} "
+                  f"oppgitt av utgiver — gap-listen kan være for lang.")
+        print(f"\n{len(resultat['naboer'])} semantiske naboer i cachen, "
               f"{len(resultat['gap'])} av dem IKKE i referanselisten (kandidater, ikke en dom):\n")
         for g in resultat["gap"]:
             print(f"[{g['avstand']:.3f}] {g['aar'] or '?'} · {g['tidsskrift']}")
             print(f"    {g['tittel']}")
             print(f"    {g['kilde_url']}\n")
+        ferske = resultat.get("publisert_etter") or []
+        if ferske:
+            print(f"— og {len(ferske)} nabo(er) publisert ETTER {papir['aar']}, som papiret "
+                  f"umulig kunne sitert. Ikke et gap; les dem som «dette har kommet siden»:\n")
+            for g in ferske:
+                print(f"[{g['avstand']:.3f}] {g['aar']} · {g['tittel']}")
         return
 
     if a.lignende:
@@ -127,14 +186,15 @@ def main():
         ap.error("oppgi en søkestreng, eller --lignende ID")
     query = " ".join(a.query)
     try:
-        papirer, eksakt_id, kilder = sok_og_ranger(query, page_size=max(a.antall, 20))
+        papirer, eksakt_id, revisjon = sok_og_ranger(query, page_size=max(a.antall, 20))
     except RuntimeError as e:
         print(f"Feil mot Europe PMC: {e}", file=sys.stderr)
         sys.exit(1)
     lagre(papirer)  # cache/embed for fremtidig --lignende-søk — CLI-en kan trygt vente
-    if not kilder["core"]:
+    if not revisjon["kilder"]["core"]:
         print("(CORE utilgjengelig akkurat nå — viser kun Europe PMC-treff)\n", file=sys.stderr)
     _print_papirer(papirer, a.antall, query, eksakt_id)
+    _print_revisjon(revisjon)
 
 
 if __name__ == "__main__":

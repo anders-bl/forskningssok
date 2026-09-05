@@ -67,6 +67,24 @@ def sok(query: str, page_size: int = 20, *, tving_fersk: bool = False,
     return _parse(data)
 
 
+def cache_alder(query: str, page_size: int = 20, *, db_path: Path = DB) -> float | None:
+    """Sekunder siden dette søket sist ble hentet ferskt, eller None om svaret vil bli et
+    ekte kall (aldri cachet, eller TTL utløpt).
+
+    Finnes for revisjonssporet (bank.py:logg_sok): «hvilken cache-alder traff dette
+    søket» er ett av de fire tingene bibliotekar-fagmiljøet eksplisitt ber om å få
+    dokumentert per spørring (idébank #29 §Kritikk, punkt C/D). Leser samme nøkkel som
+    sok() selv bygger — én sannhet om hva som er cachet, ikke en parallell beregning."""
+    key = f"{_normaliser(query)}::{page_size}"
+    db = _db(db_path)
+    rad = db.execute("SELECT hentet_ved FROM query_cache WHERE query=?", (key,)).fetchone()
+    db.close()
+    if not rad:
+        return None
+    alder = time.time() - rad[0]
+    return alder if alder < TTL_SEKUNDER else None
+
+
 def _rens(tekst: str) -> str:
     """Europe PMC sin abstractText/title bærer ofte innebygd XML-markup — enten rå
     (<p>, <italic>, <title>Abstract</title> som forspalte) eller HTML-escaped

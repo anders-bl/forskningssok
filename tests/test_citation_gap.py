@@ -207,3 +207,46 @@ def test_dekning_uten_crossref_svar_paastaar_ingenting():
          patch("citation_gap.lignende", return_value=NABOER):
         ut = gap_kandidater("10.1000/mitt-papir", "MED", "123")
     assert ut["referanse_dekning"] is None
+
+
+# ---------- Utgivelsesår: proben overdrev grovt uten det (2026-09-05) ----------
+
+FERSKE_NABOER = [
+    {"id": "gammel", "doi": "10.1000/gammel", "tittel": "kunne vært sitert",
+     "tidsskrift": "X", "aar": 2021, "kilde_url": "u", "avstand": 0.2},
+    {"id": "samme-aar", "doi": "10.1000/samme", "tittel": "utgitt samme år",
+     "tidsskrift": "X", "aar": 2023, "kilde_url": "u", "avstand": 0.3},
+    {"id": "fersk", "doi": "10.1000/fersk", "tittel": "kom ut tre år etterpå",
+     "tidsskrift": "X", "aar": 2026, "kilde_url": "u", "avstand": 0.4},
+    {"id": "ukjent-aar", "doi": "10.1000/ukjent", "tittel": "ingen dato i posten",
+     "tidsskrift": "X", "aar": None, "kilde_url": "u", "avstand": 0.5},
+]
+
+
+def test_nabo_publisert_etter_kilden_er_ikke_et_gap():
+    """Live-målt 2026-09-05 på 10.1111/jfd.13815 (2023): 8 av 10 naboer ble meldt som gap,
+    men fem var fra 2024-2026. Et papir fra 2023 kan ikke sitere et papir fra 2026 — de var
+    aritmetisk umulige, ikke noe forfatteren overså. Ekte gap var tre."""
+    with patch("citation_gap.europepmc_referanser", return_value=[]), \
+         patch("citation_gap.lignende", return_value=FERSKE_NABOER):
+        ut = gap_kandidater("mitt-papir", "MED", "123", kilde_aar=2023)
+    assert {g["id"] for g in ut["gap"]} == {"gammel", "samme-aar", "ukjent-aar"}
+    assert {g["id"] for g in ut["publisert_etter"]} == {"fersk"}
+
+
+def test_de_ferske_kastes_ikke_bare_flyttes():
+    """Huset flagger, det filtrerer ikke. «Dette har kommet siden papiret ble skrevet» er
+    en interessant liste i seg selv — den skal bare aldri telles som et gap."""
+    with patch("citation_gap.europepmc_referanser", return_value=[]), \
+         patch("citation_gap.lignende", return_value=FERSKE_NABOER):
+        ut = gap_kandidater("mitt-papir", "MED", "123", kilde_aar=2023)
+    assert len(ut["gap"]) + len(ut["publisert_etter"]) == len(FERSKE_NABOER)
+
+
+def test_ukjent_kildeaar_gir_ingen_dom():
+    """«Vi vet ikke når kilden kom ut» er ikke det samme som «alt kunne vært sitert» — men
+    å gjette ville vært verre. Uten år står alle som kandidater, slik de gjorde før."""
+    with patch("citation_gap.europepmc_referanser", return_value=[]), \
+         patch("citation_gap.lignende", return_value=FERSKE_NABOER):
+        ut = gap_kandidater("mitt-papir", "MED", "123", kilde_aar=None)
+    assert len(ut["gap"]) == 4 and ut["publisert_etter"] == []

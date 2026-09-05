@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 import bank
 import dokumenter
+import sti as sti_modul
 import rapport
 import scoping
 from adapters import openalex
@@ -352,7 +353,7 @@ def api_sok(q: str, background_tasks: BackgroundTasks, n: int = 20):
     if not q.strip():
         raise HTTPException(400, "tom spørring")
     try:
-        papirer, eksakt_id, kilder = sok_og_ranger(q, page_size=max(n, 20))
+        papirer, eksakt_id, revisjon = sok_og_ranger(q, page_size=max(n, 20))
     except RuntimeError as e:
         # Bokfør at det EKTE kallet feilet, før vi svarer. Passiv observasjon: hvert søk
         # et menneske gjør er allerede en prøve på om kilden lever, og den er gratis.
@@ -374,8 +375,18 @@ def api_sok(q: str, background_tasks: BackgroundTasks, n: int = 20):
     # dataclass-felt. Fanget som ekte bug live 2026-09-02: uten dette fikk hvert papir
     # id:undefined i frontend, og «siste skrevet vinner»-kollisjonen åpnet alltid det
     # SISTE søkeresultatet uansett hvilket man klikket på.
-    return {"query": q, "eksakt_id": eksakt_id, "kilder": kilder,
+    # Bokføres ETTER at søket lyktes, med det faktiske trefftallet — ikke før, der vi
+    # bare ville visst hva vi hadde tenkt å gjøre.
+    bank.logg_sok(q, len(papirer), revisjon, db_path=CACHE_DB)
+    return {"query": q, "eksakt_id": eksakt_id, "kilder": revisjon["kilder"],
+            "revisjon": revisjon,
             "papirer": [{**asdict(p), "id": p.id, "domene_naer": domene_naer(p), "arts_naer": arts_naer(p), **_evidens(p.tittel, p.abstract, p.pubtyper)} for p in papirer[:n]]}
+
+
+@app.get("/api/sok/historikk")
+def api_sok_historikk(k: int = 50):
+    """Reproduserbarhets-sporet: eksakte spørringer, kilder og filtre, i ettertid."""
+    return {"sok": bank.sok_historikk(k, db_path=CACHE_DB)}
 
 
 @app.get("/api/papir/{paper_id:path}")
@@ -406,7 +417,8 @@ def api_gap(paper_id: str, k: int = 10):
     if not papir["pmid"] and not papir["doi"]:
         raise HTTPException(422, "papiret mangler både PMID og DOI — ingen referanse-kilde tilgjengelig")
     try:
-        return gap_kandidater(paper_id, papir["kilde_kode"] or "MED", papir["pmid"], k=k)
+        return gap_kandidater(paper_id, papir["kilde_kode"] or "MED", papir["pmid"], k=k,
+                              kilde_aar=papir["aar"])
     except RuntimeError as e:
         # e er allerede "Europe PMC /references utilgjengelig: …" fra citation_gap.py —
         # ikke pakk inn på nytt (ekte dobbelt/trippel-prefiks-bug fanget live 2026-09-02).
@@ -600,6 +612,27 @@ def api_dokument_slett(doc_id: str):
     if not dokumenter.slett(doc_id, db_path=CACHE_DB):
         raise HTTPException(404, "ukjent dokument")
     return {"slettet": doc_id}
+
+
+@app.get("/api/sti")
+def api_sti(fra: str, til: str, k: int = 6):
+    """Literature Connector: kjeden som binder to papirer sammen.
+
+    Aldri 404 for «fant ingen sti» — modulen skiller mellom ucachet, uten vektor og
+    genuint uoppnåelig, og de tre krever ulike handlinger av brukeren. En felles
+    feilkode ville kollapset dem til «virket ikke»."""
+    return sti_modul.finn_sti(fra, til, k=k, db_path=CACHE_DB)
+
+
+@app.get("/api/cachede")
+def api_cachede():
+    """Titlene i cachen, for å kunne VELGE et endepunkt til stien. Sorteringen er nyeste
+    først på år, ikke relevans: dette er en plukkliste, ikke et søkeresultat."""
+    db = bank._db(CACHE_DB)
+    rader = db.execute("""SELECT id, tittel, aar FROM papers
+                          ORDER BY aar DESC NULLS LAST, tittel""").fetchall()
+    db.close()
+    return {"papirer": [{"id": r[0], "tittel": r[1], "aar": r[2]} for r in rader]}
 
 
 @app.get("/api/relevans")
@@ -796,7 +829,8 @@ def api_rapport_gap(paper_id: str, format: str = "md", k: int = 10):
     if not papir["pmid"] and not papir["doi"]:
         raise HTTPException(422, "papiret mangler både PMID og DOI — ingen referanse-kilde tilgjengelig")
     try:
-        resultat = gap_kandidater(paper_id, papir["kilde_kode"] or "MED", papir["pmid"], k=k)
+        resultat = gap_kandidater(paper_id, papir["kilde_kode"] or "MED", papir["pmid"], k=k,
+                                  kilde_aar=papir["aar"])
     except RuntimeError as e:
         raise HTTPException(502, str(e)) from e
     tittel = f"Citation-gap: {papir['tittel']}"

@@ -428,6 +428,91 @@ testfixtur, ikke et fagfelt noen bruker. Mekanismen er verifisert; at et VILKÅR
 gir gode treff er ikke — kildene (Europe PMC, CORE) er biomedisinsk tunge, og et fagfelt
 utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
+## Citation-gap-testen kjørt live — proben overdrev med mer enn det dobbelte (2026-09-05)
+
+Første ekte kjøring mot cachen, ikke bare mot mocks. `10.1111/jfd.13815` (2023) meldte
+**8 av 10 naboer som gap**. Fem av dem er publisert 2024-2026.
+
+Et papir fra 2023 kan ikke sitere et papir fra 2026. De fem var aritmetisk umulige å
+sitere, ikke noe forfatteren overså — og proben talte dem som funn. **Ekte gap: tre.**
+
+`gap_kandidater()` tar nå `kilde_aar` og deler svaret i to: `gap` (kunne vært sitert) og
+`publisert_etter`. De ferske kastes ikke — huset flagger, det filtrerer ikke — men de
+telles aldri som noe forfatteren gikk glipp av. Ukjent år på én av sidene gir ingen dom:
+naboen blir stående som kandidat, fordi «vi vet ikke når den kom ut» ikke er det samme
+som «den kunne ikke vært sitert».
+
+⚠ **En nesten-feil fanget i samme endring:** gap-rapporten utledet «allerede sitert» som
+«alt som ikke er i gap». De fem flyttede ville da stått under overskriften *«Allerede
+sitert av kildepapiret»* — en stille feilklassifisering innført av selve fiksen. Egen
+regresjonstest.
+
+**Og EBI er fortsatt nede.** `/references` svarer 503 på tredje døgnet (målt 09-05, nede
+siden 09-02). Hele svaret kom fra OpenAlex-fallbacken + Crossref-supplementet — men
+CLI-en skrev aldri ut `referanse_kilde`, så utskriften røpet det ikke. Modulen har
+rapportert kilden siden den ble bygget; transparens-prinsippet gjaldt returverdien og
+ikke flaten noen faktisk leser. Nå skrives både kilde og dekningsforbehold ut.
+
+**Ubekreftet, uendret:** Europe PMC sin egen `/references`-parsing har fortsatt aldri
+kjørt mot ekte feltnavn. Den ventingen er nå tre døgn gammel.
+
+## Sti — Literature Connector, semantisk (2026-09-05)
+
+Kjeden som binder to vilkårlige papirer sammen (`sti.py`, «Sti»-fanen). Mønsteret er
+Inciteful sitt, og **forskjellen må sies rett ut: deres sti går langs SITERINGER, vår går
+langs BETYDNING.** Inciteful svarer «A siterte B som siterte C»; vi svarer «A ligner B som
+ligner C». De besvarer ulike spørsmål — en siteringssti er en påstand om hva forfatterne
+faktisk leste. Å kalle vår en siteringssti ville lånt en autoritet den ikke har.
+
+Vi kan ikke bygge siteringsvarianten på dagens data uansett: referanselister hentes
+on-demand per papir, aldri lagret som graf. Ærlig grense, ikke en skjult mangel.
+
+Dijkstra med embedding-avstand som kantvekt — ikke bredde-først. To hopp på 0.95 er en
+svakere kjede enn tre på 0.3, og styrken er det som skal vurderes. Hvert ledd viser sin
+egen avstand, fordi en totalsum skjuler om kjeden er jevn eller har ett svakt ledd.
+
+**`band=False` er ikke en detalj.** `lignende()` bånd-sorterer FØR den kutter til k, så
+den kan skyve den aller nærmeste naboen ut av settet når den er bånd-svak. For et menneske
+som leser en liste er det riktig; for en graf-traversering er det en forvrengt kantmengde.
+Presentasjon og topologi er to ulike spørsmål, og `sti.py` ber om topologien.
+
+Live mot de 55 cachede papirene:
+
+    fiskenyre → lakseøkonomi Japan   5 hopp, 3.94
+      nefrokalsinose (2023) → CO2/vekst (2018) → RAS-teknikk (2024)
+      → laksebiometri (2009) → prisvolatilitet → lakseøkonomi (2005)
+
+    fiskenyre → italiensk litteraturteori   ingen sti innenfor k=6
+
+Den andre er like viktig som den første: **«ingen sti ved k=6» er ikke «papirene er
+urelaterte»**, og svaret sier hvilken k som ble brukt i stedet for å konkludere. Tre
+distinkte tomme svar holdes fra hverandre — ikke cachet, ingen vektor (papiret manglet
+abstract, altså en isolert node), og genuint uoppnåelig — fordi de krever ulike handlinger.
+
+## Revisjonsspor per søk (2026-09-05)
+
+Idébank #29 §Kritikk C/D: fagmiljøet ber eksplisitt om dokumentasjon av hvert
+filtreringslag PER spørring. «Om»-panelet svarte på metodikken generelt; ingenting svarte
+på hva som skjedde i DETTE søket.
+
+«20 kandidater» kan bety fire ulike ting. Revisjonen skiller dem: treff per kilde, om
+CORE var nede, hvor mange dubletter som ble slått sammen, om Europe PMC svarte fra cache
+(og hvor gammel den var) eller med et ekte kall, hvor mange som ble båndet foran, profil
+og tid. Knappen «revisjon» ved trefftallet åpner den; sporet skal finnes, ikke ta plass
+ufordret.
+
+**Cache-alderen leses FØR søket.** Etterpå har `sok()` allerede skrevet en fersk rad, og
+svaret ville blitt «0 sekunder» for hvert eneste søk — et tall som alltid ser likt ut
+måler ingenting. Egen test låser rekkefølgen.
+
+Sporet persisteres (`sok_logg`) og vises i «Om» → Søkehistorikk, fordi
+reproduserbarhetskravet er at spørringene kan dokumenteres i ETTERTID, ikke bare mens
+fanen står åpen. Loggingen kan aldri velte selve søket: et revisjonsspor som feller
+søket ville vært en verre feil enn det manglende sporet det skulle forhindre.
+
+⚠ **Kontraktendring:** `sok_og_ranger()` returnerer nå revisjonen som tredje verdi. Den
+gamle `kilder`-dicten ligger uendret under nøkkelen `kilder`.
+
 ## Egne PDF-er — fulltekst for papirene som ikke er open access (2026-09-05)
 
 Nesten alle Europe PMC-treff i dette korpuset er `isOpenAccess: N`. For dem hadde
@@ -707,7 +792,7 @@ Se også §Species-trap-motvekt over — treff utenfor målarten flagges, ikke f
 
 ## Testet
 
-296/296 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
+314/314 tester (`pytest -q`), alle mocket/offline unntatt live-verifiseringen i denne
 README-en. Dekker: embedder-valget (AI_PROXY_URL → ai-proxy, ellers lokal bge-m3 — se
 §Embedder), delt DB-sti på tvers av bank.py/adapters (§Deploy), parsing av ekte Europe
 PMC/OpenAlex/CORE-felt (inkl. lisens/OA-status),

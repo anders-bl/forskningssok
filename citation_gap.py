@@ -101,7 +101,8 @@ def _referanser_forent(paper_id: str, kilde_kode: str, pmid: str | None) -> tupl
     return forent, kilde
 
 
-def gap_kandidater(paper_id: str, kilde_kode: str, pmid: str | None, k: int = 10) -> dict:
+def gap_kandidater(paper_id: str, kilde_kode: str, pmid: str | None, k: int = 10,
+                   kilde_aar: int | None = None) -> dict:
     """paper_id = cache-id brukt i bank.py (doi/pmid). kilde_kode+pmid = det Europe PMC
     trenger for /references (f.eks. "MED", "41363532") — pmid kan være None (CORE/
     OpenAlex-only-papirer mangler ofte PMID), da brukes OpenAlex direkte (krever i
@@ -115,14 +116,18 @@ def gap_kandidater(paper_id: str, kilde_kode: str, pmid: str | None, k: int = 10
     siterte_titler = {_norm_tittel(r.get("title", "")) for r in ref_rader if r.get("title")}
 
     naboer = lignende(paper_id, k=k)
-    gap = []
+    gap, publisert_etter = [], []
     for n in naboer:
         doi = (n.get("doi") or "").lower()
         if doi and doi in siterte_doier:
             continue
         if _norm_tittel(n.get("tittel", "")) in siterte_titler:
             continue
-        gap.append(n)
+        n_aar = n.get("aar")
+        if kilde_aar and n_aar and n_aar > kilde_aar:
+            publisert_etter.append(n)
+        else:
+            gap.append(n)
 
     # Utgiverens eget referansetall er en UAVHENGIG fasit å måle den hentede listen mot.
     # Uten den ble «papiret siterer 13 kilder selv» presentert som et faktum der
@@ -134,4 +139,5 @@ def gap_kandidater(paper_id: str, kilde_kode: str, pmid: str | None, k: int = 10
         dekning = {"hentet": len(ref_rader), "oppgitt_av_utgiver": oppgitt}
 
     return {"siterte_antall": len(ref_rader), "referanse_kilde": kilde_brukt,
-            "referanse_dekning": dekning, "naboer": naboer, "gap": gap}
+            "referanse_dekning": dekning, "naboer": naboer, "gap": gap,
+            "publisert_etter": publisert_etter, "kilde_aar": kilde_aar}

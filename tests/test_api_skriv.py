@@ -171,7 +171,11 @@ def test_rapport_gap_mangler_pmid_og_doi_gir_422():
 
 
 def test_rapport_gap_returnerer_markdown():
-    papir = {"pmid": "1", "doi": None, "tittel": "Kildepapir", "kilde_kode": "MED"}
+    # «aar» er ikke valgfritt: bank.hent() returnerer alltid hele _PAPER_KOLONNER, og
+    # gap-testen trenger året for å skille naboer som kunne vært sitert fra dem som kom
+    # etterpå. Fiksturen manglet feltet og speilet dermed ikke det ekte objektet.
+    papir = {"pmid": "1", "doi": None, "tittel": "Kildepapir", "kilde_kode": "MED",
+             "aar": 2023}
     resultat = {"siterte_antall": 1, "referanse_kilde": "europe_pmc",
                 "naboer": [{"id": "a", "tittel": "Nabo", "tidsskrift": "X", "aar": 2020,
                             "kilde_url": "u", "avstand": 0.1}],

@@ -187,6 +187,12 @@ button{ font:inherit; }
 .vedlegg-knapp:hover{ color:var(--text); }
 .vedlegg-advarsel{ color:var(--warn, #a86); }
 .fulltekst{ margin-top:.9rem; }
+.sti-ledd{ display:flex; align-items:center; gap:.4rem; font-size:.6875rem; color:var(--muted); padding:.15rem 0 .15rem .3rem; }
+.sti-ledd i{ font-style:normal; color:var(--accent); }
+.revisjon{ font-size:.6875rem; color:var(--muted); background:var(--surface-2); border-radius:6px; padding:.45rem .6rem; margin-top:.1rem; line-height:1.6; }
+.revisjon b{ color:var(--text); font-weight:600; }
+.revisjon .nede{ color:var(--warn,#a86); }
+.sti-velg{ width:100%; margin:.2rem 0 .5rem; font-size:.75rem; padding:.3rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:5px; }
 .fulltekst p{ grid-column:auto; }
 .slippsone{ position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 12%, transparent); border:2px dashed var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.9375rem; color:var(--accent); font-weight:600; pointer-events:none; z-index:20; }
 #empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; }
@@ -361,6 +367,12 @@ svg text{ font-family:system-ui,sans-serif; }
       datafil (<code>profiler/*.toml</code>), ikke kode. Å peke verktøyet mot et annet
       fagfelt er å bytte den fila, ikke å endre logikk.</p>
 
+    <h3>Søkehistorikk — reproduserbarhets-sporet</h3>
+    <p>En litteraturgjennomgang må kunne dokumentere de eksakte spørringene og kildene i
+      ettertid. Hvert søk bokføres derfor med hva som faktisk kjørte — ikke bare hva du
+      fikk se. Sporet overlever økten.</p>
+    <div id="om-historikk"><p>Laster …</p></div>
+
     <h3>Hvor dataen din lever</h3>
     <p>Alt (cachede papirer, sitater, varme) ligger i én lokal sqlite-fil på
       denne maskinen — ingenting sendes videre til tredjepart utover selve søketeksten
@@ -379,10 +391,12 @@ svg text{ font-family:system-ui,sans-serif; }
           <button type="submit">Søk</button>
         </form>
         <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
+          <button class="rapport-btn" id="revisjon-toggle" hidden title="Hva som faktisk kjørte for dette søket">revisjon</button>
           <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
             📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
           </span>
         </div>
+        <div class="revisjon" id="revisjon" hidden></div>
         <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
       </div>
       <div class="pane-scroll">
@@ -421,6 +435,7 @@ svg text{ font-family:system-ui,sans-serif; }
         <button class="tab" data-tab="lignende">Lignende<span class="count" id="c-lignende"></span></button>
         <button class="tab" data-tab="kart">Kart</button>
         <button class="tab" data-tab="gap">Gap</button>
+        <button class="tab" data-tab="sti">Sti</button>
       </div>
       <div class="pane-scroll">
         <div class="tabpanel active" id="tab-varmt">
@@ -429,6 +444,7 @@ svg text{ font-family:system-ui,sans-serif; }
         <div class="tabpanel" id="tab-lignende"><div class="hint">Åpne et papir for å se semantiske naboer i cachen.</div></div>
         <div class="tabpanel" id="tab-kart"><div class="hint">Åpne et papir for å se relasjonskartet.</div></div>
         <div class="tabpanel" id="tab-gap"><div class="hint">Åpne et papir for å kjøre citation-gap-testen.</div></div>
+        <div class="tabpanel" id="tab-sti"><div class="hint">Åpne et papir, og velg et annet — så vises kjeden som binder dem sammen.</div></div>
       </div>
     </div>
   </div>
@@ -527,6 +543,7 @@ async function utforSok(q) {
     const data = await api(`/api/sok?q=${encodeURIComponent(q)}&n=20`);
     $('#result-status').textContent = '';
     $('#result-count').textContent = `${data.papirer.length} kandidater`;
+    visRevisjon(data.revisjon);
     for (const p of data.papirer) state.papers[p.id] = p;
     renderResults(data.papirer, data.eksakt_id);
     settResultatForEksport(data.papirer, `Kildesamling — «${q}»`);
@@ -762,6 +779,9 @@ $$('.shell .tab').forEach(t => t.addEventListener('click', () => {
   if (t.dataset.tab === 'varmt') lastVarme();
   if (t.dataset.tab === 'gap' && loadGapLazy && state.paperId) { loadGapLazy = false; loadGap(state.paperId); }
   if (t.dataset.tab === 'kart' && state.paperId) renderKart(state.paperId);
+  // Sti lastes ved hvert fanevalg, ikke lazy én gang: plukklista må speile cachen slik
+  // den er NÅ, og cachen vokser mens man søker.
+  if (t.dataset.tab === 'sti' && state.paperId) { state.cachede = null; loadSti(state.paperId); }
 }));
 
 // ---------- Varme-panelet: to lag, tegnet som to stolper ----------
@@ -871,7 +891,17 @@ async function loadGap(id) {
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
           <div class="neighbor-row1">${domeneMerke(g)}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${artMerke(g)}</div>
           <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
-        </div>`).join('') : '<div class="hint">Ingen gap — alle cachede naboer er alt sitert av papiret.</div>');
+        </div>`).join('') : '<div class="hint">Ingen gap — alle cachede naboer er alt sitert av papiret.</div>') +
+      // Naboer utgitt ETTER kildepapiret er en tredje kategori, ikke et gap. Uten dette
+      // skillet meldte proben 8 kandidater der tre var ekte (målt 10.1111/jfd.13815).
+      ((data.publisert_etter||[]).length ? `
+        <div class="hint" style="margin:1rem 0 .4rem">Publisert etter ${data.kilde_aar} — kunne ikke vært sitert.
+        Ikke et gap; les det som «dette har kommet siden».</div>` +
+        data.publisert_etter.map(g => `
+        <div class="neighbor" data-id="${escapeHtml(g.id)}" style="opacity:.72">
+          <div class="neighbor-row1">${domeneMerke(g)}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${artMerke(g)}</div>
+          <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
+        </div>`).join('') : '');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
     $$('#eksport-gap .rapport-btn', el).forEach(btn => btn.addEventListener('click', () => {
       const kildeTittel = (state.papers[id] || {}).tittel || id;
@@ -909,6 +939,104 @@ function renderKart() {
   $$('.kart-node', el).forEach(c => c.addEventListener('click', () => openPaper(c.dataset.id)));
 }
 
+
+
+
+
+async function lastHistorikk() {
+  const el = $('#om-historikk');
+  try {
+    const d = await api('/api/sok/historikk?k=15');
+    if (!d.sok.length) { el.innerHTML = '<p>Ingen søk bokført ennå.</p>'; return; }
+    el.innerHTML = '<div style="font-size:.75rem">' + d.sok.map(s => {
+      const r = s.revisjon || {}, tpk = r.treff_per_kilde || {};
+      const nar = new Date(s.tid * 1000).toLocaleString('no-NO', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+      const kilde = r.cache_alder_s == null ? 'ekte kall' : `cache ${Math.round(r.cache_alder_s/60)} min`;
+      const coreNede = r.kilder && r.kilder.core === false ? ', CORE nede' : '';
+      return `<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">
+        <b>«${escapeHtml(s.query)}»</b> — ${s.treff} treff · ${nar}<br>
+        <span style="color:var(--muted)">EPMC ${tpk.europe_pmc ?? '?'} + CORE ${tpk.core ?? 0}${coreNede}
+        · ${r.dubletter_fjernet ?? 0} dublett(er) fjernet · ${kilde} · profil «${escapeHtml(r.profil || '?')}»</span>
+      </div>`;
+    }).join('') + '</div>';
+  } catch (err) { el.innerHTML = `<p>Kunne ikke hente historikken: ${escapeHtml(err.message)}</p>`; }
+}
+
+// ---------- Revisjon: hva som FAKTISK kjørte for dette søket ----------
+// Idébank #29 §Kritikk C/D: fagmiljøet ber om dokumentasjon av hvert filtreringslag PER
+// spørring. «Om»-panelet svarer på metodikken generelt; dette svarer på dette søket.
+// «20 kandidater» kan bety fire ulike ting, og forskjellen endrer hvordan lista leses.
+
+function visRevisjon(r) {
+  const el = $('#revisjon'), knapp = $('#revisjon-toggle');
+  if (!r) { el.hidden = true; knapp.hidden = true; return; }
+  knapp.hidden = false;
+  const tpk = r.treff_per_kilde || {};
+  const fersk = r.cache_alder_s == null
+    ? 'ekte kall til kilden nå'
+    : `fra cache, ${Math.round(r.cache_alder_s / 60)} min gammel`;
+  el.innerHTML = `
+    <div><b>Kilder:</b> Europe PMC ${tpk.europe_pmc ?? '?'} treff (${fersk}) ·
+      CORE ${tpk.core ?? 0} treff${r.kilder && r.kilder.core === false
+        ? ' <span class="nede">— UTILGJENGELIG, lista er kun Europe PMC</span>' : ''}</div>
+    <div><b>Sammenslåing:</b> ${r.dubletter_fjernet} dublett(er) fjernet → ${r.etter_dedup} unike</div>
+    <div><b>Rangering:</b> profil «${escapeHtml(r.profil || '?')}» ·
+      ${r.baand ? `${r.baand.domene_naer} domene-nære og ${r.baand.arts_naer} artsnære båndet foran` : '—'}</div>
+    <div><b>Tid:</b> ${r.ms} ms. Ingen filtrering — båndene endrer rekkefølge, aldri utvalget.</div>`;
+  el.hidden = true;  // knappen åpner den; sporet skal finnes, ikke ta plass ufordret
+}
+
+$('#revisjon-toggle').addEventListener('click', () => {
+  const el = $('#revisjon');
+  el.hidden = !el.hidden;
+});
+
+// ---------- Sti: Literature Connector (idébank #29, mønster 3) ----------
+// ⚠ Inciteful sin går langs SITERINGER; vår går langs BETYDNING. Se sti.py — å kalle
+// vår en siteringssti ville lånt en autoritet den ikke har.
+
+async function loadSti(id) {
+  const el = $('#tab-sti');
+  if (!state.cachede) {
+    try { state.cachede = (await api('/api/cachede')).papirer; }
+    catch { el.innerHTML = '<div class="hint">Kunne ikke hente cachede papirer.</div>'; return; }
+  }
+  const valgt = state.stiTil && state.stiTil !== id ? state.stiTil : '';
+  el.innerHTML = `
+    <div class="hint" style="margin-bottom:.3rem">Fra papiret du har åpent, til:</div>
+    <select class="sti-velg" id="sti-til">
+      <option value="">— velg et papir —</option>
+      ${state.cachede.filter(p => p.id !== id).map(p =>
+        `<option value="${escapeHtml(p.id)}"${p.id === valgt ? ' selected' : ''}>${p.aar || '?'} · ${escapeHtml((p.tittel||'').slice(0,70))}</option>`).join('')}
+    </select>
+    <div id="sti-svar"></div>`;
+  $('#sti-til').addEventListener('change', e => {
+    state.stiTil = e.target.value;
+    if (e.target.value) visSti(id, e.target.value);
+  });
+  if (valgt) visSti(id, valgt);
+}
+
+async function visSti(fra, til) {
+  const ut = $('#sti-svar');
+  ut.innerHTML = '<div class="hint">Søker…</div>';
+  try {
+    const d = await api(`/api/sti?fra=${encodeURIComponent(fra)}&til=${encodeURIComponent(til)}`);
+    if (!d.sti.length) { ut.innerHTML = `<div class="hint">${escapeHtml(d.grunn)}</div>`; return; }
+    // Totalsummen alene skjuler om kjeden er jevn eller har ett svakt ledd, så hvert
+    // hopp viser sin egen avstand.
+    let html = `<div class="hint" style="margin:.5rem 0">${d.hopp} hopp · samlet avstand
+      ${d.total_avstand} · semantisk nærhet, ikke siteringer</div>`;
+    d.sti.forEach((p, i) => {
+      html += `<div class="neighbor" data-id="${escapeHtml(p.id)}">
+        <div class="neighbor-row1"><span>${p.aar||'?'} · ${escapeHtml(p.tidsskrift||'')}</span></div>
+        <div class="neighbor-title">${escapeHtml(p.tittel)}</div></div>`;
+      if (d.ledd && d.ledd[i]) html += `<div class="sti-ledd"><i>↓</i> ${d.ledd[i].avstand}</div>`;
+    });
+    ut.innerHTML = html;
+    $$('.neighbor', ut).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
+  } catch (err) { ut.innerHTML = `<div class="hint">Feil: ${escapeHtml(err.message)}</div>`; }
+}
 
 // ---------- Vedlegg: egne PDF-er ----------
 // Fulltekst for et papir som ikke er open access er hele grunnen til at dette finnes:
@@ -1243,6 +1371,7 @@ const KILDENAVN = {
 
 function apneOmPanel() {
   $('#om-overlay').hidden = false;
+  lastHistorikk();
   $('#om-kilder').innerHTML = '<div class="om-kilde-rad"><span class="om-prikk"></span>sjekker …</div>';
   api('/api/status').then(s => {
     $('#om-kilder').innerHTML = Object.entries(s.kilder).map(([id, oppe]) => `

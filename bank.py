@@ -26,6 +26,8 @@ være embed-modell-REN. Lokal utvikling og prod-volumet er allerede strukturelt 
 (cache.db er gitignored, prod starter med et tomt volum) — ALDRI kopier en lokal
 cache.db inn i prod-volumet, det ville blandet to inkompatible rom stille.
 """
+import json
+import logging
 import os
 import sqlite3
 import sys
@@ -38,6 +40,8 @@ import sqlite_vec
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
 from paths import DB
 from schemas import PaperDossier
+
+logger = logging.getLogger(__name__)
 
 HJEM = Path.home() / "prosjekter"
 
@@ -97,6 +101,13 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     db.execute("""CREATE TABLE IF NOT EXISTS kilde_status(
         kilde TEXT PRIMARY KEY, sist_ok REAL, sist_feil REAL,
         feil_paa_rad INTEGER NOT NULL DEFAULT 0, siste_feilmelding TEXT)""")
+    # Revisjonssporet: hva som FAKTISK kjørte per spørring. Idébank #29 §Kritikk punkt
+    # C/D — bibliotekar-fagmiljøet ber om dokumentasjon av hvert filtreringslag per søk,
+    # og «Om»-panelet svarer kun på metodikken generelt, ikke på hva som skjedde i DETTE
+    # søket. Revisjonen lagres som JSON fordi den er et lesbart spor, ikke noe vi spør på.
+    db.execute("""CREATE TABLE IF NOT EXISTS sok_logg(
+        id INTEGER PRIMARY KEY, query TEXT NOT NULL, tid REAL NOT NULL,
+        treff INTEGER NOT NULL, revisjon TEXT NOT NULL)""")
     db.execute("""CREATE TABLE IF NOT EXISTS varme(
         paper_id TEXT PRIMARY KEY, poeng REAL NOT NULL, sist_rort REAL NOT NULL,
         sterkeste_hendelse TEXT)""")
@@ -534,7 +545,7 @@ def relaterte_sitater(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[
     return _naboer_fra_rader([r for r in rows if r[0] in siterte], k)
 
 
-def _naboer_fra_rader(rows, k: int) -> list[dict]:
+def _naboer_fra_rader(rows, k: int, band: bool = True) -> list[dict]:
     """Bygger nabo-dicts og BÅNDER dem som ranking.py:_band gjør for hovedsøket
     (domene_naer, arts_naer FØR avstand) — samme species-trap-motvekt Svart hatt-
     gjennomgangen 2026-09-02 bygde for hovedsøket, tidligere kun FLAGGET (aldri sortert
@@ -555,11 +566,19 @@ def _naboer_fra_rader(rows, k: int) -> list[dict]:
                "domene_naer": domene_naer_tekst(f"{r[7]} {r[2]}"),
                "arts_naer": arts_naer_tekst(f"{r[1]} {r[8]}")}
               for r in rows]
-    naboer.sort(key=lambda n: (not n["domene_naer"], not n["arts_naer"], n["avstand"]))
+    # band=False finnes for sti.py: banding sorterer FØR kuttet til k, så den kan skyve
+    # den aller nærmeste naboen ut av settet når den er bånd-svak. For et menneske som
+    # leser en liste er det riktig (domene-nære først). For en graf-traversering er det
+    # en forvrengt kant-mengde — stien ville hoppet over den korteste kanten fordi
+    # tidsskriftet ikke var norsk. Presentasjon og topologi er to ulike spørsmål.
+    if band:
+        naboer.sort(key=lambda n: (not n["domene_naer"], not n["arts_naer"], n["avstand"]))
+    else:
+        naboer.sort(key=lambda n: n["avstand"])
     return naboer[:k]
 
 
-def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
+def lignende(paper_id: str, k: int = 5, *, band: bool = True, db_path: Path = DB) -> list[dict]:
     """Papirer i CACHEN (ikke hele Europe PMC) semantisk nærmest et gitt papir — den
     relasjonelle aksen Ulven ba om, innenfor det som faktisk er søkt/cachet så langt.
     Vokser organisk med bruk, akkurat som fag.db vokser når Speider mater den — ærlig
@@ -579,7 +598,7 @@ def lignende(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[dict]:
         WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
         ORDER BY v.distance""", (qvec[0], k + 1, rad[0])).fetchall()
     db.close()
-    return _naboer_fra_rader(rows, k)
+    return _naboer_fra_rader(rows, k, band=band)
 
 
 def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB) -> list[dict]:
@@ -604,6 +623,41 @@ def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB)
         ORDER BY v.distance""", (sqlite_vec.serialize_float32(qvec), k)).fetchall()
     db.close()
     return _naboer_fra_rader(rows, k)
+
+
+def logg_sok(query: str, treff: int, revisjon: dict, *, db_path: Path = DB) -> int:
+    """Bokfører ett søk. Feiler ALDRI oppover: et revisjonsspor som kan velte selve søket
+    ville vært en verre feil enn det manglende sporet det skulle forhindre."""
+    try:
+        db = _db(db_path)
+        cur = db.execute(
+            "INSERT INTO sok_logg(query, tid, treff, revisjon) VALUES (?,?,?,?)",
+            (query, time.time(), treff, json.dumps(revisjon, ensure_ascii=False)))
+        db.commit()
+        db.close()
+        return cur.lastrowid
+    except Exception:
+        logger.warning("kunne ikke bokføre søkerevisjon for «%s» — søket selv er upåvirket",
+                       query, exc_info=True)
+        return 0
+
+
+def sok_historikk(k: int = 50, *, db_path: Path = DB) -> list[dict]:
+    """Nyeste søk først, med hele revisjonen. Reproduserbarhetskravet (idébank #29
+    §Kritikk punkt D) er at en litteraturgjennomgang MÅ kunne dokumentere eksakte
+    spørringer og databaser i ettertid — det krever at sporet overlever økten."""
+    db = _db(db_path)
+    rader = db.execute("""SELECT id, query, tid, treff, revisjon FROM sok_logg
+                          ORDER BY tid DESC LIMIT ?""", (k,)).fetchall()
+    db.close()
+    ut = []
+    for r in rader:
+        try:
+            rev = json.loads(r[4])
+        except json.JSONDecodeError:
+            rev = {}  # en ødelagt rad skal ikke felle hele historikken
+        ut.append({"id": r[0], "query": r[1], "tid": r[2], "treff": r[3], "revisjon": rev})
+    return ut
 
 
 def lagre_utkast(tittel: str, innhold: str, utkast_id: int | None = None,

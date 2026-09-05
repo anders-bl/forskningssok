@@ -5,11 +5,13 @@ deterministisk vektor-par som gjør «lignende» geometrisk sjekkbar (to nære v
 """
 import math
 import sys
+from unittest.mock import patch
 
 import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import bank  # noqa: E402
 from bank import (  # noqa: E402
     hent, hent_sitater, hent_utkast, lagre, lagre_sitat, lagre_utkast, lignende,
     lignende_tekst, liste_utkast, slett_sitat, slett_utkast,
@@ -355,3 +357,34 @@ def test_berik_hopper_over_papirer_uten_doi(tmp_path):
 def _bank_db(path):
     import bank as _b
     return _b._db(path)
+
+
+# ---------- Revisjonsspor per søk (2026-09-05) ----------
+
+def test_soekelogg_bevarer_revisjonen_og_gir_nyeste_forst(tmp_path):
+    db = tmp_path / "cache.db"
+    bank.logg_sok("første søk", 3, {"kilder": {"core": False}, "ms": 12}, db_path=db)
+    bank.logg_sok("andre søk", 20, {"kilder": {"core": True}, "ms": 40}, db_path=db)
+    h = bank.sok_historikk(db_path=db)
+    assert [s["query"] for s in h] == ["andre søk", "første søk"]
+    assert h[1]["revisjon"]["kilder"]["core"] is False
+    assert h[0]["treff"] == 20
+
+
+def test_soekelogg_velter_aldri_selve_soeket(tmp_path):
+    """Et revisjonsspor som kan felle søket ville vært en verre feil enn det manglende
+    sporet det skulle forhindre."""
+    with patch("bank._db", side_effect=OSError("disk borte")):
+        assert bank.logg_sok("q", 1, {}, db_path=tmp_path / "x.db") == 0
+
+
+def test_odelagt_revisjonsrad_feller_ikke_hele_historikken(tmp_path):
+    db = tmp_path / "cache.db"
+    bank.logg_sok("frisk", 1, {"ms": 1}, db_path=db)
+    con = bank._db(db)
+    con.execute("INSERT INTO sok_logg(query,tid,treff,revisjon) VALUES ('ødelagt',9e9,1,'{ikke json')")
+    con.commit()
+    con.close()
+    h = bank.sok_historikk(db_path=db)
+    assert len(h) == 2
+    assert h[0]["revisjon"] == {} and h[1]["revisjon"]["ms"] == 1

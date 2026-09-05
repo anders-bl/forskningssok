@@ -243,3 +243,25 @@ def test_ris_baerer_de_nye_sitasjonsfeltene():
                     "volum": "49", "hefte": "5", "sider": "e70099", "issn": "0140-7775"}])
     for tag in ("VL  - 49", "IS  - 5", "SP  - e70099", "SN  - 0140-7775"):
         assert tag in ris
+
+
+def test_gap_rapport_teller_ikke_ferske_naboer_som_sitert():
+    """Regresjonsvakt for en feil årsskillet nesten innførte: «allerede sitert» ble utledet
+    som «alt som ikke er i gap», så naboer flyttet til publisert_etter ville havnet der."""
+    from rapport import gap_rapport
+    kilde = {"tittel": "Kildepapiret", "aar": 2023, "tidsskrift": "X", "doi": "10.1000/k"}
+    resultat = {
+        "siterte_antall": 5, "referanse_kilde": "openalex", "referanse_dekning": None,
+        "naboer": [{"id": "s", "tittel": "Faktisk sitert", "tidsskrift": "X", "aar": 2020,
+                    "avstand": 0.1},
+                   {"id": "f", "tittel": "Kom ut etterpå", "tidsskrift": "X", "aar": 2026,
+                    "avstand": 0.2}],
+        "gap": [],
+        "publisert_etter": [{"id": "f", "tittel": "Kom ut etterpå", "tidsskrift": "X",
+                             "aar": 2026, "avstand": 0.2}],
+    }
+    md = gap_rapport(kilde, resultat)
+    assert "Publisert etter kildepapiret" in md
+    etter_overskrift = md.split("Allerede sitert av kildepapiret")[-1]
+    assert "Kom ut etterpå" not in etter_overskrift
+    assert "Faktisk sitert" in etter_overskrift

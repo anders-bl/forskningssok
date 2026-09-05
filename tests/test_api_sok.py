@@ -11,6 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from schemas import PaperDossier  # noqa: E402
 
 
+# Tredje returverdi fra sok_og_ranger ble revisjonen 2026-09-05; den gamle kilder-dicten
+# ligger uendret under nøkkelen «kilder».
+_REVISJON = {"kilder": {"europe_pmc": True, "core": True},
+             "treff_per_kilde": {"europe_pmc": 1, "core": 0}, "etter_dedup": 1,
+             "dubletter_fjernet": 0, "cache_alder_s": None, "profil": "test",
+             "baand": {"domene_naer": 0, "arts_naer": 0}, "ms": 1}
+
+
 def _p(pid, tittel):
     return PaperDossier(pmid=pid, doi=None, tittel=tittel, forfattere="", tidsskrift="",
                         aar=2026, abstract="noe abstract", siteringstall=0, open_access=False,
@@ -29,7 +37,7 @@ def test_sok_svarer_selv_om_lagre_feiler():
     def lagre_som_krasjer(papirer, **kw):
         raise RuntimeError("simulert treg/feilende cache-skriving")
 
-    with patch("api.sok_og_ranger", return_value=(treff, None, {"europe_pmc": True, "core": True})), \
+    with patch("api.sok_og_ranger", return_value=(treff, None, _REVISJON)), \
          patch("bank.lagre", side_effect=lagre_som_krasjer):
         client = TestClient(api.app)
         r = client.get("/api/sok?q=nephrocalcinosis+salmon&n=20")
@@ -46,7 +54,7 @@ def test_sok_planlegger_lagre_som_backgroundtask():
     from fastapi.testclient import TestClient
 
     kalt_med = []
-    with patch("api.sok_og_ranger", return_value=(treff, None, {"europe_pmc": True, "core": True})), \
+    with patch("api.sok_og_ranger", return_value=(treff, None, _REVISJON)), \
          patch("bank.lagre", side_effect=lambda papirer, **kw: kalt_med.append(papirer)):
         client = TestClient(api.app)
         r = client.get("/api/sok?q=nephrocalcinosis+salmon&n=20")
