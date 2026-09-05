@@ -258,10 +258,11 @@ def _helse_bygg() -> dict:
     statuser = {sjekk["status"], kilder["status"]}
     samlet = "fail" if "fail" in statuser else ("warn" if "warn" in statuser else "pass")
     return {"status": samlet,
-            # «version»/«releaseId» er husstandardens egne felt (konsepter/helsesjekk,
-            # arvet fra IETF-utkastet) — de bor bak X-Internal-Key sammen med resten av
+            # Husstandardens egne felt (konsepter/helsesjekk §Responsformat). Semantikken
+            # er standardens, ikke vår: version = API-kontrakten, releaseId = eksakt
+            # utgave. Se versjon.py:helsefelt(). Bak X-Internal-Key sammen med resten av
             # detaljen, aldri i det offentlige svaret som kun sier status.
-            "version": versjon.VERSJON, "releaseId": versjon.BYGG,
+            **versjon.helsefelt(),
             "checks": {"cache:innhold": [sjekk], "kilder:naabarhet": [kilder]}}
 
 

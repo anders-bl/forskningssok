@@ -59,3 +59,19 @@ BYGG = _bygg()
 
 def info() -> dict:
     return {"versjon": VERSJON, "bygg": BYGG, "tagline": TAGLINE}
+
+
+# ── Husstandardens felt (konsepter/helsesjekk §Responsformat) ────────────────────────
+# Standarden har spesifisert `version` og `releaseId` siden 2026-06-15, med eksempelet
+# {"version": "1", "releaseId": "2026.06.1"}. Målt 2026-09-05: INGEN app i huset sendte
+# dem — forskningssok er første implementasjon, fire måneder etter at feltet ble skrevet.
+#
+# Første forsøk her satte version="1.0.0". Det er feil felt for det tallet: IETF-utkastet
+# (og husets eksempel) mener med `version` tjenestens PUBLIKE/major-versjon — API-
+# kontrakten en klient forholder seg til — mens `releaseId` skal identifisere den EKSAKTE
+# utgaven. Full semver i `version` gjør en bakoverkompatibel patch til en synlig
+# kontraktendring for enhver som leser feltet slik standarden definerer det.
+def helsefelt() -> dict:
+    """`version` = API-kontrakten (major). `releaseId` = eksakt utgave, produktversjon
+    pluss byggnummer. Produktversjonen selv bor i /api/versjon, som er flatens felt."""
+    return {"version": VERSJON.split(".")[0], "releaseId": f"{VERSJON}+{BYGG}"}

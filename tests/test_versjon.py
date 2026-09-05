@@ -7,6 +7,7 @@ IKKE når noe utenfor kjørende kode endres.
 """
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import versjon  # noqa: E402
@@ -78,7 +79,6 @@ def test_testene_teller_IKKE_med(tmp_path):
 def test_uleselig_rot_gir_ukjent_ikke_et_krasj(tmp_path):
     """Et byggnummer er diagnostikk. At det ikke kan beregnes skal aldri hindre appen i å
     starte — da ville sporingsmekanismen tatt ned det den skulle spore."""
-    from unittest.mock import patch
     r = _repo(tmp_path)
     with patch.object(Path, "read_bytes", side_effect=OSError("disk borte")):
         assert _bygg_i(r) == "ukjent"
@@ -100,3 +100,35 @@ def test_offentlig_helse_lekker_ikke_versjonen():
     r = TestClient(api.app).get("/health")
     assert set(r.json()) == {"status"}
     assert versjon.BYGG not in r.text and versjon.VERSJON not in r.text
+
+
+def test_helsefelt_folger_husstandardens_semantikk():
+    """konsepter/helsesjekk §Responsformat (og IETF-utkastet den er arvet fra) mener med
+    `version` tjenestens PUBLIKE/major-versjon — API-kontrakten — og med `releaseId` den
+    EKSAKTE utgaven. Full semver i `version` ville gjort en bakoverkompatibel patch til en
+    synlig kontraktendring for enhver som leser feltet slik standarden definerer det."""
+    h = versjon.helsefelt()
+    assert h["version"] == versjon.VERSJON.split(".")[0]
+    assert "." not in h["version"], "major alene, ikke semver"
+    assert h["releaseId"] == f"{versjon.VERSJON}+{versjon.BYGG}"
+    assert versjon.BYGG in h["releaseId"], "eksakt utgave må kunne peke på én kode"
+
+
+def test_helsedetaljen_baerer_standardfeltene_bak_noekkel(tmp_path, monkeypatch):
+    import os
+    import api
+    import bank
+    from fastapi.testclient import TestClient
+    from schemas import PaperDossier
+
+    db = tmp_path / "cache.db"
+    bank.lagre([PaperDossier(pmid="1", doi="10.1/x", tittel="t", forfattere="", tidsskrift="",
+                             aar=2024, abstract="a", siteringstall=0, open_access=False,
+                             kilde_url="u")],
+               embed_fn=lambda t: [[0.0] * 1024 for _ in t], db_path=db)
+    monkeypatch.setattr(api, "CACHE_DB", db)
+    with patch.dict(os.environ, {"INTERNAL_API_KEY": "hemmelig"}, clear=False), \
+            patch("api.bank.kilde_status", return_value=[]):
+        r = TestClient(api.app).get("/health", headers={"X-Internal-Key": "hemmelig"})
+    d = r.json()
+    assert d["version"] == "1" and d["releaseId"].startswith("1.0.0+")

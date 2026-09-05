@@ -463,9 +463,30 @@ To utelatelser som begge er testdekket, fordi de er det tallet betyr:
 Filnavnet hashes sammen med innholdet: en fil som bytter navn uten innholdsendring er en
 annen utgave, og uten navnet ville de to hashet likt.
 
-`/health`-detaljen bærer nå `version`/`releaseId` (husstandardens egne felt) **bak
-X-Internal-Key**. Det offentlige svaret sier fortsatt kun `status`, og en egen test låser
-at versjonen ikke lekker dit.
+`/health`-detaljen bærer `version`/`releaseId` **bak X-Internal-Key**. Det offentlige
+svaret sier fortsatt kun `status`, og en egen test låser at versjonen ikke lekker dit.
+
+⚠ **Husstandarden fantes, og jeg sjekket den ikke først.** `konsepter/helsesjekk`
+§Responsformat har spesifisert begge feltene siden 2026-06-15 — og målt 09-05 sender
+INGEN app i huset dem. forskningssok er første implementasjon, fire måneder etter at
+feltet ble skrevet. Nøyaktig samme felle som helse-endepunktet selv gikk i
+(`reimplementer-i-stedet-for-gjenbruk`), i et repo som alt dokumenterer den.
+
+Rettet: semantikken er standardens, ikke vår. `version` er tjenestens **publike/major**-
+versjon — API-kontrakten en klient forholder seg til — og `releaseId` identifiserer den
+**eksakte** utgaven:
+
+| felt | verdi | hvorfor |
+|---|---|---|
+| `version` | `1` | full semver her ville gjort en bakoverkompatibel patch til en synlig kontraktendring for enhver som leser feltet slik standarden definerer det |
+| `releaseId` | `1.0.0+<bygg>` | produktversjon **og** byggnummer — peker på én kode, ikke en klasse av dem |
+
+Produktversjonen selv (`1.0.0`) bor i `/api/versjon`, som er flatens felt.
+
+**Det som fortsatt IKKE er en husstandard:** hvordan en versjon utledes. Det finnes ingen
+delt modul, intet skjema, og de eneste andre versjonsstrengene i huset er to ubrukte
+`0.1.0` i package.json-filer. `versjon.py` er en løsning for dette repoet, ikke en
+kanonisering — se README-avsnittet over for avveiningen.
 
 ## Citation-gap-testen kjørt live — proben overdrev med mer enn det dobbelte (2026-09-05)
 
