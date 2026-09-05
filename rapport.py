@@ -136,7 +136,7 @@ def _kildesamling_papir_blokker(p: dict) -> list[Blokk]:
     # «laks/oppdrettsfisk», ville en bruker i et annet fagfelt delt en rapport som
     # påstår feil fagfelt — uten at noe feilet noe sted.
     varsel = "" if arts_naer_tekst(f"{p.get('tittel', '')} {p.get('abstract', '')}") \
-        else f" · {domeneprofil.PROFIL['art'].get('merke', '⚠')} {domeneprofil.PROFIL['art'].get('merke_betyr', 'nevner ikke målobjektet')} — sjekk før bruk"
+        else f" · {domeneprofil.PROFIL['art'].get('merke', '[OBS]')} {domeneprofil.PROFIL['art'].get('merke_betyr', 'nevner ikke målobjektet')} — sjekk før bruk"
     if niva != "Ukjent design" or varsel:
         merknad = niva if niva != "Ukjent design" else ""
         ut.append(Blokk("p", f"{merknad}{varsel}".strip(" ·")))
@@ -545,7 +545,7 @@ def gap_rapport_blokker(kilde_papir: dict, gap_resultat: dict, *, tittel: str | 
     dekning = gap_resultat.get("referanse_dekning")
     if dekning:
         blokker.append(Blokk("meta",
-            f"⚠ Forbehold: referanselisten som ble hentet har {dekning['hentet']} av de "
+            f"[OBS] Forbehold: referanselisten som ble hentet har {dekning['hentet']} av de "
             f"{dekning['oppgitt_av_utgiver']} referansene utgiveren selv oppgir. De "
             f"{dekning['oppgitt_av_utgiver'] - dekning['hentet']} ukjente kan være blant "
             f"kandidatene under — listen er altså trolig for lang, ikke for kort."))

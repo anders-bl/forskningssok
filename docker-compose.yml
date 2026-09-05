@@ -15,10 +15,10 @@
 #     med app_access="forskningssok"). trustForwardHeader er BEVISST utelatt —
 #     Traefiks default beregner X-Forwarded-Host fra selve ruter-treffet
 #     (forskningssok.lauvasdata.no), setter det aldri klienten selv sende inn.
-#     ⚠ Krever en ekte portal-konto — Ulvens Basic Auth-lenke slutter å virke for
+#     [OBS] Krever en ekte portal-konto — Ulvens Basic Auth-lenke slutter å virke for
 #     ham til invitasjonen faktisk er fullført.
 #
-#     ⚠ address peker INTERNT (lauvasdata-portal-xaxnqv-backend-1), ALDRI mot
+#     [OBS] address peker INTERNT (lauvasdata-portal-xaxnqv-backend-1), ALDRI mot
 #     api.lauvasdata.no. Dette er en KJENT felle (konsepter/kjente-feller §Auth/
 #     ForwardAuth, 2026-06-22): peker address mot det offentlige domenet, ruter
 #     Traefik forespørselen gjennom SEG SELV på nytt — det andre hoppet

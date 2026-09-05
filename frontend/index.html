@@ -425,11 +425,11 @@ svg text{ font-family:system-ui,sans-serif; }
         <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
           <button class="rapport-btn" id="revisjon-toggle" hidden title="Hva som faktisk kjørte for dette søket">revisjon</button>
           <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
-            📄 <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
+            <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
           </span>
         </div>
         <div class="revisjon" id="revisjon" hidden></div>
-        <button class="utforsk-forslag" id="utforsk-forslag">🔭 <span id="utforsk-forslag-navn"></span></button>
+        <button class="utforsk-forslag" id="utforsk-forslag"><span id="utforsk-forslag-navn"></span></button>
       </div>
       <div class="pane-scroll">
         <div class="cache-echo" id="cache-echo" hidden></div>
@@ -494,7 +494,7 @@ svg text{ font-family:system-ui,sans-serif; }
       <span class="hint" id="bank-sammendrag" style="font-size:.6875rem"></span>
       <div class="skuff-verktoy">
         <span class="rapport-eksport-gruppe">
-          📄 Hele banken: <button class="rapport-btn" data-bank="md">Markdown</button><button class="rapport-btn" data-bank="pdf">PDF</button><button class="rapport-btn" data-bank="csl" title="CSL-JSON — inn i Zotero, Pandoc eller en hvilken som helst citeproc for APA/Vancouver/tidsskriftstil">CSL-JSON</button><button class="rapport-btn" data-bank="ris">RIS</button><button class="rapport-btn" data-bank="bib">BibTeX</button>
+          Hele banken: <button class="rapport-btn" data-bank="md">Markdown</button><button class="rapport-btn" data-bank="pdf">PDF</button><button class="rapport-btn" data-bank="csl" title="CSL-JSON — inn i Zotero, Pandoc eller en hvilken som helst citeproc for APA/Vancouver/tidsskriftstil">CSL-JSON</button><button class="rapport-btn" data-bank="ris">RIS</button><button class="rapport-btn" data-bank="bib">BibTeX</button>
         </span>
       </div>
     </div>
@@ -535,7 +535,7 @@ const state = {
   // påstå feil fagfelt. Se domeneprofil.py for hvorfor dette er hele generaliseringen.
   profil: {
     domene_merke: '★', domene_merke_betyr: 'domene-nær',
-    art_merke: '⚠', art_merke_betyr: 'nevner ikke målobjektet', art_merke_utdypet: '',
+    art_merke: '[OBS]', art_merke_betyr: 'nevner ikke målobjektet', art_merke_utdypet: '',
   },
 };
 const dok = { id: null, tittel: '', lagreTimer: null, sisteEksport: null };
@@ -787,7 +787,7 @@ async function openPaper(id) {
   if (id.startsWith('10.')) {
     api(`/api/tilgang/${encodeURIComponent(id)}`).then(t => {
       const deler = [];
-      if (t.fri_pdf_url) deler.push(`<a href="${escapeHtml(t.fri_pdf_url)}" target="_blank" rel="noopener">📄 Fri PDF</a>`);
+      if (t.fri_pdf_url) deler.push(`<a href="${escapeHtml(t.fri_pdf_url)}" target="_blank" rel="noopener">Fri PDF</a>`);
       if (t.lisens) deler.push(`Lisens: ${escapeHtml(t.lisens)}`);
       if (t.utgiver) deler.push(escapeHtml(t.utgiver));
       if (!deler.length) deler.push(`<a href="https://doi.org/${escapeHtml(id)}" target="_blank" rel="noopener">Sjekk hos utgiver ↗</a> — ingen åpen kopi funnet, ingen prisdata tilgjengelig her`);
@@ -922,13 +922,13 @@ async function loadGap(id) {
     // for LANG, og uten dette sto et hentet tall som et faktum der utgiveren oppga et
     // høyere (målt 13 mot 20, 2026-09-04).
     const d = data.referanse_dekning;
-    const dekningBanner = d ? `<div class="banner"><b>⚠ Ufullstendig referanseliste</b> —
+    const dekningBanner = d ? `<div class="banner"><b>[OBS] Ufullstendig referanseliste</b> —
       vi fikk ${d.hentet} av de ${d.oppgitt_av_utgiver} referansene utgiveren selv oppgir.
       De ${d.oppgitt_av_utgiver - d.hentet} ukjente kan være blant kandidatene under, så
       listen er trolig for lang — ikke for kort.</div>` : '';
     el.innerHTML = `
       <span class="rapport-eksport-gruppe blokk" id="eksport-gap">
-        📄 Eksporter gap-rapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+        Eksporter gap-rapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
       </span>
       ${dekningBanner}
       <div class="hint" style="margin-bottom:.6rem">Papiret siterer ${data.siterte_antall} kilder selv${kildeMerknad}. ${data.gap.length} av ${data.naboer.length} cachede naboer er IKKE i den listen — kandidater, ikke en dom.</div>` +
@@ -1037,7 +1037,7 @@ $('#revisjon-toggle').addEventListener('click', () => {
 });
 
 // ---------- Sti: Literature Connector (idébank #29, mønster 3) ----------
-// ⚠ Inciteful sin går langs SITERINGER; vår går langs BETYDNING. Se sti.py — å kalle
+// [OBS] Inciteful sin går langs SITERINGER; vår går langs BETYDNING. Se sti.py — å kalle
 // vår en siteringssti ville lånt en autoritet den ikke har.
 
 async function loadSti(id) {
@@ -1101,7 +1101,7 @@ async function visVedlegg(paperId) {
     const el = document.createElement('div');
     el.className = 'vedlegg';
     el.innerHTML = `<div class="vedlegg-linje">
-        <span class="vedlegg-navn">📎 ${escapeHtml(d.filnavn)}</span>
+        <span class="vedlegg-navn">${escapeHtml(d.filnavn)}</span>
         <span>${d.sider} ${d.sider === 1 ? 'side' : 'sider'}</span>
         <a class="vedlegg-knapp" href="/api/dokument/${d.id}/fil" target="_blank" rel="noopener">Åpne PDF</a>
         <button class="vedlegg-knapp" data-slett="${d.id}">Fjern</button>
@@ -1372,7 +1372,7 @@ async function visBankPapir(paperId) {
           <div class="hint">${escapeHtml(p.forfattere || '')} ${p.aar ? '(' + p.aar + ')' : ''}</div>
         </div>
         <span class="rapport-eksport-gruppe">
-          📄 Åpne samlet: <button class="rapport-btn" data-bp="md">Markdown</button><button class="rapport-btn" data-bp="pdf">PDF</button>
+          Åpne samlet: <button class="rapport-btn" data-bp="md">Markdown</button><button class="rapport-btn" data-bp="pdf">PDF</button>
         </span>
       </div>
       <div class="seksjonstittel">Dine sitater (${sitater.length})</div>
@@ -1518,7 +1518,7 @@ async function lastProfil() {
     $('#wordmark-fag').textContent = p.navn;
     $('#om-kort').textContent = `Litteratursøk bygget for ${p.kort} — ikke et generelt forskningsverktøy, se §Domeneprofil under.`;
     $('#om-domeneprofil').textContent = p.om_domeneprofil || `Denne instansen er scopet til ${p.navn}.`;
-    // Kulepunktet navnga merkene statisk («★ og ⚠»). Under en annen profil er de andre
+    // Kulepunktet navnga merkene statisk («★ og [OBS]»). Under en annen profil er de andre
     // tegn, og setningen ble da feil i det ene panelet som finnes for å forklare dem.
     $('#om-merker').textContent =
       `Rangeringen FLAGGER og OMORDNER etter fagfelt-/målobjekt-nærhet (${p.domene_merke} = ${p.domene_merke_betyr}, ` +

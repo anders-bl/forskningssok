@@ -9,7 +9,7 @@ avhandlinger er sjelden i PubMed/MEDLINE). Retter en feilkonklusjon fra tidliger
 kveld (`oai_harvest.py`s notat om at CORE er dødt gjaldt kun den gamle OAI-PMH-veien —
 v3 REST-søket er en annen, fungerende vei). Se prosjekt/idebank/29-forskningssok-rammeverk.
 
-⚠ Fulltekst er IKKE tilgjengelig via gratis API (`fullText: "Not available for public API
+[OBS] Fulltekst er IKKE tilgjengelig via gratis API (`fullText: "Not available for public API
 users."` i rå-svaret) — kun abstract + metadata + en browse-lenke (`core.ac.uk/works/{id}`)
 der et menneske kan finne selve PDF-en. `open_access=True` er en RIMELIG ANTAKELSE, ikke
 et felt CORE selv returnerer her: CORE aggregerer PER DEFINISJON kun open-access-

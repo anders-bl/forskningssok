@@ -141,7 +141,7 @@ def for_frontend() -> dict:
         "sok_eksempel": PROFIL.get("sok_eksempel", PROFIL["sok_standard"]),
         "domene_merke": domene.get("merke", "★"),
         "domene_merke_betyr": domene.get("merke_betyr", "domene-nær"),
-        "art_merke": art.get("merke", "⚠"),
+        "art_merke": art.get("merke", "[OBS]"),
         "art_merke_betyr": art.get("merke_betyr", "nevner ikke målobjektet"),
         "art_merke_utdypet": art.get("merke_utdypet", ""),
         "akser": list(AKSER),

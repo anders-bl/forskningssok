@@ -108,7 +108,7 @@ def _print_papirer(papirer: list[PaperDossier], antall: int, query: str, eksakt_
     print(f"{len(papirer)} kandidater for «{query}» (viser {min(antall, len(papirer))}):\n")
     for p in papirer[:antall]:
         flagg = "★" if domene_naer(p) else " "
-        eksakt = " 🎯 eksakt titteltreff" if p.id == eksakt_id else ""
+        eksakt = " eksakt titteltreff" if p.id == eksakt_id else ""
         aa = p.aar or "?"
         sit = p.siteringstall if p.siteringstall is not None else "?"
         oa = "OA" if p.open_access else "  "
@@ -227,7 +227,7 @@ def main():
         kontroll = ({"query": kk["kontroll_query"], "relevant": rel, "felle": fel}
                     if rel and fel and kk.get("kontroll_query") else None)
         if not kontroll:
-            print("⚠ Kontroll-papirene (profilens EVAL_KONTROLL) er ikke cachet — kjør et "
+            print("[OBS] Kontroll-papirene (profilens EVAL_KONTROLL) er ikke cachet — kjør et "
                   "domene-kjerne-søk først. Måler uten positiv kontroll (gyldig=None).",
                   file=sys.stderr)
 
@@ -250,9 +250,9 @@ def main():
         print(f"\nKonkordans med dommeren: {r['konkordans']} "
               f"({r['enige_par']}/{r['totale_par']} par enige) · terskel {r['terskel']}")
         if r["umålte"]:
-            print(f"⚠ {r['umålte']} papir(er) fikk ingen tolkbar dom (talt som umålt, ikke 0).")
+            print(f"[OBS] {r['umålte']} papir(er) fikk ingen tolkbar dom (talt som umålt, ikke 0).")
         if r["gyldig"] is False:
-            print("⛔ MÅLINGEN ER UGYLDIG: dommeren besto ikke den positive kontrollen — "
+            print("[STOPP] MÅLINGEN ER UGYLDIG: dommeren besto ikke den positive kontrollen — "
                   "den er lurt av samme species-trap rangeringen bander mot. Konkordansen "
                   "over betyr ingenting.")
         elif r["gyldig"] is None:
@@ -286,7 +286,7 @@ def main():
         print(f"Referanselisten kom fra: {resultat['referanse_kilde']}")
         d = resultat.get("referanse_dekning")
         if d:
-            print(f"⚠ Delvis dekning: {d['hentet']} hentet av {d['oppgitt_av_utgiver']} "
+            print(f"[OBS] Delvis dekning: {d['hentet']} hentet av {d['oppgitt_av_utgiver']} "
                   f"oppgitt av utgiver — gap-listen kan være for lang.")
         print(f"\n{len(resultat['naboer'])} semantiske naboer i cachen, "
               f"{len(resultat['gap'])} av dem IKKE i referanselisten (kandidater, ikke en dom):\n")
