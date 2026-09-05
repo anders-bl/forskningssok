@@ -810,7 +810,8 @@ def api_rapport_boilerplate(paper_id: str, format: str = "md", k: int = 5):
 
 
 @app.get("/api/rapport/kildesamling")
-def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str = "md"):
+def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str = "md",
+                            stil: str = "vancouver"):
     """Eksport av et papirutvalg (Markdown/PDF/BibTeX/RIS, se rapport.py). `ids` =
     kommaseparerte cache-id-er (typisk et helt søkeresultat, sendt fra frontend).
     Ukjente/ikke-cachede id-er droppes ærlig (samme prinsipp som ellers), ALDRI en feil
@@ -838,7 +839,9 @@ def api_rapport_kildesamling(ids: str, tittel: str = "Kildesamling", format: str
         filending = "json" if format == "csl" else format
         return Response(tekst.encode("utf-8"), media_type=f"{media}; charset=utf-8",
                          headers={"Content-Disposition": f'attachment; filename="{_slug(tittel)}.{filending}"'})
-    blokker = rapport.kildesamling_blokker(papirer, tittel=tittel)
+    # stil = referanse-stilen for den formaterte Referanser-seksjonen (vancouver/apa/
+    # harvard). Ukjent stil faller ærlig tilbake til enkel prosa i render_referanser.
+    blokker = rapport.kildesamling_blokker(papirer, tittel=tittel, stil=stil)
     return _rapport_svar(blokker, format, tittel, tittel)
 
 

@@ -15,3 +15,7 @@ python-multipart
 # ekte feil der samme dag («er ikke cachet — søk det opp først»), nådde den meg bare fordi
 # han fortalte det. Ingenting fanget den.
 sentry-sdk[fastapi]>=2.60
+# Ekte siterings-rendring (rapport.py:render_referanser, 2026-09-05): CSL-JSON → formatert
+# Vancouver/APA-referanse via citeproc — samme motor Zotero/Pandoc bruker. Ren Python +
+# lxml (manylinux-hjul for amd64, Netcup-noden). Skiller «ser hjemmelaget ut» fra «betalt».
+citeproc-py>=0.6

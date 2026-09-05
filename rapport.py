@@ -16,6 +16,7 @@ hva verktøyet faktisk fant og når.
 """
 import re
 import json
+from pathlib import Path
 import time
 from dataclasses import dataclass
 from io import BytesIO
@@ -148,10 +149,24 @@ def _kildesamling_papir_blokker(p: dict) -> list[Blokk]:
     return ut
 
 
-def kildesamling_blokker(papirer: list[dict], *, tittel: str = "Kildesamling") -> list[Blokk]:
+def referanseliste_blokker(papirer: list[dict], *, stil: str = "vancouver") -> list[Blokk]:
+    """En formatert «Referanser»-seksjon (citeproc, valgt stil). Dette er signatur-poleringen:
+    en journal-standard referanseliste, ikke hjemmelaget «forfatter — tidsskrift, år»."""
+    if not papirer:
+        return []
+    blokker = [Blokk("h2", "Referanser"),
+               Blokk("meta", f"Formatert i {stil.upper()}-stil.")]
+    for linje in render_referanser(papirer, stil=stil):
+        blokker.append(Blokk("p", linje))
+    return blokker
+
+
+def kildesamling_blokker(papirer: list[dict], *, tittel: str = "Kildesamling",
+                         stil: str = "vancouver") -> list[Blokk]:
     """Grupperer papirer på domene-nærhet FØRST (nordisk fagmiljø/kjerne-fagtidsskrift) —
     samme ADR-013-prinsipp som selve søkerangeringen. Rekkefølgen INNENFOR hver gruppe er
-    den input-listen allerede hadde (typisk ranking.py sin)."""
+    den input-listen allerede hadde (typisk ranking.py sin). Avsluttes med en formatert
+    Referanser-seksjon i valgt stil (`stil`)."""
     blokker = [Blokk("h1", tittel)]
     if not papirer:
         blokker.append(Blokk("meta", f"Generert av forskningssok, {_dato()} — ingen papirer i utvalget."))
@@ -169,12 +184,14 @@ def kildesamling_blokker(papirer: list[dict], *, tittel: str = "Kildesamling") -
         blokker.append(Blokk("h2", "Øvrige treff"))
         for p in andre:
             blokker.extend(_kildesamling_papir_blokker(p))
+    blokker.extend(referanseliste_blokker(papirer, stil=stil))
     return blokker
 
 
-def kildesamling(papirer: list[dict], *, tittel: str = "Kildesamling") -> str:
+def kildesamling(papirer: list[dict], *, tittel: str = "Kildesamling",
+                 stil: str = "vancouver") -> str:
     """Bakoverkompatibel Markdown-shortcut — se kildesamling_blokker() for PDF-veien."""
-    return til_markdown(kildesamling_blokker(papirer, tittel=tittel))
+    return til_markdown(kildesamling_blokker(papirer, tittel=tittel, stil=stil))
 
 
 # ---------- Sitasjonseksport: BibTeX/RIS — «hvordan får jeg dette inn i Zotero?» ----------
@@ -253,35 +270,87 @@ def til_csl_json(papirer: list[dict]) -> str:
     stilen til å hoppe over leddet. Samme ærlighets-prinsipp som resten av huset — et
     fravær skal se ut som et fravær.
     """
-    ut = []
-    for p in papirer:
-        post: dict = {
-            "id": p.get("id") or p.get("doi") or p.get("pmid") or "ukjent",
-            "type": "article-journal",
-            "title": p.get("tittel") or "",
-        }
-        forf = []
-        for navn in _forfatterliste(p.get("forfattere", "")):
-            # Europe PMC gir «Dalum AS» — etternavn først, initialer sist og uten punktum.
-            deler = navn.split()
-            if len(deler) >= 2:
-                forf.append({"family": " ".join(deler[:-1]), "given": deler[-1]})
-            elif deler:
-                forf.append({"literal": deler[0]})
-        if forf:
-            post["author"] = forf
-        for csl, felt in (("container-title", "tidsskrift"), ("volume", "volum"),
-                           ("issue", "hefte"), ("page", "sider"), ("DOI", "doi"),
-                           ("ISSN", "issn"), ("URL", "kilde_url"), ("abstract", "abstract")):
-            verdi = p.get(felt)
-            if verdi:
-                post[csl] = str(verdi)
-        if p.get("aar"):
-            post["issued"] = {"date-parts": [[int(p["aar"])]]}
-        if p.get("pmid"):
-            post["PMID"] = str(p["pmid"])
-        ut.append(post)
-    return json.dumps(ut, ensure_ascii=False, indent=2) + "\n"
+    return json.dumps([_csl_post(p) for p in papirer], ensure_ascii=False, indent=2) + "\n"
+
+
+def _csl_post(p: dict) -> dict:
+    """Ett papir → én CSL-JSON-post. Delt mellom eksporten (til_csl_json) og
+    citeproc-rendringen (render_referanser), så feltmappingen har ÉN sannhet."""
+    post: dict = {
+        "id": p.get("id") or p.get("doi") or p.get("pmid") or "ukjent",
+        "type": "article-journal",
+        "title": p.get("tittel") or "",
+    }
+    forf = []
+    for navn in _forfatterliste(p.get("forfattere", "")):
+        # Europe PMC gir «Dalum AS» — etternavn først, initialer sist og uten punktum.
+        deler = navn.split()
+        if len(deler) >= 2:
+            forf.append({"family": " ".join(deler[:-1]), "given": deler[-1]})
+        elif deler:
+            forf.append({"literal": deler[0]})
+    if forf:
+        post["author"] = forf
+    for csl, felt in (("container-title", "tidsskrift"), ("volume", "volum"),
+                       ("issue", "hefte"), ("page", "sider"), ("DOI", "doi"),
+                       ("ISSN", "issn"), ("URL", "kilde_url"), ("abstract", "abstract")):
+        verdi = p.get(felt)
+        if verdi:
+            post[csl] = str(verdi)
+    if p.get("aar"):
+        post["issued"] = {"date-parts": [[int(p["aar"])]]}
+    if p.get("pmid"):
+        post["PMID"] = str(p["pmid"])
+    return post
+
+
+# ── Ekte siterings-rendring: CSL-JSON → formatert referanse via citeproc ─────────────
+# Dette er skillet mellom «ser hjemmelaget ut» og «ser ut som noe man betaler for». Vi
+# skriver IKKE en malmotor (rapport.py sa alt hvorfor: en dårligere kopi av tjue års
+# tidsskriftstil-korpus). Vi kjører CSL-JSON-en vi alt bygger gjennom citeproc — samme
+# motor Zotero og Pandoc bruker — med en ferdig .csl-stil.
+STIL_DIR = Path(__file__).resolve().parent / "csl_stiler"
+
+
+def _referanse_prosa(p: dict) -> str:
+    """Fallback hvis citeproc/stilen svikter: en enkel, ærlig linje. En rapport skal ALDRI
+    krasje på formatering — en litt kjedeligere referanse er bedre enn en 500."""
+    forf = p.get("forfattere") or "Forfatter ukjent"
+    aar = p.get("aar") or "u.å."
+    ts = p.get("tidsskrift") or ""
+    doi = f" doi:{p['doi']}" if p.get("doi") else ""
+    return f"{forf} ({aar}). {p.get('tittel') or 'Uten tittel'}. {ts}.{doi}".strip()
+
+
+def render_referanser(papirer: list[dict], *, stil: str = "vancouver") -> list[str]:
+    """Formaterte referanser i valgt stil (vancouver/apa/harvard). Én streng per papir, i
+    rekkefølge. Faller tilbake til _referanse_prosa hvis citeproc eller stilen svikter."""
+    if not papirer:
+        return []
+    sti = STIL_DIR / f"{stil}.csl"
+    if not sti.exists():
+        return [_referanse_prosa(p) for p in papirer]
+    try:
+        from citeproc import (CitationStylesStyle, CitationStylesBibliography,
+                              Citation, CitationItem, formatter)
+        from citeproc.source.json import CiteProcJSON
+        poster = []
+        for i, p in enumerate(papirer):
+            post = _csl_post(p)
+            post["id"] = f"ref-{i}"  # citeproc krever unike id-er
+            poster.append(post)
+        style = CitationStylesStyle(str(sti), validate=False)
+        bib = CitationStylesBibliography(style, CiteProcJSON(poster), formatter.plain)
+        for i in range(len(poster)):
+            bib.register(Citation([CitationItem(f"ref-{i}")]))
+        rendret = [str(item).strip() for item in bib.bibliography()]
+        # citeproc kan i sjeldne tilfeller droppe en post den ikke klarer — fyll ut med
+        # fallback så antallet stemmer med papirlista (ellers ville referanse 4 pekt feil).
+        if len(rendret) != len(papirer):
+            return [_referanse_prosa(p) for p in papirer]
+        return rendret
+    except Exception:
+        return [_referanse_prosa(p) for p in papirer]
 
 
 def _ris_post(p: dict) -> str:
