@@ -430,9 +430,15 @@ utenfor den dekningen vil merke det uansett hvor generisk profil-laget er.
 
 ## Versjon — to tall, fordi de svarer på to ulike spørsmål (2026-09-05)
 
-`v1.0.0` i toppbaren, med byggnummeret og Anders' tagline i tooltipen og i «Om».
+`v1.0.0` i toppbaren, og Anders' tagline i masthead-en ved siden av fagfeltet:
 
 **«Vi er alle en versjon fram til vi dør.»**
+
+Den sto først i leseflatens hviletilstand — riktig sted i teorien, og en måling viste at
+det er praktisk talt uoppnåelig: profilens `sok_standard` kjører et søk ved last, så et
+papir er alltid alt åpent. En personlig linje ingen ser er ikke en personlig linje.
+Masthead-en er alltid synlig; linja skjules under 1100px, der de funksjonelle elementene
+trenger plassen.
 
 `VERSJON` er semantisk og settes for hånd — den sier hva utgaven BETYR, og er det Anders
 og Ulven snakker om. `BYGG` er en hash over kildefilene, beregnet ved import, og sier
