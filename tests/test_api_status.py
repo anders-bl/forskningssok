@@ -15,6 +15,24 @@ def _fake_embed(texts):
     return [[0.0] * 1024 for _ in texts]
 
 
+def _cache_med_innhold(tmp_path, monkeypatch):
+    """Gir helse-sjekken en ekte, ikke-tom cache i tmp.
+
+    Uten denne leste testene under Anders' egen `cache.db` i repo-rota — gitignorert, så
+    den finnes lokalt og ALDRI i CI. Cache-leddet meldte da «fail» på en tom fil og dro
+    hele /health/ready med seg, og de tre testene om KILDE-leddet feilet av en grunn som
+    ikke hadde noe med kilder å gjøre. Grønt lokalt, rødt i CI, i sju kjøringer på rad.
+    """
+    import api
+    db = tmp_path / "cache.db"
+    p = PaperDossier(pmid="1", doi="10.1/x", tittel="t", forfattere="", tidsskrift="",
+                     aar=2024, abstract="noe abstract", siteringstall=0, open_access=False,
+                     kilde_url="u")
+    bank.lagre([p], embed_fn=_fake_embed, db_path=db)
+    monkeypatch.setattr(api, "CACHE_DB", db)
+    return db
+
+
 def test_status_teller_papirer_og_sitater(tmp_path, monkeypatch):
     db = tmp_path / "cache.db"
     import api
@@ -180,17 +198,19 @@ def test_helse_lekker_ingen_tall_uten_noekkel():
     assert "papirer" not in r.text and "Fiskehelse" not in r.text
 
 
-def test_helse_gir_detalj_med_riktig_noekkel():
+def test_helse_gir_detalj_med_riktig_noekkel(tmp_path, monkeypatch):
     import os
     import api
     from fastapi.testclient import TestClient
-    with patch.dict(os.environ, {"INTERNAL_API_KEY": "hemmelig"}, clear=False):
+    _cache_med_innhold(tmp_path, monkeypatch)
+    with patch.dict(os.environ, {"INTERNAL_API_KEY": "hemmelig"}, clear=False), \
+            patch("api.bank.kilde_status", return_value=[]):
         r = TestClient(api.app).get("/health", headers={"X-Internal-Key": "hemmelig"})
     assert "checks" in r.json()
     assert r.json()["checks"]["cache:innhold"][0]["observedValue"]["papirer"] >= 0
 
 
-def test_nede_kilde_gir_WARN_ikke_FAIL():
+def test_nede_kilde_gir_WARN_ikke_FAIL(tmp_path, monkeypatch):
     """En nede kilde er ikke VÅR nedetid: cachen svarer, sitatbanken virker, «Lignende»
     virker. Å la Europe PMC-nedetid gjøre /ready rød ville vekket Anders for en annens
     driftsavbrudd — og EBI lå nede i DAGEVIS i september."""
@@ -198,16 +218,18 @@ def test_nede_kilde_gir_WARN_ikke_FAIL():
     from fastapi.testclient import TestClient
     nede = [{"kilde": "europe_pmc", "sist_ok": 1.0, "sist_feil": 2.0,
              "feil_paa_rad": 5, "siste_feilmelding": "503"}]
+    _cache_med_innhold(tmp_path, monkeypatch)
     with patch("api.bank.kilde_status", return_value=nede):
         r = TestClient(api.app).get("/health/ready")
     assert r.status_code == 200, "warn er ikke fail — tjenesten er oppe"
     assert r.json()["status"] == "warn"
 
 
-def test_kilde_under_terskel_er_fortsatt_pass():
+def test_kilde_under_terskel_er_fortsatt_pass(tmp_path, monkeypatch):
     """Ett enkelt timeout er vær, ikke nedetid."""
     import api
     from fastapi.testclient import TestClient
+    _cache_med_innhold(tmp_path, monkeypatch)
     with patch("api.bank.kilde_status", return_value=[
             {"kilde": "europe_pmc", "sist_ok": 1.0, "sist_feil": 2.0,
              "feil_paa_rad": 2, "siste_feilmelding": "timeout"}]):
