@@ -20,7 +20,6 @@ from pathlib import Path
 import time
 from dataclasses import dataclass
 from io import BytesIO
-from xml.sax.saxutils import escape as _xml_escape
 
 import domeneprofil
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
@@ -61,55 +60,51 @@ def til_markdown(blokker: list[Blokk]) -> str:
     return "\n\n".join(ut) + "\n"
 
 
-def til_pdf_bytes(blokker: list[Blokk], *, tittel: str = "") -> bytes:
-    """Reportlab Platypus — ren Python, ingen systembinær (weasyprint/wkhtmltopdf
-    ville krevd Cairo/Pango installert utenfor venv, samme fallgruve som
-    `gjør det åpenbare riktig`-disiplinen advarer mot). Paragraph-tekst er reportlabs
-    egen mini-XML-markup — ALL brukertekst må escapes FØR den limes inn, ellers knekker
-    en tittel med `&`/`<` i seg rendering stille."""
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+_MAL = Path(__file__).resolve().parent / "rapport_mal.typ"
 
-    styles = getSampleStyleSheet()
-    sitat_stil = ParagraphStyle(
-        "Sitat", parent=styles["Normal"], leftIndent=12 * mm,
-        textColor=colors.HexColor("#5A5A56"), fontName="Helvetica-Oblique", spaceAfter=4,
-    )
-    meta_stil = ParagraphStyle(
-        "Meta", parent=styles["Normal"], textColor=colors.HexColor("#5A5A56"),
-        fontName="Helvetica-Oblique", fontSize=9, spaceAfter=10,
-    )
-    lenke_stil = ParagraphStyle("Lenke", parent=styles["Normal"], fontSize=8, spaceAfter=6)
 
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, title=tittel or "Rapport",
-                             topMargin=20 * mm, bottomMargin=20 * mm,
-                             leftMargin=20 * mm, rightMargin=20 * mm)
-    story = []
+def _typst_streng(tekst: str) -> str:
+    """Typst-strengliteral. Kun backslash og anførselstegn er spesielle inne i "…";
+    alt annet (#, *, _, <, $, @) er bokstavelig i en streng og skal rendres slik. Det er
+    hele grunnen til at malen tar strenger og ikke markup: en tittel med «#» i seg skal
+    ikke bli en funksjonskall-feil, og «*Journal*» fra en kildelinje skal ikke tolkes.
+    Linjeskift blir mellomrom, som i reportlab-Paragraph før."""
+    t = (tekst or "").replace("\\", "\\\\").replace('"', '\\"')
+    return '"' + " ".join(t.split()) + '"'
+
+
+def til_typst(blokker: list[Blokk], *, tittel: str = "") -> str:
+    """Blokk-liste → Typst-kilde. Malen (rapport_mal.typ) limes inn foran i stedet for
+    #import, så kompileringen er uavhengig av arbeidskatalog og av hvor typst-py mener
+    prosjektroten er. Rapportens første h1 er dokumentets tittel; PDF-metadata og bunntekst
+    får den samme."""
+    dato = _dato()
+    ut = [_MAL.read_text(encoding="utf-8"), ""]
+    ut.append(f"#set document(title: {_typst_streng(tittel or 'Rapport')}, author: \"Lauvasdata\")")
+    ut.append(f"#show: rapport.with(tittel: {_typst_streng(tittel or 'Rapport')}, dato: {_typst_streng(dato)})")
+    forste_h1 = True
     for b in blokker:
-        tekst = _xml_escape(b.tekst)
+        t = _typst_streng(b.tekst)
         if b.type == "h1":
-            story.append(Paragraph(tekst, styles["Title"]))
-        elif b.type == "h2":
-            story.append(Spacer(1, 8))
-            story.append(Paragraph(tekst, styles["Heading2"]))
-        elif b.type == "h3":
-            story.append(Spacer(1, 4))
-            story.append(Paragraph(tekst, styles["Heading3"]))
-        elif b.type == "meta":
-            story.append(Paragraph(tekst, meta_stil))
-        elif b.type == "sitat":
-            story.append(Paragraph(f"«{tekst}»", sitat_stil))
-        elif b.type == "lenke":
-            href = _xml_escape(b.tekst)
-            story.append(Paragraph(f'<link href="{href}" color="#2E5C47">{tekst}</link>', lenke_stil))
+            ut.append(f"#h1({t})")
+            if forste_h1:
+                ut.append("#skille()")
+                forste_h1 = False
+        elif b.type in ("h2", "h3", "meta", "sitat", "lenke"):
+            ut.append(f"#{b.type}({t})")
         else:
-            story.append(Paragraph(tekst, styles["Normal"]))
-    doc.build(story)
-    return buf.getvalue()
+            ut.append(f"#p({t})")
+    return "\n".join(ut) + "\n"
+
+
+def til_pdf_bytes(blokker: list[Blokk], *, tittel: str = "") -> bytes:
+    """Typst (husstandard rapportgenerering, 2026-09-06) erstattet reportlab Platypus.
+    typst-py bærer sin egen binær og innebygde fonter, så ingen systembibliotek trengs
+    i python:3.14-slim — samme «ren venv»-egenskap reportlab hadde, med ekte typografi.
+    Importen er lat av samme grunn som før: Markdown-eksporten skal virke selv om
+    PDF-laget skulle mangle."""
+    import typst
+    return typst.compile(til_typst(blokker, tittel=tittel).encode("utf-8"))
 
 
 # ---------- Mal 1: kildesamling — et papirutvalg som ett dokument ----------

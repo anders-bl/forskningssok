@@ -677,6 +677,27 @@ PDF-en til `10.1111/jfd.70099` (ikke-OA) → fulltekst i leseflaten → markert 
 vedlegget lot sitatet stå. En skannet PDF ga den ærlige meldingen. Null konsollfeil.
 Fanget underveis: «1 sider».
 
+## PDF-motor: Typst bak Blokk-modellen (2026-09-06, gren `rapportmotor-typst`)
+
+Første steg i husstandarden for rapportgenerering (plattformwiki
+`prosesser/husstandard-rapportgenerering`): `til_pdf_bytes()` rendrer ikke lenger med
+reportlab Platypus, men genererer Typst-kilde (`til_typst()`) og kompilerer den med
+`typst`-pakken. Blokk-modellen og alle seks malene er uendret; kun det siste leddet byttet.
+
+- **Malen er én fil, `rapport_mal.typ`,** og det eneste stedet merkevare og typografi bor for
+  PDF. Fjordstein-tokenene (aksent, dempet, strek) står der som konstanter, ikke i Python.
+- **Innhold sendes som strenger, aldri markup.** `_typst_streng` escaper bare backslash og
+  anførselstegn; `#`, `*`, `$` og `<` i en tittel rendres bokstavelig. Testdekket ved å lese
+  PDF-en tilbake med pypdf, ikke bare sjekke `%PDF`.
+- **Fonten følger binæren.** Libertinus Serif er innebygd i typst, så `python:3.14-slim`
+  gir samme resultat som Mac-en. Verifisert med `docker build` og kompilering inne i
+  containeren samme kveld.
+- **Målt fra baseline:** renderer-byttet tok fra 23:06 til commit, se git. Sammenlignbar
+  leveranse 09-02 (Blokk-modell pluss PDF) tok 77 minutter.
+
+Neste ledd i standarden er å løfte `rapport_mal.typ` og emitteren ut som felles motor når
+stromkontrol migrerer; til da bor de her, bygget for å kunne løftes.
+
 ## Overvåking — hva som dekker hva (2026-09-04)
 
 Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en

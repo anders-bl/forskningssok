@@ -265,3 +265,33 @@ def test_gap_rapport_teller_ikke_ferske_naboer_som_sitert():
     etter_overskrift = md.split("Allerede sitert av kildepapiret")[-1]
     assert "Kom ut etterpå" not in etter_overskrift
     assert "Faktisk sitert" in etter_overskrift
+
+
+# ---------- Typst-renderer (husstandard rapportgenerering, 2026-09-06) ----------
+
+def test_typst_streng_escaper_kun_backslash_og_anforsel():
+    from rapport import _typst_streng
+    assert _typst_streng('a "b" c\\d') == '"a \\"b\\" c\\\\d"'
+    assert _typst_streng("linje1\nlinje2   x") == '"linje1 linje2 x"'
+    assert _typst_streng("#hash *stjerne* $dollar$") == '"#hash *stjerne* $dollar$"'
+
+
+def test_pdf_bevarer_tekst_med_typst_spesialtegn():
+    """Tekst med #, *, $, <, @ og anførselstegn skal rendres bokstavelig — malen tar
+    strenger, aldri markup. Lest tilbake med pypdf, ikke bare sjekket for %PDF."""
+    import io
+    from pypdf import PdfReader
+    blokker = [Blokk("h1", 'Tittel "med" #hash'), Blokk("p", "Brødtekst æøå $x$ <t> @a *b*"),
+               Blokk("sitat", "sitert"), Blokk("lenke", "https://example.org/x")]
+    pdf = til_pdf_bytes(blokker, tittel="T")
+    tekst = "".join(s.extract_text() for s in PdfReader(io.BytesIO(pdf)).pages)
+    for maa in ('"med"', "#hash", "æøå", "$x$", "<t>", "@a", "*b*", "sitert", "Lauvasdata"):
+        assert maa in tekst, maa
+
+
+def test_til_typst_limer_inn_malen_og_bruker_forste_h1_som_tittel():
+    from rapport import til_typst
+    src = til_typst([Blokk("h1", "A"), Blokk("h2", "B"), Blokk("h1", "C")], tittel="Dok")
+    assert "#let rapport(" in src                      # malen er inlined, ikke importert
+    assert src.count("#skille()") == 1                 # kun etter FØRSTE h1
+    assert '#set document(title: "Dok"' in src

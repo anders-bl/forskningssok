@@ -2,7 +2,7 @@ fastapi
 uvicorn
 httpx
 sqlite-vec
-reportlab
+typst>=0.15  # PDF-motor, husstandard rapportgenerering 2026-09-06: egen binær + innebygde fonter, ingen systemlibs
 # Egne PDF-er inn i korpuset (dokumenter.py, 2026-09-05). pypdf er ren Python — ingen
 # systembinær, så Dockerfilen er uendret. python-multipart er FastAPIs krav for
 # multipart/form-data; uten den svarer opplastingsendepunktet 500 på FØRSTE ekte
