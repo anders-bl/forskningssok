@@ -19,9 +19,10 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 ROT = Path(__file__).resolve().parent.parent
 
-# Emoji-presentasjon + dingbats/diverse symboler (U+2600-27BF) + supplerende. «✓»/«✗»
-# (U+2713/2717) er eksplisitt unntatt i standarden og hoppes over.
-_EMOJI = re.compile("[\u2600-\u2712\u2714-\u2716\u2718-\u27bf\u2b00-\u2bff\U0001F000-\U0001FAFF\ufe0f]")
+# Emoji-presentasjon + dingbats/diverse symboler (U+2600-27BF) + supplerende. INGEN unntak:
+# husstandard-siden og silverbullets emoji_lint unntar hake/kryss (U+2713/2717) og
+# stjerne/rombe, men Anders 2026-09-06: «ikke overhodet». Dette repoet bruker ingen av dem.
+_EMOJI = re.compile("[\u2600-\u27bf\u2b00-\u2bff\U0001F000-\U0001FAFF\ufe0f]")
 
 FILER = (
     [ROT / "frontend" / "index.html", ROT / "rapport_mal.typ", ROT / "CLAUDE.md"]
@@ -40,11 +41,12 @@ def test_ingen_emoji_i_kilde_eller_profil(fil):
 
 def test_detektoren_feller_plantet_tegn_og_godtar_hake():
     """Positiv kontroll: en detektor som er grønn på første kjøring skal mistenkes for
-    ikke å måle noe. Varseltrekant (U+26A0), emoji-presentasjon (U+1F600) og en
-    variasjonsvelger (U+FE0F) skal felles; standardens unntak U+2713/U+2717 skal ikke."""
-    for tegn in (chr(0x26A0), chr(0x1F600), chr(0x2B50), chr(0xFE0F)):
+    ikke å måle noe. Varseltrekant (U+26A0), emoji-presentasjon (U+1F600), stjerne
+    (U+2605), hake (U+2713) og variasjonsvelger (U+FE0F) skal alle felles; norske
+    bokstaver og ASCII-tagger skal ikke."""
+    for tegn in (chr(0x26A0), chr(0x1F600), chr(0x2605), chr(0x2713), chr(0x2717), chr(0x2B50), chr(0xFE0F)):
         assert _EMOJI.search("x" + tegn + "y"), hex(ord(tegn))
-    for tegn in (chr(0x2713), chr(0x2717), "å", "[OBS]"):
+    for tegn in ("å", "[OBS]", "*", "->"):
         assert not _EMOJI.search("x" + tegn + "y"), tegn
 
 
