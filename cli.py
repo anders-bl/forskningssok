@@ -64,7 +64,7 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     except RuntimeError:
         kilder["core"] = False
     kandidater = dedupliser(epmc + kjerne)
-    rangert = ranger(kandidater)
+    rangert = ranger(kandidater, query=query)
     resultat = resolve(query, rangert, tekst=lambda p: p.tittel)
     eksakt_id = resultat.eksakt.id if resultat.eksakt else None
 

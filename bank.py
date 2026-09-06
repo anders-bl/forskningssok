@@ -26,6 +26,8 @@ være embed-modell-REN. Lokal utvikling og prod-volumet er allerede strukturelt 
 (cache.db er gitignored, prod starter med et tomt volum) — ALDRI kopier en lokal
 cache.db inn i prod-volumet, det ville blandet to inkompatible rom stille.
 """
+import html
+import re
 import json
 import logging
 import os
@@ -67,6 +69,22 @@ def _hus_embed():
     return hus_embed
 
 
+def rens_markup(tekst: str | None) -> str:
+    """Kildetekst med innebygd markup, rå (<i>, <p>) eller HTML-escaped (&lt;i&gt;),
+    normaliseres FØR den lagres. Europe PMC-adapteren renser alt sitt, men banken har
+    flere skrivere (OpenAlex-utforskning, DOI-oppslag for PDF-er, gap-naboer), og en rad
+    skrives én gang (INSERT OR IGNORE), så én urenset skriver gir en tittel som står
+    med «&lt;i&gt;» i varme-/lignende-panelene for alltid. Sett live 2026-09-06 på fire
+    rader i en lokal cache. Ett rensested for alle skrivere, i stedet for ett per adapter."""
+    t = html.unescape(tekst or "")
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", t)).strip()
+
+
+# PRAGMA user_version-trinn for engangsmigrasjoner av INNHOLD (ikke skjema: skjema-
+# migrasjonene under er idempotente ALTER-er og trenger ingen teller).
+_INNHOLDSVERSJON = 1
+
+
 def _db(db_path: Path = DB) -> sqlite3.Connection:
     db = sqlite3.connect(db_path)
     db.enable_load_extension(True)
@@ -87,6 +105,17 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
             pass  # kolonnen finnes alt (ny db, eller migrasjonen alt kjørt)
     db.execute("""CREATE VIRTUAL TABLE IF NOT EXISTS paper_vec
         USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])""")
+    # Engangs innholdsmigrasjon: rader skrevet før rens_markup() fantes i lagre().
+    # Kjøres én gang per fil (user_version), aldri som en skanning per forespørsel.
+    if db.execute("PRAGMA user_version").fetchone()[0] < _INNHOLDSVERSJON:
+        rader = db.execute("""SELECT id, tittel, abstract FROM papers
+            WHERE tittel LIKE '%<%' OR tittel LIKE '%&lt;%' OR tittel LIKE '%&amp;%'
+               OR abstract LIKE '%<%' OR abstract LIKE '%&lt;%' OR abstract LIKE '%&amp;%'""").fetchall()
+        for pid, tittel, abstract in rader:
+            db.execute("UPDATE papers SET tittel=?, abstract=? WHERE id=?",
+                       (rens_markup(tittel), rens_markup(abstract), pid))
+        db.execute(f"PRAGMA user_version = {_INNHOLDSVERSJON}")
+        db.commit()
     db.execute("""CREATE TABLE IF NOT EXISTS sitater(
         id INTEGER PRIMARY KEY, paper_id TEXT NOT NULL, tekst TEXT NOT NULL,
         kommentar TEXT, opprettet REAL NOT NULL)""")
@@ -295,7 +324,8 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
                siteringstall,open_access,kilde_url,kilde_kode,volum,hefte,sider,issn,
                pubtyper,mesh,mesh_major)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (p.id, p.tittel, p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid, p.abstract,
+            (p.id, rens_markup(p.tittel), p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid,
+             rens_markup(p.abstract),
              p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode,
              p.volum, p.hefte, p.sider, p.issn,
              "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major)))

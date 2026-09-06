@@ -232,6 +232,18 @@ Nofima, Pharmaq + kjerne-fagtidsskrifter) rangeres FØR siteringstall, ellers vi
 2026-Havforskningsinstituttet-funn (0 sitater, for nytt) begravd seg selv under et
 2015-MIT-funn (50 sitater) i et helt annet fagfelt.
 
+**Tittel-dekning innenfor båndet (lagt til 2026-09-06, målt først).** `evaluer.py` på
+profilens eget standardsøk viste at når alle topptreff havner i samme bånd, avgjorde
+`(-år, -siteringer)` alene: to ferske 2026-papirer som bare NEVNTE søkeordet i abstractet
+lå over seks eldre papirer med søkeordet i selve tittelen (dommeren: grad 1 mot grad 3).
+Europe PMCs egen rekkefølge var like skjev, så kilderang kunne ikke brukes. `ranger()` tar
+nå spørringen og sorterer innenfor båndet på `tittel_dekning` (andel søkeord i tittelen,
+bøyningstolerant uten språkspesifikk stemmer) FØR ferskhet. Båndet er fortsatt øverste
+dommer; ADR-013-prinsippet står (et ferskt papir taper aldri på siteringstall). Kallere
+uten tekstspørring (Utforskning av et OpenAlex-emne) er uendret. Målt med samme dommer
+(gpt-oss:20b, n=12) samme kveld: konkordans 0.79 → 0.91 på standardsøket. Forklart i
+«Om»-panelet, fordi det er en regel brukeren kan lese, ikke en vekt.
+
 **Species-trap-motvekt** (lagt til 2026-09-02, Svart hatt-funn): ren embedding-avstand har
 ingen art-/domenefilter — et menneske-nyrestein-funn (delt nøkkelord «nephrocalcinosis»)
 kan rangere høyt blant fiskefunn kun på tekstlig nærhet, observert live med et ekte
@@ -262,7 +274,8 @@ Journal of Fish Diseases-treff ble korrekt vist ETTER det domene-nære treffet.
   `konsepter/discocat-operator` selv fant på wiki-grafen. `bank.py` er ren
   distribusjonell likhet, første søyle, ikke tredje.
 - **Betalte kilder** (Web of Science, Scopus) — først når firmaet faktisk bestiller.
-- **Fulltekst-mining** — kun abstract i v1.
+- **Fulltekst-mining** — kun abstract, med mindre papiret er open access eller brukeren har
+  lastet opp PDF-en selv (se §Egne PDF-er).
 - **Integrasjon mot firmaets ultralyd-skanndata** — eget, mye større prosjekt.
 
 ## Lisens/tilgang — hvorfor ikke «koble til bruktsøk»
@@ -299,6 +312,17 @@ Live-verifisert: skjult ved last, åpner med kilde-status synlig, lukkes med
 Escape/bakgrunnsklikk/×-knapp.
 
 ## Ett arbeidsrom med skuff — modusbryteren er borte (2026-09-04)
+
+> **Status 2026-09-06, les dette før resten av avsnittet.** Dokumentskuffen beskrevet
+> under ble samme kveld (09-04, senere) erstattet av **sitatbanken**: skuffen viser i dag
+> sitatene dine gruppert på papir, med relasjonelle naboer og eksport, og har INGEN
+> redigerbar brødtekst (`contenteditable` finnes ikke i `frontend/index.html`). «Nå»-laget
+> i varme-panelet følger derfor sitatene, ikke en utkasttekst. Utkast-endepunktene
+> (`/api/utkast`, `/api/omfang`, `/api/rapport/omfang`, `/api/rapport/dokument`) og
+> `scoping.py` ligger igjen i backend uten én eneste kaller fra flaten, bygget for
+> skriveflaten i idébank #30, ikke fjernet. Om de skal få en flate igjen eller
+> pensjoneres er en åpen beslutning (`prosjekt/forskningssok-veikart` fase 1, punkt 1);
+> fram til den er tatt beskriver resten av dette avsnittet HISTORIEN, ikke flaten.
 
 Fram til nå var «Les» og «Skriv» to modi bak en bryter i toppbaren, og et sitat kunne
 bare havne i en notatliste. Anders' brief var at flaten «ikke er så oversiktlig»: søk og

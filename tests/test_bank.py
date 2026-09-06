@@ -388,3 +388,31 @@ def test_odelagt_revisjonsrad_feller_ikke_hele_historikken(tmp_path):
     h = bank.sok_historikk(db_path=db)
     assert len(h) == 2
     assert h[0]["revisjon"] == {} and h[1]["revisjon"]["ms"] == 1
+
+
+# ---------- Markup-rensing ved skriving + engangsmigrasjon (funnet live 2026-09-06) ----------
+
+def test_lagre_renser_escaped_og_raa_markup(tmp_path):
+    """Fire rader i en ekte cache sto med «&lt;i&gt;» i tittelen i varme-panelet, skrevet
+    av en annen skriver enn Europe PMC-adapteren, og aldri overskrevet (INSERT OR IGNORE).
+    Banken renser derfor selv, uansett hvem som skriver."""
+    db = tmp_path / "t.db"
+    lagre([_p("1", "Salmon (&lt;i&gt;Salmo salar&lt;/i&gt;)", abstract="<p>Tekst &amp; mer</p>")],
+          embed_fn=_fake_embed, db_path=db)
+    rad = hent("1", db_path=db)
+    assert rad["tittel"] == "Salmon ( Salmo salar )"
+    assert rad["abstract"] == "Tekst & mer"
+
+
+def test_gammel_cache_med_markup_migreres_en_gang(tmp_path):
+    """En cache.db skrevet FØR rensingen fantes skal renses ved første åpning, og
+    user_version skal hindre at skanningen kjører på nytt for hver forespørsel."""
+    import sqlite3
+    db = tmp_path / "t.db"
+    lagre([_p("1", "Ren tittel")], embed_fn=_fake_embed, db_path=db)
+    raw = sqlite3.connect(db)
+    raw.execute("UPDATE papers SET tittel='Skitten &lt;i&gt;tittel&lt;/i&gt;' WHERE id='1'")
+    raw.execute("PRAGMA user_version = 0")
+    raw.commit(); raw.close()
+    assert hent("1", db_path=db)["tittel"] == "Skitten tittel"
+    assert sqlite3.connect(db).execute("PRAGMA user_version").fetchone()[0] == bank._INNHOLDSVERSJON

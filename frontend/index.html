@@ -368,10 +368,14 @@ svg text{ font-family:system-ui,sans-serif; }
     <ul>
       <li>Ingen AI-generert sammendrag eller syntese — du ser alltid rå tittel/abstract
         fra kilden selv, aldri en omskrivning.</li>
-      <li>Ingen fulltekst-mining — kun abstract, med mindre papiret er open access.</li>
+      <li>Ingen fulltekst-mining — kun abstract, med mindre papiret er open access eller du har
+        lastet opp PDF-en selv (dra den inn i leseflaten).</li>
       <li id="om-merker">Rangeringen FLAGGER og OMORDNER etter fagfelt-/målobjekt-nærhet —
         den fjerner aldri et treff. Et treff uten merke kan fortsatt være riktig,
         avgjørelsen er alltid din.</li>
+      <li>Innenfor samme bånd løftes papirer som har søkeordene i selve tittelen, deretter
+        nyere før eldre, deretter siteringstall. Ferskhet slår aldri et papir som faktisk
+        handler om det du søkte på.</li>
       <li>«Evidensnivå»-merket er mønstergjenkjenning på ord forfatterne selv bruker
         («systematic review», «case report» …), ikke en faglig vurdering — brukes aldri
         til å rangere eller filtrere.</li>
@@ -427,6 +431,9 @@ svg text{ font-family:system-ui,sans-serif; }
           <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
             <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
           </span>
+          <span class="rapport-eksport-gruppe i-meta" id="eksport-konvergens" hidden title="Én rapport for dette søket: kilder, citation-gap på topptreffet, omfang per akse, proveniens og formaterte referanser">
+            Forskningsrapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+          </span>
         </div>
         <div class="revisjon" id="revisjon" hidden></div>
         <button class="utforsk-forslag" id="utforsk-forslag"><span id="utforsk-forslag-navn"></span></button>
@@ -452,7 +459,7 @@ svg text{ font-family:system-ui,sans-serif; }
         <div id="empty-reader"><div class="tomflate">
           <b>Ingen papir åpent</b>
           Søk til venstre og velg et treff. Merk tekst i abstractet for å sitere det —
-          sitatet lander i dokumentskuffen under.
+          sitatet lander i sitatbanken under.
           <div style="margin-top:1rem">Har du PDF-en selv? Dra den hit — den blir et papir
           i korpuset, med fulltekst du kan sitere fra.</div>
         </div></div>
@@ -584,6 +591,7 @@ async function utforSok(q) {
   $('#cache-echo').hidden = true;
   $('#utforsk-forslag').classList.remove('vis');
   $('#eksport-kildesamling').hidden = true;
+  $('#eksport-konvergens').hidden = true;
   try {
     const data = await api(`/api/sok?q=${encodeURIComponent(q)}&n=20`);
     $('#result-status').textContent = '';
@@ -591,7 +599,7 @@ async function utforSok(q) {
     visRevisjon(data.revisjon);
     for (const p of data.papirer) state.papers[p.id] = p;
     renderResults(data.papirer, data.eksakt_id);
-    settResultatForEksport(data.papirer, `Kildesamling — «${q}»`);
+    settResultatForEksport(data.papirer, `Kildesamling — «${q}»`, q);
     if (data.papirer.length) openPaper(data.papirer[0].id);
 
     // Oppdagelse: samme spørring, mot DIN cache — vis kun det som IKKE alt er i
@@ -708,10 +716,19 @@ async function lastNedRapport(baseUrl, filnavnStem, format, btn) {
 }
 
 // Kildesamling — knyttet til gjeldende søk/Utforskning-resultat.
-function settResultatForEksport(papirer, tittel) {
-  state.sisteResultat = { ids: papirer.map(p => p.id), tittel };
+function settResultatForEksport(papirer, tittel, query = null) {
+  state.sisteResultat = { ids: papirer.map(p => p.id), tittel, query };
   $('#eksport-kildesamling').hidden = papirer.length === 0;
+  // Konvergens-rapporten regner selv (søk + gap + omfang) ut fra SPØRRINGEN, ikke fra
+  // id-lista. Derfor finnes den bare for et tekstsøk, ikke for en Utforskning av et emne.
+  $('#eksport-konvergens').hidden = papirer.length === 0 || !query;
 }
+$$('#eksport-konvergens .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
+  const { query } = state.sisteResultat;
+  if (!query) return;
+  lastNedRapport(`/api/rapport/konvergens?q=${encodeURIComponent(query)}`,
+                  `Forskningsrapport - ${query}`, btn.dataset.format, btn);
+}));
 $$('#eksport-kildesamling .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
   const { ids, tittel } = state.sisteResultat;
   if (!ids.length) return;
@@ -724,6 +741,7 @@ async function utforskEmne(emneId, emneNavn) {
   $('#result-status').textContent = 'utforsker…';
   $('#result-list').innerHTML = '';
   $('#eksport-kildesamling').hidden = true;
+  $('#eksport-konvergens').hidden = true;
   try {
     const data = await api(`/api/emne/${encodeURIComponent(emneId)}?navn=${encodeURIComponent(emneNavn)}&n=20`);
     $('#result-status').textContent = '';
@@ -872,11 +890,11 @@ async function lastVarme({tvungen = true} = {}) {
     const data = await api(`/api/varme?k=12&tekst=${encodeURIComponent(tekst)}`);
     $('#c-varmt').textContent = data.papirer.length || '';
     if (!data.papirer.length) {
-      el.innerHTML = '<div class="hint">Ingenting er varmt ennå. Åpne et papir, siter noe — eller skriv i dokumentet under, så dukker det som ligner opp her. Kaldt betyr ubrukt, ikke uinteressant.</div>';
+      el.innerHTML = '<div class="hint">Ingenting er varmt ennå. Åpne et papir og siter noe, så dukker det som ligner opp her. Kaldt betyr ubrukt, ikke uinteressant.</div>';
       return;
     }
     const naaHint = data.har_naa_lag ? '' :
-      '<div class="hint" style="margin-bottom:.6rem">Bare det varige laget vises — skriv i dokumentet under for å legge til «nå»-laget.</div>';
+      '<div class="hint" style="margin-bottom:.6rem">Bare det varige laget vises. Siter noe, så legges «nå»-laget (nærhet til sitatene dine) til.</div>';
     el.innerHTML = naaHint + data.papirer.map(p => {
       const samlet = Math.max(p.varig_andel, p.naa_andel);
       return `
