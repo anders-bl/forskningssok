@@ -107,7 +107,7 @@ def test_varmeliste_sorterer_varmest_forst_og_respekterer_k(tmp_path):
 
 
 def test_varmeliste_baerer_banding_signalene(tmp_path):
-    """Panelet tegner ★/⚠ fra de samme feltene som resten av huset — de må komme med
+    """Panelet tegner fag-/art-merkene fra de samme feltene som resten av huset — de må komme med
     herfra også, ellers ville varme-fanen vært den ene flaten der art-fellen er usynlig."""
     db = _db_med_tre(tmp_path)
     varm_opp("1", "apnet", db_path=db)

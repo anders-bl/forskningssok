@@ -1,7 +1,7 @@
 """Verifiserer dokumenter.py: en dratt-inn PDF blir et ekte papir, DOI-en i dokumentet
 er identiteten, og et manglende tekstlag sies høyt i stedet for å se ut som et tomt papir.
 
-PDF-ene her er EKTE PDF-er, bygget med reportlab (alt en avhengighet for rapport.py) og
+PDF-ene her er EKTE PDF-er, bygget med typst (husets PDF-motor, alt en avhengighet) og
 lest tilbake med pypdf. En fixture med håndskrevne `%PDF`-bytes ville testet parseren vår
 mot vår egen idé om PDF-format i stedet for mot formatet.
 """
@@ -22,27 +22,31 @@ def _fake_embed(texts):
     return [[0.0] * 1024 for _ in texts]
 
 
-def _pdf(*linjer: str) -> bytes:
-    """Ekte, tekstbærende PDF."""
-    from reportlab.pdfgen import canvas
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf)
-    y = 800
-    for linje in linjer:
-        c.drawString(60, y, linje)
-        y -= 20
-    c.save()
-    return buf.getvalue()
+def _pdf(*linjer: str, eksport: str = "", sider: int = 1) -> bytes:
+    """Ekte, tekstbærende PDF. Lages med typst (husets PDF-motor siden 2026-09-06);
+    reportlab er ute av requirements, og CI installerer bare det. Hver linje blir sitt
+    eget avsnitt, uten orddeling, så en DOI aldri brytes over to linjer.
+
+    typst er DETERMINISTISK: samme kilde gir byte-identisk PDF. `eksport` legger en
+    metadata-forskjell inn, slik to ulike eksporter av samme artikkel var det hos
+    reportlab (tidsstempel/ID) — testen om byte-identitet trenger den forskjellen.
+    `sider` > 1 legger tomme sider FØR siste linje, som da havner på siste side."""
+    import typst
+    from rapport import _typst_streng
+    kilde = '#set page(paper: "a4")\n#set par(justify: false)\n#set text(hyphenate: false)\n'
+    if eksport:
+        kilde += f"#set document(author: {_typst_streng(eksport)})\n"
+    avsnitt = [f"#par(text({_typst_streng(l)}))" for l in linjer]
+    if sider > 1 and avsnitt:
+        avsnitt = avsnitt[:-1] + ["#pagebreak()"] * (sider - 1) + avsnitt[-1:]
+    kilde += "\n\n".join(avsnitt) + "\n"
+    return typst.compile(kilde.encode("utf-8"))
 
 
 def _pdf_uten_tekstlag() -> bytes:
     """En side uten et eneste tekst-objekt — det en skannet side er for en parser."""
-    from reportlab.pdfgen import canvas
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf)
-    c.rect(50, 50, 200, 200, fill=1)  # kun grafikk
-    c.save()
-    return buf.getvalue()
+    import typst
+    return typst.compile(b'#set page(paper: "a4")\n#rect(width: 60pt, height: 60pt, fill: black)\n')
 
 
 @pytest.fixture
@@ -86,17 +90,10 @@ def test_finn_doi(rå, ventet):
 def test_doi_hentes_fra_forsiden_ikke_referanselista(db):
     """Den verste feilen modulen kan gjøre: feste fulltekst på et papir dokumentet bare
     SITERER. Forsidens DOI er dokumentets egen; side 12 er andres."""
-    from reportlab.pdfgen import canvas
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf)
-    c.drawString(60, 800, "doi:10.1111/egen.1")   # side 1
-    c.showPage()
-    for _ in range(4):                             # fyll til forbi _DOI_SIDER
-        c.showPage()
-    c.drawString(60, 800, "Referanser: 10.9999/andres.2")
-    c.save()
+    # side 1 bærer egen DOI; referanselista havner på side 6, forbi _DOI_SIDER
+    data = _pdf("doi:10.1111/egen.1", "Referanser: 10.9999/andres.2", sider=6)
 
-    lest = dokumenter.les_pdf(buf.getvalue())
+    lest = dokumenter.les_pdf(data)
     assert dokumenter.finn_doi(lest["forside"]) == "10.1111/egen.1"
     assert "10.9999/andres.2" in lest["tekst"]  # den ER lest, den brukes bare ikke som id
 
@@ -158,7 +155,7 @@ def test_uten_doi_blir_lokal_identitet_fra_filas_innhold_ikke_filnavnet(db):
     assert a["paper_id"].startswith("lokal:")
     assert len(dokumenter.liste(db_path=db)) == 1
 
-    annen_eksport = _pdf("En intern rapport uten DOI")
+    annen_eksport = _pdf("En intern rapport uten DOI", eksport="annen eksport av samme tekst")
     c = dokumenter.lagre("rapport.pdf", annen_eksport, embed_fn=_fake_embed, db_path=db)
     assert c["id"] != a["id"], "dokumentert grense, ikke en påstand om tekst-identitet"
 

@@ -107,7 +107,7 @@ def _print_papirer(papirer: list[PaperDossier], antall: int, query: str, eksakt_
         return
     print(f"{len(papirer)} kandidater for «{query}» (viser {min(antall, len(papirer))}):\n")
     for p in papirer[:antall]:
-        flagg = "★" if domene_naer(p) else " "
+        flagg = "*" if domene_naer(p) else " "
         eksakt = " eksakt titteltreff" if p.id == eksakt_id else ""
         aa = p.aar or "?"
         sit = p.siteringstall if p.siteringstall is not None else "?"

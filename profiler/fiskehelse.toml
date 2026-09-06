@@ -19,7 +19,7 @@ sok_eksempel = "nephrocalcinosis smolt seawater transfer"
 [domene]
 # Domene-nærhet matches mot forfatter-affiliasjon + tidsskriftnavn — de to strengene
 # Europe PMC allerede returnerer, så dette koster ingen ny henting. Se ranking.py:domene_naer.
-merke = "★"
+merke = "[fag]"
 merke_betyr = "norsk fagmiljø/fagtidsskrift"
 fagmiljoer = [
   "havforskningsinstitutt", "veterinærinstitutt", "veterinaerinstitutt",
@@ -40,7 +40,7 @@ fagtidsskrifter = [
 # «Art» er profilens navn på MÅLOBJEKTET — arten i fiskehelse, men like gjerne
 # populasjonen, materialet eller systemet i et annet fagfelt. Signalet er FRAVÆR/NÆRVÆR,
 # aldri en klassifikator: et papir uten treff blir flagget, ALDRI filtrert bort.
-merke = "⚠ art?"
+merke = "[art?]"
 merke_betyr = "nevner ikke laks/oppdrettsfisk i tittel/abstract"
 merke_utdypet = "kan være en annen art (f.eks. humanmedisin)"
 termer = [
@@ -92,7 +92,7 @@ mesh_termer = [
 domeneprofil = """
 Denne instansen er scopet til norsk lakseoppdrett — fagmiljøer (Havforskningsinstituttet,
 Veterinærinstituttet, NMBU, Nofima, Pharmaq), fagtidsskrifter, og artstermer er alle
-hentet fra profiler/fiskehelse.toml. Et ★ betyr «norsk fagmiljø/fagtidsskrift», et ⚠ betyr
+hentet fra profiler/fiskehelse.toml. Et [fag] betyr «norsk fagmiljø/fagtidsskrift», et [art?] betyr
 «nevner ikke laks/oppdrettsfisk i tittel/abstract» — begge er signaler for DEG å vurdere,
 ikke en dom verktøyet feller.
 """

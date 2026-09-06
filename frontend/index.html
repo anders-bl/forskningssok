@@ -153,6 +153,7 @@ button{ font:inherit; }
 .result.active{ background:var(--surface-2); border-color:var(--accent); }
 .result-row1{ display:flex; align-items:baseline; gap:.4rem; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; font-variant-numeric:tabular-nums; flex-wrap:wrap; }
 .star{ color:var(--accent); }
+.merkeikon{ width:.8em; height:.8em; fill:currentColor; vertical-align:-.08em; margin-right:.15em; }
 .pill-oa{ background:var(--surface-2); color:var(--accent); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
 .pill-species{ background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
 .pill-evidens{ background:var(--surface-2); color:var(--muted); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
@@ -541,7 +542,7 @@ const state = {
   // bevisst NØYTRAL, ikke fisk: laster profilen ikke, skal flaten si mindre — ikke
   // påstå feil fagfelt. Se domeneprofil.py for hvorfor dette er hele generaliseringen.
   profil: {
-    domene_merke: '★', domene_merke_betyr: 'domene-nær',
+    domene_merke: '[fag]', domene_merke_betyr: 'domene-nær',
     art_merke: '[OBS]', art_merke_betyr: 'nevner ikke målobjektet', art_merke_utdypet: '',
   },
 };
@@ -560,17 +561,37 @@ function escapeHtml(s) { return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','
 
 // Merkene tegnes ETT sted. De sto tidligere som ni nesten-like strenger med «laks» i
 // title-attributtet — nettopp formen som overlever et fagfeltbytte uten at noe feiler.
+// Ikonene er egen maskingenerert SVG, ikke emoji (prosesser/husstandard-ingen-emoji):
+// punktene regnes ut her, så det finnes ingen tegnsett-avhengighet og ingen fallback-font
+// som kan bytte glyf. Profilens merke-TEKST er ren ASCII ([fag]/[art?]) og brukes der
+// tekst er riktig (Markdown, PDF, CLI, Om-panelet); i flaten bærer ikonet betydningen
+// og teksten ligger i title.
+function merkeIkon(type) {
+  if (type === 'fag') {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 2.1 : 5, a = -Math.PI / 2 + i * Math.PI / 5;
+      pts.push((5 + r * Math.cos(a)).toFixed(2) + ',' + (5 + r * Math.sin(a)).toFixed(2));
+    }
+    return `<svg class="merkeikon" viewBox="0 0 10 10" aria-hidden="true"><polygon points="${pts.join(' ')}"/></svg>`;
+  }
+  // art?: trekant med utropstegn, samme geometri som et varselskilt
+  return '<svg class="merkeikon" viewBox="0 0 10 10" aria-hidden="true">' +
+    '<polygon points="5,0.8 9.6,9.2 0.4,9.2"/><rect x="4.4" y="3.6" width="1.2" height="3" fill="var(--surface, #fff)"/>' +
+    '<rect x="4.4" y="7.2" width="1.2" height="1.1" fill="var(--surface, #fff)"/></svg>';
+}
+function merkeTekst(m) { return String(m || '').replace(/^\[|\]$/g, ''); }
 function domeneMerke(p) {
   const pr = state.profil;
-  return p.domene_naer ? `<span class="star" title="${escapeHtml(pr.domene_merke_betyr)}">${escapeHtml(pr.domene_merke)}</span>` : '';
+  return p.domene_naer ? `<span class="star" title="${escapeHtml(pr.domene_merke_betyr)}">${merkeIkon('fag')}</span>` : '';
 }
 function artMerke(p, { kort = true } = {}) {
   if (p.arts_naer !== false) return '';
   const pr = state.profil;
   const tittel = pr.art_merke_utdypet ? `${pr.art_merke_betyr} — ${pr.art_merke_utdypet}` : pr.art_merke_betyr;
   return kort
-    ? `<span class="pill-species" title="${escapeHtml(tittel)}">${escapeHtml(pr.art_merke)}</span>`
-    : `<span style="color:var(--warn)" title="${escapeHtml(tittel)}">· ${escapeHtml(pr.art_merke)}</span>`;
+    ? `<span class="pill-species" title="${escapeHtml(tittel)}">${merkeIkon('art')}${escapeHtml(merkeTekst(pr.art_merke))}</span>`
+    : `<span style="color:var(--warn)" title="${escapeHtml(tittel)}">· ${merkeIkon('art')}${escapeHtml(pr.art_merke_betyr)}</span>`;
 }
 
 let varselTimer = null;
@@ -777,7 +798,7 @@ async function openPaper(id) {
     `<span>${escapeHtml(p.tidsskrift||'')} · ${p.aar||'?'}</span>` +
     (p.doi ? `<span>· ${p.doi}</span>` : '') +
     `<span>· ${p.open_access ? 'open access' : 'abstract (ikke OA)'}</span>` +
-    (p.domene_naer ? `<span class="star">· ${escapeHtml(state.profil.domene_merke)} ${escapeHtml(state.profil.domene_merke_betyr)}</span>` : '') +
+    (p.domene_naer ? `<span class="star">· ${merkeIkon('fag')}${escapeHtml(state.profil.domene_merke_betyr)}</span>` : '') +
     artMerke(p, {kort: false}) +
     (p.evidensniva && p.evidensniva !== 'Ukjent design' ? `<span title="Mønster-basert, ikke en kvalitetsdom — se evidensniva.py">· ${escapeHtml(p.evidensniva)}</span>` : '');
   $('#reader-title').textContent = p.tittel;
@@ -1536,7 +1557,7 @@ async function lastProfil() {
     $('#wordmark-fag').textContent = p.navn;
     $('#om-kort').textContent = `Litteratursøk bygget for ${p.kort} — ikke et generelt forskningsverktøy, se §Domeneprofil under.`;
     $('#om-domeneprofil').textContent = p.om_domeneprofil || `Denne instansen er scopet til ${p.navn}.`;
-    // Kulepunktet navnga merkene statisk («★ og [OBS]»). Under en annen profil er de andre
+    // Kulepunktet navnga merkene statisk («[fag] og [OBS]»). Under en annen profil er de andre
     // tegn, og setningen ble da feil i det ene panelet som finnes for å forklare dem.
     $('#om-merker').textContent =
       `Rangeringen FLAGGER og OMORDNER etter fagfelt-/målobjekt-nærhet (${p.domene_merke} = ${p.domene_merke_betyr}, ` +

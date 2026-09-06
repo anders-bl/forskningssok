@@ -14,13 +14,13 @@ sok_standard = "reverberation time classroom"
 sok_eksempel = "speech intelligibility classroom absorption"
 
 [domene]
-merke = "◆"
+merke = "[akustikk]"
 merke_betyr = "akustikk-fagmiljø/fagtidsskrift"
 fagmiljoer = ["sintef", "chalmers", "technical university of denmark"]
 fagtidsskrifter = ["applied acoustics", "building acoustics", "journal of sound and vibration"]
 
 [art]
-merke = "⚠ rom?"
+merke = "[rom?]"
 merke_betyr = "nevner ikke bygg eller rom i tittel/abstract"
 merke_utdypet = "kan handle om frittfelt-akustikk uten bygningskontekst"
 termer = ["classroom", "building", "room", "auditorium", "klasserom", "bygning", "rom"]

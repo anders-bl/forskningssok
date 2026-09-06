@@ -109,7 +109,7 @@ def test_ranking_bander_etter_profilen(akustikk):
 def test_frontend_kontrakten_baerer_merkene(akustikk):
     dp, _, _ = akustikk
     f = dp.for_frontend()
-    assert f["domene_merke"] == "◆" and f["art_merke"] == "⚠ rom?"
+    assert f["domene_merke"] == "[akustikk]" and f["art_merke"] == "[rom?]"
     assert "bygg eller rom" in f["art_merke_betyr"]
     # Termlistene skal IKKE sendes til klienten — se for_frontend() sin docstring.
     assert "termer" not in f and "fagmiljoer" not in f
