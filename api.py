@@ -174,12 +174,24 @@ def _varm_stille(paper_id: str, hendelse: str) -> None:
                        paper_id, hendelse, exc_info=True)
 
 
-def _evidens(tittel: str, abstract: str, pubtyper) -> dict:
+def _evidens(tittel: str, abstract: str, pubtyper, fulltekst: str = "") -> dict:
     """Nivå OG kilde ut til flaten. Kilden er ikke pynt: «indeksert av NLM» er en påstand
     noen har stått inne for, «mønstergjenkjent» er vår heuristikk. Å sende bare nivået
     ville latt UI-et låne NLMs autoritet til vår egen gjetning."""
-    niva, kilde = evidensniva(tittel, abstract, tuple(pubtyper or ()))
+    niva, kilde = evidensniva(tittel, abstract, tuple(pubtyper or ()), fulltekst)
     return {"evidensniva": niva, "evidensniva_kilde": kilde}
+
+
+def _fulltekst_for_papir(paper_id: str) -> str:
+    """Første vedlagte dokuments tekst, eller tom streng — BUNDET kostnad (ett paper_id,
+    ikke N i en søkeliste). Kun for enkelt-papir-visningen (2026-09-07): evidensniva
+    fikk en fulltekst-fallback samme kveld, men å slå den opp per treff i /api/sok ville
+    gjort hvert søk tregere med N dokument-oppslag for en badge svært få faktisk endrer."""
+    dokumenter_for = dokumenter.for_papir(paper_id)
+    if not dokumenter_for:
+        return ""
+    forste = dokumenter.hent(dokumenter_for[0]["id"])
+    return (forste or {}).get("tekst") or ""
 
 
 # ---------- Helsesjekk etter HUSSTANDARDEN (konsepter/helsesjekk, ny-tjeneste-mal) ----------
@@ -416,7 +428,7 @@ def api_papir(paper_id: str):
     # til) fordi den regnet på ARTSTERMER selv i stedet for å kalle funksjonen.
     papir["domene_naer"] = domene_naer_tekst(f"{papir['forfattere']} {papir['tidsskrift']}")
     papir["arts_naer"] = arts_naer_tekst(f"{papir['tittel']} {papir['abstract']}")
-    papir.update(_evidens(papir["tittel"], papir["abstract"], ()))
+    papir.update(_evidens(papir["tittel"], papir["abstract"], (), _fulltekst_for_papir(paper_id)))
     return papir
 
 

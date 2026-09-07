@@ -46,8 +46,9 @@ NLM_TYPER: dict[str, str] = {
 # toppen på en autoritet den ikke har.
 
 
-def evidensniva(tittel: str, abstract: str, pubtyper: tuple[str, ...] = ()) -> tuple[str, str]:
-    """(nivånavn, kilde) — kilde er "nlm" eller "monster", eller ("Ukjent design", "").
+def evidensniva(tittel: str, abstract: str, pubtyper: tuple[str, ...] = (),
+                fulltekst: str = "") -> tuple[str, str]:
+    """(nivånavn, kilde) — kilde er "nlm", "monster", eller ("Ukjent design", "").
 
     Returnerer KILDEN sammen med nivået, ikke bare nivået, fordi de to har helt ulik
     epistemisk vekt: «indeksert av NLM» er en påstand noen har stått inne for, mens
@@ -57,7 +58,18 @@ def evidensniva(tittel: str, abstract: str, pubtyper: tuple[str, ...] = ()) -> t
 
     NLM først når den finnes. Mønsteret er fallback, ikke erstattet: preprints (PPR) og
     CORE-treff har ingen pubTypeList i det hele tatt, og for dem er heuristikken fortsatt
-    det beste vi har."""
+    det beste vi har.
+
+    `fulltekst` er en VIDERE fallback lagt til 2026-09-07 (ikke den «NLP over fulltekst»-
+    klassifikatoren README lenge har kalt ubygget — dette er SAMME mønster-heuristikk,
+    bare gitt et større tekstvindu når vi faktisk har ett). Bakgrunn: dokumenthandleren
+    (2026-09-05) lagrer full PDF-tekst for papirer Ulven laster opp selv, men den teksten
+    matet aldri evidensniva — abstract var alt heuristikken noensinne så. Et papir hvis
+    forfattere skriver «This systematic review…» i selve METODE-avsnittet, ikke i
+    abstractet (vanlig når abstractet er kort/strukturert), ble stående som «Ukjent
+    design» selv med fulltekst i hånden. Sjekkes KUN som fallback (abstract/tittel
+    fortsatt først) — et papir som allerede treffer på abstract skal ikke få nivået sitt
+    endret av noe lenger nede i en 40-siders PDF."""
     for pt in pubtyper:
         if (navn := NLM_TYPER.get(pt.strip().lower())):
             return navn, "nlm"
@@ -65,4 +77,9 @@ def evidensniva(tittel: str, abstract: str, pubtyper: tuple[str, ...] = ()) -> t
     for navn, moenstre in NIVAAER:
         if any(m in t for m in moenstre):
             return navn, "monster"
+    if fulltekst:
+        tf = f" {fulltekst.lower()} "
+        for navn, moenstre in NIVAAER:
+            if any(m in tf for m in moenstre):
+                return navn, "monster"
     return "Ukjent design", ""

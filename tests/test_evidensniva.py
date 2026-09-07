@@ -73,3 +73,33 @@ def test_kilden_returneres_alltid_saa_flaten_kan_skille():
         niva, kilde = evidensniva(*args)
         assert kilde in ("nlm", "monster", "")
         assert (kilde == "") == (niva == "Ukjent design")
+
+
+def test_fulltekst_fallback_finner_design_abstract_ikke_har():
+    """Papir 2026-09-07: kort strukturert abstract uten designord, men metode-avsnittet
+    i vedlagt PDF sier fra — fulltekst-fallbacken skal fange det abstract ikke gjør."""
+    niva, kilde = evidensniva("Nephrocalcinosis in Atlantic salmon", "abstract uten designord",
+                              (), "Methods: we conducted a systematic review of 40 studies.")
+    assert niva == "Systematisk oversikt/meta-analyse"
+    assert kilde == "monster"
+
+
+def test_fulltekst_ikke_sjekket_naar_abstract_alt_traff():
+    """Abstract-treff vinner FØR fulltekst konsulteres — et papir som allerede er
+    klassifisert skal ikke endres av noe lenger nede i en 40-siders PDF."""
+    niva, kilde = evidensniva("A case report of X", "",
+                              (), "This methods section describes a systematic review approach.")
+    assert niva == "Case-rapport/case-serie"
+
+
+def test_tom_fulltekst_er_som_foer_ingen_fallback():
+    assert evidensniva("Nephrocalcinosis in Atlantic salmon", "ingen designord", (), "")[0] == "Ukjent design"
+
+
+def test_nlm_vinner_over_fulltekst_fallback():
+    """NLM-indeksering er fortsatt øverste presedens, foran BÅDE abstract- og
+    fulltekst-mønsteret."""
+    niva, kilde = evidensniva("X", "ingen designord", ("case reports",),
+                              "This is actually a systematic review of many studies.")
+    assert niva == "Case-rapport/case-serie"
+    assert kilde == "nlm"
