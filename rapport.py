@@ -686,6 +686,7 @@ def _proveniens_linje(revisjon: dict) -> str:
 def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | None = None,
                        gap: dict | None = None, omfang: dict[str, float] | None = None,
                        revisjon: dict | None = None, verifisering: dict | None = None,
+                       tverrfaglig: list[dict] | None = None,
                        stil: str = "vancouver", tittel: str | None = None) -> list[Blokk]:
     """Én forskningsrapport for `query`, bygget av de ferdig-beregnede bitene. Hver seksjon
     er ærlig om fravær: mangler gap-papiret, står seksjonen ikke; er verifisering ikke
@@ -733,7 +734,29 @@ def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | Non
             merke = "godt dekket" if dekning >= 1.0 else ("tynt/ikke nevnt" if dekning == 0 else "delvis")
             b.append(Blokk("p", f"· {akse}: {round(dekning * 100)} % ({merke})"))
 
-    # 4. Verifisering — ærlig om at kapabiliteten finnes men kan være gated
+    # 4. Tverrfaglige retninger (fase 1, smartsyntese-veikart) — semantisk nære papirer
+    # UTENFOR domenet (ikke norsk fagmiljø/tidsskrift OG nevner ikke målarten). Det er den
+    # ærlige mekanismen for «relevante tverrfaglige retninger» Ulven ba om: samme betydning,
+    # annet fagfelt. Mekanisk majoritet — ekte papirer med kilde, ingen LLM-parafrase. Copycat
+    # er metaforen, ikke koden: dette er bge-m3-nærhet + domene/art-flaggene, ikke en analogimotor.
+    b.append(Blokk("h2", "Tverrfaglige retninger"))
+    if tverrfaglig:
+        b.append(Blokk("meta", "Semantisk nære papirer UTENFOR fagfeltet (verken norsk fagmiljø "
+                               "eller målart) — mulige koblinger å vurdere, ikke en dom. Avstand "
+                               "er embedding-nærhet; lavere = nærmere i betydning."))
+        for t in tverrfaglig[:5]:
+            aar = t.get("aar") or "?"
+            ts = t.get("tidsskrift") or ""
+            b.append(Blokk("p", f"· {t.get('tittel') or 'Uten tittel'} ({aar}"
+                                f"{', ' + ts if ts else ''}, avstand {t.get('avstand', 0):.3f})"))
+            if t.get("kilde_url"):
+                b.append(Blokk("lenke", t["kilde_url"]))
+    else:
+        b.append(Blokk("p", "Ingen kryssfelt-naboer i korpuset ennå — de nærmeste papirene ligger "
+                            "alle innenfor fagfeltet. Utforsk et OpenAlex-emne i verktøyet for å "
+                            "hente inn tilgrensende felt, så vokser dette."))
+
+    # 5. Verifisering — ærlig om at kapabiliteten finnes men kan være gated
     b.append(Blokk("h2", "Verifisering av påstander"))
     if verifisering and verifisering.get("tilgjengelig"):
         b.append(Blokk("p", "Marker en påstand i verktøyet og trykk «Verifiser» for et "
@@ -743,7 +766,7 @@ def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | Non
                             "i verktøyet, men er ikke aktivert i dette miljøet ennå. Rapporten "
                             "gjør derfor ingen verifiserte påstander — kildene over står for seg selv."))
 
-    # 5. Referanser — den formaterte bibliografien (signatur-poleringen)
+    # 6. Referanser — den formaterte bibliografien (signatur-poleringen)
     b.extend(referanseliste_blokker(papirer, stil=stil))
     return b
 

@@ -891,9 +891,32 @@ def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", 
     omfang = scoping.akse_dekning(tekst)
 
     verifisering = {"tilgjengelig": verifiser_modul.tilgjengelig()}
+
+    # Tverrfaglige naboer (smartsyntese-veikart fase 1): semantisk nærmeste papirer til
+    # topptreffet som ligger UTENFOR fagfeltet (verken domene- eller artsnære). band=False
+    # gir de faktisk nærmeste i embedding-rommet, ikke den bånd-sorterte lista — for kryssfelt
+    # vil vi ha ekte semantisk nærhet uansett domene. Ærlig tomt hvis alle naboer er i feltet.
+    # Samle fra de TRE øverste papirenes nabolag, ikke bare topptreffet: en tverrfaglig
+    # retning for SPØRRINGEN, ikke for ett papir. Dedup på id, ekskluder papirer som selv
+    # er i resultatsettet (et treff er ikke en «retning bort fra feltet»), sorter på avstand.
+    # Skann HELE resultatsettets nabolag, ikke bare topp-3: den tverrfaglige koblingen bor
+    # ofte hos et papir lenger nede (etter tittel-dekning-rangeringen kan et blære-/urologi-
+    # treff med human-neonatal nabo ligge midt i lista). Stor k så utenfor-felt-naboer ikke
+    # crowdes ut av in-felt-naboene. Dedup på id, ekskluder egne treff, sorter på avstand,
+    # topp 5. Alt lokalt (sqlite-vec), ingen nye eksterne kall.
+    egne = {p["id"] for p in papirer}
+    kandidater: dict[str, dict] = {}
+    for p in papirer:
+        for n in bank.lignende(p["id"], k=15, band=False):
+            if n.get("domene_naer") or n.get("arts_naer") or n["id"] in egne:
+                continue
+            if n["id"] not in kandidater or n["avstand"] < kandidater[n["id"]]["avstand"]:
+                kandidater[n["id"]] = n
+    tverrfaglig = sorted(kandidater.values(), key=lambda n: n["avstand"])[:5]
+
     blokker = rapport.konvergens_blokker(
         q, papirer, gap_papir=gap_papir, gap=gap, omfang=omfang, revisjon=revisjon,
-        verifisering=verifisering, stil=stil)
+        verifisering=verifisering, tverrfaglig=tverrfaglig, stil=stil)
     return _rapport_svar(blokker, format, _slug(q) or "rapport", f"Forskningsrapport: {q}")
 
 

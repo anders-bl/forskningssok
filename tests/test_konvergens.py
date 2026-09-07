@@ -82,3 +82,36 @@ def test_pdf_variant_bygger_uten_krasj():
                                    verifisering={"tilgjengelig": False})
     pdf = rapport.til_pdf_bytes(b, tittel="Test")
     assert pdf.startswith(b"%PDF") and len(pdf) > 1000
+
+
+# ---------- Tverrfaglige retninger (smartsyntese-veikart fase 1, 2026-09-07) ----------
+
+def _nabo(tittel, dist, domene, art, aar=2020, ts="J", url="https://x/1"):
+    return {"id": tittel, "tittel": tittel, "tidsskrift": ts, "aar": aar, "doi": None,
+            "kilde_url": url, "avstand": dist, "forfattere": "Doe J",
+            "domene_naer": domene, "arts_naer": art}
+
+
+def test_tverrfaglig_seksjon_viser_kun_ekte_papirer_med_kilde():
+    from rapport import konvergens_blokker, Blokk
+    tv = [_nabo("Signal processing in ultrasound arrays", 0.72, False, False)]
+    b = konvergens_blokker("q", [_PAPIR], tverrfaglig=tv)
+    typer = [(x.type, x.tekst) for x in b]
+    assert ("h2", "Tverrfaglige retninger") in typer
+    assert any(x.type == "p" and "Signal processing" in x.tekst and "0.720" in x.tekst for x in b)
+    assert any(x.type == "lenke" and x.tekst == "https://x/1" for x in b)  # kilde med, mekanisk majoritet
+    # ingen LLM-parafrase: seksjonen er rene papir-linjer + meta, ingen syntese-blokk
+    assert not any(x.type == "p" and "oppsummer" in x.tekst.lower() for x in b)
+
+
+def test_tverrfaglig_tomt_sier_fra_aerlig():
+    from rapport import konvergens_blokker
+    b = konvergens_blokker("q", [_PAPIR], tverrfaglig=[])
+    assert any(x.type == "h2" and x.tekst == "Tverrfaglige retninger" for x in b)
+    assert any(x.type == "p" and "Ingen kryssfelt-naboer" in x.tekst for x in b)
+
+
+def test_tverrfaglig_none_gir_ogsaa_aerlig_tomt():
+    from rapport import konvergens_blokker
+    b = konvergens_blokker("q", [_PAPIR])  # ingen tverrfaglig-arg
+    assert any(x.type == "p" and "Ingen kryssfelt-naboer" in x.tekst for x in b)
