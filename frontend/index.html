@@ -905,7 +905,12 @@ async function openPaper(id) {
   if (id.startsWith('10.')) {
     api(`/api/tilgang/${encodeURIComponent(id)}`).then(t => {
       const deler = [];
-      if (t.fri_pdf_url) deler.push(`<a href="${escapeHtml(t.fri_pdf_url)}" target="_blank" rel="noopener">Fri PDF</a>`);
+      if (t.fri_pdf_url) {
+        // Vis HVEM som fant den åpne kopien når det er Unpaywall — det er nettopp
+        // verdien Unpaywall tilfører (fant en kopi OpenAlex/Europe PMC ikke hadde).
+        const via = t.kilde_tilgang === 'unpaywall' ? ' <span style="color:var(--muted)">(via Unpaywall)</span>' : '';
+        deler.push(`<a href="${escapeHtml(t.fri_pdf_url)}" target="_blank" rel="noopener">Fri PDF</a>${via}`);
+      }
       if (t.lisens) deler.push(`Lisens: ${escapeHtml(t.lisens)}`);
       if (t.utgiver) deler.push(escapeHtml(t.utgiver));
       if (!deler.length) deler.push(`<a href="https://doi.org/${escapeHtml(id)}" target="_blank" rel="noopener">Sjekk hos utgiver ↗</a> — ingen åpen kopi funnet, ingen prisdata tilgjengelig her`);

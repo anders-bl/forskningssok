@@ -26,7 +26,7 @@ import verifiser as verifiser_modul
 import sti as sti_modul
 import rapport
 import scoping
-from adapters import openalex
+from adapters import openalex, unpaywall
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
@@ -452,19 +452,60 @@ def api_emner(paper_id: str):
         raise HTTPException(502, str(e)) from e
 
 
+def _flett_tilgang(oa: dict | None, up: dict | None) -> dict:
+    """Fletter OpenAlex- og Unpaywall-tilgang: foretrekker en funnet fri PDF, men
+    rapporterer ÆRLIG hvem som svarte (kilde_tilgang) og om de er uenige (uenighet).
+    Uenighet = nøyaktig én kilde fant åpen tilgang — det er tilfellet
+    [[research-utkast/artikkel-bank-akse]] flagget som Unpaywalls egentlige verdi
+    (bredere repositorie-dekning enn OpenAlex/Europe PMC). Én kilde nede degraderer
+    synlig via den andre, tar aldri ned svaret den kan gi."""
+    oa_svar = oa is not None  # skille «svarte, fant ingenting» fra «var nede»
+    up_svar = up is not None
+    oa = oa or {}
+    up = up or {}
+    oa_har = bool(oa.get("fri_pdf_url"))
+    up_har = bool(up.get("fri_pdf_url"))
+    if oa_har:
+        primaer, kilde = oa, ("begge" if up_har else "openalex")
+    elif up_har:
+        primaer, kilde = up, "unpaywall"  # Unpaywall fant en OpenAlex ikke hadde
+    else:
+        primaer, kilde = (oa or up), "ingen"
+    return {
+        "lisens": primaer.get("lisens"),
+        "fri_pdf_url": primaer.get("fri_pdf_url"),
+        "utgiver": primaer.get("utgiver") or oa.get("utgiver") or up.get("utgiver"),
+        "oa_status": primaer.get("oa_status") or oa.get("oa_status") or up.get("oa_status"),
+        "kilde_tilgang": kilde,
+        # ekte uenighet = BEGGE svarte og er ulike på om åpen kopi finnes; en kilde som
+        # er NEDE (None) er ikke en uenighet, den fikk bare ikke stemt.
+        "uenighet": oa_svar and up_svar and (oa_har != up_har),
+    }
+
+
 @app.get("/api/tilgang/{paper_id:path}")
 def api_tilgang(paper_id: str):
     """Lisens/fri-PDF/utgiver — erstatter det opprinnelig foreslåtte "koble til
     bruktsøk"-sporet, se adapters/openalex.py:tilgang sin docstring for hvorfor. Kun for
     papirer med DOI (OpenAlex slår opp på DOI) — ærlig tomt objekt for resten, ALDRI en
     404/feil for noe som bare mangler forutsetningen."""
-    tomt = {"lisens": None, "fri_pdf_url": None, "utgiver": None, "oa_status": None}
+    tomt = {"lisens": None, "fri_pdf_url": None, "utgiver": None, "oa_status": None,
+            "kilde_tilgang": None, "uenighet": False}
     if not paper_id.startswith("10."):
         return tomt
+    oa = up = None
+    oa_feil = up_feil = None
     try:
-        return openalex.tilgang(paper_id)
+        oa = openalex.tilgang(paper_id)
     except RuntimeError as e:
-        raise HTTPException(502, str(e)) from e
+        oa_feil = e
+    try:
+        up = unpaywall.tilgang(paper_id)
+    except RuntimeError as e:
+        up_feil = e
+    if oa is None and up is None:  # begge kildene nede -> ærlig feil, ikke stille tomt
+        raise HTTPException(502, f"OpenAlex: {oa_feil}; Unpaywall: {up_feil}")
+    return _flett_tilgang(oa, up)
 
 
 @app.get("/api/emne/{emne_id}")

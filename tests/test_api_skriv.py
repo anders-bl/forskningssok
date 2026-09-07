@@ -221,24 +221,58 @@ def test_papir_ukjent_gir_404():
 
 
 def test_tilgang_returnerer_lisens_og_pdf():
+    # OpenAlex svarer med OA-info; Unpaywall nede -> merget svar beholder OpenAlex-feltene,
+    # rapporterer kilden, og flagger IKKE uenighet (én kilde nede er ikke en uenighet).
     info = {"lisens": "cc-by", "fri_pdf_url": "https://x/pdf", "utgiver": "Wiley", "oa_status": "gold"}
-    with patch("api.openalex.tilgang", return_value=info) as m:
+    with patch("api.openalex.tilgang", return_value=info) as m, \
+         patch("api.unpaywall.tilgang", side_effect=RuntimeError("Unpaywall utilgjengelig: x")):
         r = client.get("/api/tilgang/10.1111/jfd.13815")
     assert r.status_code == 200
-    assert r.json() == info
+    j = r.json()
+    assert j["lisens"] == "cc-by" and j["fri_pdf_url"] == "https://x/pdf"
+    assert j["utgiver"] == "Wiley" and j["oa_status"] == "gold"
+    assert j["kilde_tilgang"] == "openalex"
+    assert j["uenighet"] is False
     m.assert_called_once_with("10.1111/jfd.13815")
+
+
+def test_tilgang_unpaywall_fyller_gap_openalex_ikke_hadde():
+    # OpenAlex fant ingen fri kopi, Unpaywall fant en grønn i et repositorium -> merget
+    # svar bruker Unpaywalls PDF og flagger uenighet (Unpaywalls egentlige verdi).
+    oa = {"lisens": None, "fri_pdf_url": None, "utgiver": "Elsevier", "oa_status": "closed"}
+    up = {"lisens": "cc-by", "fri_pdf_url": "https://ntnuopen/handle", "utgiver": "Elsevier",
+          "oa_status": "green", "i_doaj": True, "repositorie_kopi": True, "vert_type": "repository"}
+    with patch("api.openalex.tilgang", return_value=oa), \
+         patch("api.unpaywall.tilgang", return_value=up):
+        r = client.get("/api/tilgang/10.1/gronn")
+    j = r.json()
+    assert j["fri_pdf_url"] == "https://ntnuopen/handle"
+    assert j["kilde_tilgang"] == "unpaywall"
+    assert j["uenighet"] is True
 
 
 def test_tilgang_uten_doi_gir_aerlig_tomt_objekt_ikke_feil():
     r = client.get("/api/tilgang/41363532")  # PMID, ikke DOI
     assert r.status_code == 200
-    assert r.json() == {"lisens": None, "fri_pdf_url": None, "utgiver": None, "oa_status": None}
+    assert r.json() == {"lisens": None, "fri_pdf_url": None, "utgiver": None, "oa_status": None,
+                        "kilde_tilgang": None, "uenighet": False}
 
 
 def test_tilgang_kilde_feil_gir_502():
-    with patch("api.openalex.tilgang", side_effect=RuntimeError("OpenAlex utilgjengelig: x")):
+    # 502 KUN når BEGGE kildene er nede — én nede skal degradere via den andre.
+    with patch("api.openalex.tilgang", side_effect=RuntimeError("OpenAlex utilgjengelig: x")), \
+         patch("api.unpaywall.tilgang", side_effect=RuntimeError("Unpaywall utilgjengelig: y")):
         r = client.get("/api/tilgang/10.1111/jfd.13815")
     assert r.status_code == 502
+
+
+def test_tilgang_openalex_nede_men_unpaywall_svarer_gir_200():
+    up = {"lisens": "cc-by", "fri_pdf_url": "https://rep/pdf", "utgiver": "X", "oa_status": "green"}
+    with patch("api.openalex.tilgang", side_effect=RuntimeError("OpenAlex utilgjengelig: x")), \
+         patch("api.unpaywall.tilgang", return_value=up):
+        r = client.get("/api/tilgang/10.1111/jfd.13815")
+    assert r.status_code == 200
+    assert r.json()["kilde_tilgang"] == "unpaywall"
 
 
 def test_omfang_returnerer_akser():
