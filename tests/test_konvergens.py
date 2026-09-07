@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from unittest.mock import patch  # noqa: E402
 import rapport  # noqa: E402
 
 _PAPIR = {
@@ -82,3 +83,62 @@ def test_pdf_variant_bygger_uten_krasj():
                                    verifisering={"tilgjengelig": False})
     pdf = rapport.til_pdf_bytes(b, tittel="Test")
     assert pdf.startswith(b"%PDF") and len(pdf) > 1000
+
+
+# ---------- Tverrfaglige retninger (smartsyntese-veikart fase 1, 2026-09-07) ----------
+
+def _nabo(tittel, dist, domene, art, aar=2020, ts="J", url="https://x/1"):
+    return {"id": tittel, "tittel": tittel, "tidsskrift": ts, "aar": aar, "doi": None,
+            "kilde_url": url, "avstand": dist, "forfattere": "Doe J",
+            "domene_naer": domene, "arts_naer": art}
+
+
+def test_tverrfaglig_seksjon_viser_kun_ekte_papirer_med_kilde():
+    from rapport import konvergens_blokker, Blokk
+    tv = [_nabo("Signal processing in ultrasound arrays", 0.72, False, False)]
+    b = konvergens_blokker("q", [_PAPIR], tverrfaglig=tv)
+    typer = [(x.type, x.tekst) for x in b]
+    assert ("h2", "Tverrfaglige retninger") in typer
+    assert any(x.type == "p" and "Signal processing" in x.tekst and "0.720" in x.tekst for x in b)
+    assert any(x.type == "lenke" and x.tekst == "https://x/1" for x in b)  # kilde med, mekanisk majoritet
+    # ingen LLM-parafrase: seksjonen er rene papir-linjer + meta, ingen syntese-blokk
+    assert not any(x.type == "p" and "oppsummer" in x.tekst.lower() for x in b)
+
+
+def test_tverrfaglig_tomt_sier_fra_aerlig():
+    from rapport import konvergens_blokker
+    b = konvergens_blokker("q", [_PAPIR], tverrfaglig=[])
+    assert any(x.type == "h2" and x.tekst == "Tverrfaglige retninger" for x in b)
+    assert any(x.type == "p" and "Ingen kryssfelt-naboer" in x.tekst for x in b)
+
+
+def test_tverrfaglig_none_gir_ogsaa_aerlig_tomt():
+    from rapport import konvergens_blokker
+    b = konvergens_blokker("q", [_PAPIR])  # ingen tverrfaglig-arg
+    assert any(x.type == "p" and "Ingen kryssfelt-naboer" in x.tekst for x in b)
+
+
+def test_konvergens_json_format_gir_blokker_for_in_app_rendring():
+    """format=json (smartsyntese fase 1: rapporten sydd inn i flaten) gir Blokk-lista som
+    typede items — frontend rendrer dem, serveren sender aldri HTML."""
+    from fastapi.testclient import TestClient
+    import api
+    from schemas import PaperDossier
+    treff = [PaperDossier(pmid="1", doi="10.1/a", tittel="T", forfattere="Doe J",
+                          tidsskrift="J", aar=2024, abstract="x", siteringstall=1,
+                          open_access=True, kilde_url="https://x/a")]
+    _REV = {"kilder": {"europe_pmc": True, "core": True}, "treff_per_kilde": {"europe_pmc": 1, "core": 0},
+            "etter_dedup": 1, "dubletter_fjernet": 0, "cache_alder_s": None, "profil": "test",
+            "baand": {"domene_naer": 0, "arts_naer": 0}, "ms": 1}
+    with patch("api.sok_og_ranger", return_value=(treff, None, _REV)), \
+         patch("api._lagre_bakgrunn"), patch("api.bank.hent", side_effect=lambda i: {
+             "id": "10.1/a", "tittel": "T", "forfattere": "Doe J", "tidsskrift": "J", "aar": 2024,
+             "abstract": "x", "doi": "10.1/a", "pmid": "1", "kilde_url": "https://x/a", "kilde_kode": "MED"}), \
+         patch("api.bank.lignende", return_value=[]), \
+         patch("api.verifiser_modul.tilgjengelig", return_value=False):
+        r = TestClient(api.app).get("/api/rapport/konvergens?q=test&format=json")
+    assert r.status_code == 200
+    blokker = r.json()["blokker"]
+    assert blokker[0]["type"] == "h1"
+    assert any(b["type"] == "h2" and "Tverrfaglige" in b["tekst"] for b in blokker)
+    assert all(set(b) == {"type", "tekst"} for b in blokker)  # ren data, ingen HTML
