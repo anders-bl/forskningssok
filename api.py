@@ -117,6 +117,10 @@ def _rapport_svar(blokker: list[rapport.Blokk], format: str, filnavn_stem: str, 
     """Delt av alle fire rapport-endepunktene — se rapport.py sin moduldocstring for
     hvorfor Blokk-listen er det eneste malene bygger, og hvorfor formatvalget bor HER
     (ett sted som vet om HTTP/nedlasting) og ikke i rapport.py (som forblir ren)."""
+    if format == "json":
+        # For in-app-rendring (smartsyntese-veikart fase 1: sy rapporten inn i flaten).
+        # Samme Blokk-liste, typene rendres av frontend — ren data, ingen HTML fra serveren.
+        return {"blokker": [{"type": b.type, "tekst": b.tekst} for b in blokker]}
     if format == "pdf":
         pdf = rapport.til_pdf_bytes(blokker, tittel=tittel)
         return Response(pdf, media_type="application/pdf",

@@ -91,6 +91,18 @@ button{ font:inherit; }
 
 /* ---------- Om-panel ---------- */
 .om-overlay[hidden]{ display:none; }
+.rapport-overlay[hidden]{ display:none; }
+.rapport-overlay{ position:fixed; inset:0; background:rgba(20,20,18,.5); display:flex; align-items:flex-start; justify-content:center; padding:4vh 1rem; z-index:65; overflow-y:auto; }
+.rapport-panel{ background:var(--surface); border-radius:12px; box-shadow:var(--shadow); max-width:760px; width:100%; padding:1.6rem 1.9rem 2rem; margin-bottom:4vh; }
+.rapport-panel h1{ font-size:1.35rem; color:var(--accent); margin:0 0 .1em; }
+.rapport-panel h2{ font-size:1rem; color:var(--accent); margin:1.4em 0 .35em; border-top:1px solid var(--border); padding-top:.9em; }
+.rapport-panel h3{ font-size:.85rem; font-weight:700; margin:1em 0 .3em; text-transform:none; letter-spacing:0; color:var(--text); }
+.rapport-panel .r-meta{ font-size:.78rem; font-style:italic; color:var(--muted); margin:.15em 0 .5em; }
+.rapport-panel .r-p{ font-size:.85rem; line-height:1.6; margin:.15em 0 .5em; }
+.rapport-panel .r-sitat{ font-style:italic; color:var(--muted); border-left:2px solid var(--accent); padding-left:.7em; margin:.3em 0; }
+.rapport-panel .r-lenke{ font-size:.72rem; }
+.rapport-btn-primar{ background:var(--accent); color:var(--surface); border-color:var(--accent); font-weight:700; }
+.rapport-btn-primar:hover{ background:var(--accent-lt, var(--accent)); }
 .om-overlay{ position:fixed; inset:0; background:rgba(20,20,18,.45); display:flex;
   align-items:flex-start; justify-content:center; padding:4vh 1rem; z-index:60; overflow-y:auto; }
 .om-panel{ background:var(--surface); border-radius:12px; box-shadow:var(--shadow);
@@ -367,6 +379,12 @@ svg text{ font-family:system-ui,sans-serif; }
   </div>
 </div>
 
+<div class="rapport-overlay" id="rapport-overlay" hidden>
+  <div class="rapport-panel" role="dialog" aria-labelledby="rapport-tittel">
+    <button class="om-lukk" id="rapport-lukk" aria-label="Lukk">x</button>
+    <div id="rapport-kropp"><div class="hint">Laster …</div></div>
+  </div>
+</div>
 <div class="om-overlay" id="om-overlay" hidden>
   <div class="om-panel" role="dialog" aria-labelledby="om-tittel">
     <button class="om-lukk" id="om-lukk" aria-label="Lukk">x</button>
@@ -445,7 +463,7 @@ svg text{ font-family:system-ui,sans-serif; }
             <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
           </span>
           <span class="rapport-eksport-gruppe i-meta" id="eksport-konvergens" hidden title="Én rapport for dette søket: kilder, citation-gap på topptreffet, omfang per akse, proveniens og formaterte referanser">
-            Forskningsrapport: <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+            Forskningsrapport: <button class="rapport-btn rapport-btn-primar" id="rapport-i-appen" title="Se hele det grundige søket satt sammen i kontekst — uten å laste ned">Vis i appen</button><button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
           </span>
         </div>
         <div class="revisjon" id="revisjon" hidden></div>
@@ -773,7 +791,39 @@ function settResultatForEksport(papirer, tittel, query = null) {
   // id-lista. Derfor finnes den bare for et tekstsøk, ikke for en Utforskning av et emne.
   $('#eksport-konvergens').hidden = papirer.length === 0 || !query;
 }
-$$('#eksport-konvergens .rapport-btn').forEach(btn => btn.addEventListener('click', () => {
+// Forskningsrapporten rendret INNE i appen (smartsyntese fase 1: sy sammen til én flate).
+// Rapporten er alt sammensyingen — kilder + citation-gap + omfang + tverrfaglig + verifiser
+// + referanser. Her vises den som én lesbar narrativ, ikke som fem faner eller en nedlasting.
+const R_KLASSE = { h1: 'r-h1', h2: 'r-h2', h3: 'r-h3', meta: 'r-meta', p: 'r-p', sitat: 'r-sitat', lenke: 'r-lenke' };
+function tegnRapportBlokk(b) {
+  const t = escapeHtml(b.tekst || '');
+  if (b.type === 'h1') return `<h1>${t}</h1>`;
+  if (b.type === 'h2') return `<h2>${t}</h2>`;
+  if (b.type === 'h3') return `<h3>${t}</h3>`;
+  if (b.type === 'meta') return `<div class="r-meta">${t}</div>`;
+  if (b.type === 'sitat') return `<div class="r-sitat">«${t}»</div>`;
+  if (b.type === 'lenke') return `<div class="r-lenke"><a href="${t}" target="_blank" rel="noopener">${t}</a></div>`;
+  return `<div class="r-p">${t}</div>`;
+}
+async function visRapportIAppen() {
+  const { query } = state.sisteResultat;
+  if (!query) return;
+  $('#rapport-overlay').hidden = false;
+  $('#rapport-kropp').innerHTML = '<div class="hint">Setter sammen det grundige søket … (kan ta et par sekunder)</div>';
+  try {
+    const d = await api(`/api/rapport/konvergens?q=${encodeURIComponent(query)}&format=json`);
+    $('#rapport-kropp').innerHTML = d.blokker.map(tegnRapportBlokk).join('');
+  } catch (err) {
+    $('#rapport-kropp').innerHTML = `<div class="banner"><b>Kunne ikke bygge rapporten:</b> ${escapeHtml(err.message)}</div>`;
+  }
+}
+function lukkRapport() { $('#rapport-overlay').hidden = true; }
+$('#rapport-i-appen').addEventListener('click', visRapportIAppen);
+$('#rapport-lukk').addEventListener('click', lukkRapport);
+$('#rapport-overlay').addEventListener('click', e => { if (e.target.id === 'rapport-overlay') lukkRapport(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#rapport-overlay').hidden) lukkRapport(); });
+
+$$('#eksport-konvergens .rapport-btn[data-format]').forEach(btn => btn.addEventListener('click', () => {
   const { query } = state.sisteResultat;
   if (!query) return;
   lastNedRapport(`/api/rapport/konvergens?q=${encodeURIComponent(query)}`,
