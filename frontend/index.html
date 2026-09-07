@@ -309,6 +309,18 @@ button{ font:inherit; }
   margin-bottom:.4rem; cursor:pointer; }
 .rel-kort:hover{ border-color:var(--accent); }
 .skuff-kropp > *{ min-width:0; min-height:0; overflow-y:auto; }
+/* Dokument-linsen (fase 2, prosjekt/rapportmotor-veikart) */
+.skuff-linse{ border:none; background:none; color:var(--muted); font-size:.75rem; font-weight:700; padding:.2rem .55rem; border-radius:99px; cursor:pointer; }
+.skuff-linse.aktiv{ background:var(--surface-2); color:var(--text); }
+.skuff-kropp[hidden]{ display:none; }
+.dok-hode{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-bottom:.5rem; }
+#dok-tittel{ flex:1; min-width:200px; font-size:1rem; font-weight:700; border:none; border-bottom:1px solid var(--border); background:none; color:var(--text); padding:.25rem 0; }
+#dok-tittel:focus{ outline:none; border-bottom-color:var(--accent); }
+.dok-editor .ProseMirror{ min-height:14rem; outline:none; font-size:.9375rem; line-height:1.6; }
+.dok-editor .ProseMirror p{ margin:0 0 .6em; }
+.dok-editor .ProseMirror p.is-editor-empty:first-child::before{ content:attr(data-placeholder); color:var(--muted); float:left; height:0; pointer-events:none; }
+.sitat-node{ display:inline; background:var(--surface-2); border:1px solid var(--accent); border-radius:6px; padding:0 .35em; font-style:italic; font-size:.9em; cursor:pointer; }
+.sitat-node.ProseMirror-selectednode{ outline:2px solid var(--accent); }
 
 
 .sitatkort{ border:1px solid var(--border); border-radius:10px; padding:.6rem .65rem; margin-bottom:.55rem; background:var(--surface); }
@@ -497,8 +509,10 @@ svg text{ font-family:system-ui,sans-serif; }
     <div class="skuff-linje">
       <button class="skuff-tittelknapp" id="skuff-toggle">
         <span class="skuff-pil" id="skuff-pil"></span>
-        <span id="skuff-navn">Sitatbank</span>
+        <span id="skuff-navn">Skuff</span>
       </button>
+      <button class="skuff-linse aktiv" data-linse="bank">Sitatbank</button>
+      <button class="skuff-linse" data-linse="dok">Dokument</button>
       <span class="hint" id="bank-sammendrag" style="font-size:.6875rem"></span>
       <div class="skuff-verktoy">
         <span class="rapport-eksport-gruppe">
@@ -506,10 +520,24 @@ svg text{ font-family:system-ui,sans-serif; }
         </span>
       </div>
     </div>
-    <div class="skuff-kropp">
+    <div class="skuff-kropp" id="skuff-kropp-bank">
       <div class="bank-liste" id="bank-liste"></div>
       <div class="bank-detalj" id="bank-detalj">
         <div class="hint">Velg et papir til venstre for å se sitatene dine og de relasjonelle naboene.</div>
+      </div>
+    </div>
+    <div class="skuff-kropp" id="dok-kropp" hidden>
+      <div class="bank-liste" id="dok-liste"></div>
+      <div class="bank-detalj">
+        <div class="dok-hode">
+          <input id="dok-tittel" placeholder="Tittel på dokumentet" aria-label="Tittel på dokumentet">
+          <span class="hint" id="dok-status"></span>
+          <span class="rapport-eksport-gruppe" id="dok-verktoy" hidden>
+            <button class="rapport-btn" data-dok="md">Markdown</button><button class="rapport-btn" data-dok="pdf">PDF</button><button class="rapport-btn" data-dok="kopier" title="Markdown til utklippstavlen">Kopier</button><button class="rapport-btn" data-dok="slett">Slett</button>
+          </span>
+        </div>
+        <div id="dok-editor" class="dok-editor"></div>
+        <div class="hint" style="margin-top:.5rem">Sitater settes inn der markøren står: «Sett inn» i sitatbanken, eller Sitér i leseflaten mens dokumentet er åpent. Klikk et sitat i teksten for å åpne papiret. I PDF-en blir det sitatblokk med kildelinje på stedet.</div>
       </div>
     </div>
   </div>
@@ -534,6 +562,7 @@ svg text{ font-family:system-ui,sans-serif; }
 
 <div class="varsel" id="varsel" hidden></div>
 
+<script src="vendor/tiptap.js"></script>
 <script>
 const state = {
   paperId: null, papers: {}, sisteResultat: { ids: [], tittel: '' },
@@ -905,7 +934,7 @@ async function lastVarme({tvungen = true} = {}) {
     // det følger nå SITATENE dine — det er en bedre kilde uansett: et sitat er noe du
     // aktivt plukket ut, mens et utkast også inneholder tenking som ikke er en påstand
     // om litteraturen. Tom bank = tomt «nå»-lag, ærlig og uten kall.
-    const tekst = bankTekst();
+    const tekst = dokTekstEllerBank();
     if (!tvungen && tekst === state.sisteVarmeTekst) return;
     state.sisteVarmeTekst = tekst;
     const data = await api(`/api/varme?k=12&tekst=${encodeURIComponent(tekst)}`);
@@ -1290,7 +1319,7 @@ $('#btn-siter').addEventListener('click', async () => {
     // Ingen utkast_id: sitatet går rett i banken. Kolonnen finnes fortsatt i skjemaet
     // (migrasjonen er ikke reversert), men flaten bruker den ikke — banken grupperer på
     // PAPIR, og relasjonen mellom sitater er semantisk, ikke en mappe du la dem i.
-    await api('/api/sitater', {method:'POST', headers:{'Content-Type':'application/json'},
+    const nytt = await api('/api/sitater', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({paper_id: state.paperId, tekst})});
     const p = $('#abstract-p');
     if (p && p.textContent.includes(tekst)) $('#gutter-0').innerHTML = '<i></i>';
@@ -1298,6 +1327,10 @@ $('#btn-siter').addEventListener('click', async () => {
     bank.valgt = state.paperId;
     await lastBank();
     si('Sitat lagt i banken');
+    // Er dokumentet åpent, lander sitatet også der markøren står (fase 2).
+    if (dokState.linse === 'dok' && dokState.editor && dokState.id !== null) {
+      settInnSitat({ id: nytt.id, paper_id: state.paperId, tekst, kilde: $('#reader-title').textContent.trim() });
+    }
     lastVarme();
   } catch (err) { si('Kunne ikke lagre: ' + err.message); }
 });
@@ -1443,11 +1476,12 @@ function tegnSitat(s) {
                  s.paper_aar && `(${s.paper_aar})`, s.paper_tittel]
                 .filter(Boolean).join(' ');
   return `
-    <div class="sitatkort" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}">
+    <div class="sitatkort" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}" data-tekst="${escapeHtml(s.tekst)}" data-kilde="${escapeHtml(kilde)}">
       <div class="sitat-tekst">«${escapeHtml(s.tekst)}»</div>
       <div class="sitat-kilde">${escapeHtml(kilde)}${s.paper_doi ? ' · doi:' + escapeHtml(s.paper_doi) : ''}</div>
       <textarea class="sitat-kommentar" placeholder="Kommentar…" rows="1">${escapeHtml(s.kommentar||'')}</textarea>
       <div class="sitat-knapper">
+        <button class="minibtn" data-handling="settinn" title="Sett inn i dokumentet der markøren står">Sett inn</button>
         <button class="minibtn" data-handling="apne">Åpne papiret</button>
         <button class="minibtn fare" data-handling="slett">Slett</button>
       </div>
@@ -1464,6 +1498,10 @@ function koblSitatHandlinger(rot) {
     const kort = btn.closest('.sitatkort');
     try {
       if (btn.dataset.handling === 'apne') { openPaper(kort.dataset.paper); return; }
+      if (btn.dataset.handling === 'settinn') {
+        settInnSitat({ id: Number(kort.dataset.id), paper_id: kort.dataset.paper, tekst: kort.dataset.tekst, kilde: kort.dataset.kilde });
+        return;
+      }
       if (!confirm('Slette dette sitatet for godt?')) return;
       await api(`/api/sitater/${kort.dataset.id}`, {method:'DELETE'});
       lastBank();
@@ -1567,6 +1605,190 @@ async function lastProfil() {
     $('#om-domeneprofil').textContent = 'Kunne ikke lese domeneprofilen akkurat nå.';
   }
 }
+
+// ---------- Dokument (fase 2, prosjekt/rapportmotor-veikart, 2026-09-06) ----------
+// Skuffen har to linser: Sitatbank (alt du har sitert) og Dokument (det du skriver).
+// Editoren er TipTap på ProseMirror, vendoret i vendor/tiptap.js (ingen CDN: privat
+// forskningsflate bak auth). Dokumentet lagres som Markdown med [@sitat:ID] der sitatet
+// står; /api/rapport/dokument rendrer markøren som sitatblokk + kildelinje på stedet.
+const dokState = { editor: null, id: null, linse: 'bank', lagreTimer: null, sisteMd: null, sitater: {}, venterSitat: null };
+
+// Varmens «nå»-lag følger dokumentet når det er åpent, ellers sitatbanken (som siden 09-04).
+function dokTekstEllerBank() {
+  if (dokState.linse === 'dok' && dokState.editor) {
+    const t = dokState.editor.getText().trim();
+    if (t) return t.slice(0, 4000);
+  }
+  return bankTekst();
+}
+
+function sitatKilde(s) {
+  const alle = s.paper_forfattere || '';
+  const f = alle.split(',')[0].trim();
+  return [f && f + (alle.includes(',') ? ' et al.' : ''), s.paper_aar && `(${s.paper_aar})`, s.paper_tittel]
+    .filter(Boolean).join(' ');
+}
+
+// Sitat-noden: atomær, inline, bærer id + papir + tekst + kilde. Markdown-serialisering
+// er [@sitat:ID]; parsing går via <sitat-ref> som markdown-it slipper gjennom (html: true),
+// så noden får tekst og kilde med seg fra banken når dokumentet åpnes (apneDokument).
+function sitatNode() {
+  const { Node, mergeAttributes } = window.TipTap;
+  return Node.create({
+    name: 'sitat', group: 'inline', inline: true, atom: true, selectable: true, draggable: true,
+    addAttributes() {
+      return { id: { default: null }, paper: { default: '' }, tekst: { default: '' }, kilde: { default: '' } };
+    },
+    parseHTML() {
+      return [{ tag: 'sitat-ref', getAttrs: el => ({
+        id: Number(el.getAttribute('data-id')), paper: el.getAttribute('data-paper') || '',
+        tekst: el.getAttribute('data-tekst') || '', kilde: el.getAttribute('data-kilde') || '' }) }];
+    },
+    renderHTML({ node }) {
+      const a = node.attrs;
+      const kort = a.tekst.length > 70 ? a.tekst.slice(0, 70) + '…' : a.tekst;
+      return ['sitat-ref', mergeAttributes({ 'data-id': a.id, 'data-paper': a.paper, 'data-tekst': a.tekst,
+        'data-kilde': a.kilde, class: 'sitat-node', title: a.kilde }), `«${kort}»`];
+    },
+    addStorage() {
+      return { markdown: { serialize(state, node) { state.write(`[@sitat:${node.attrs.id}]`); }, parse: {} } };
+    },
+  });
+}
+
+function lagEditor() {
+  if (dokState.editor) return dokState.editor;
+  const T = window.TipTap;
+  if (!T) { si('Editoren (vendor/tiptap.js) lastet ikke'); return null; }
+  dokState.editor = new T.Editor({
+    element: $('#dok-editor'),
+    extensions: [
+      T.StarterKit.configure({ heading: { levels: [1, 2] } }),
+      T.Placeholder.configure({ placeholder: 'Skriv her. Sitater fra banken settes inn der markøren står.' }),
+      T.Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: true }),
+      sitatNode(),
+    ],
+    onUpdate: () => planleggLagring(),
+  });
+  $('#dok-editor').addEventListener('click', e => {
+    const n = e.target.closest('sitat-ref');
+    if (n && n.dataset.paper) openPaper(n.dataset.paper);
+  });
+  return dokState.editor;
+}
+
+function velgLinse(l) {
+  dokState.linse = l;
+  $$('.skuff-linse').forEach(b => b.classList.toggle('aktiv', b.dataset.linse === l));
+  $('#skuff-kropp-bank').hidden = (l !== 'bank');
+  $('#dok-kropp').hidden = (l !== 'dok');
+  if (l === 'dok') { lagEditor(); lastDokumenter(); }
+  lastVarme({ tvungen: true });
+}
+$$('.skuff-linse').forEach(b => b.addEventListener('click', () => { apneSkuff(); velgLinse(b.dataset.linse); }));
+
+async function lastDokumenter() {
+  const liste = await api('/api/utkast').catch(() => []);
+  const el = $('#dok-liste');
+  el.innerHTML = '<button class="rapport-btn" id="dok-ny" style="margin:.2rem 0 .6rem">+ Nytt dokument</button>' +
+    (liste.length
+      ? liste.map(u => `<button class="bankpapir${u.id === dokState.id ? ' active' : ''}" data-id="${u.id}">
+          <div class="t">${escapeHtml(u.tittel || 'Uten tittel')}</div>
+          <div class="m"><span>${u.oppdatert ? new Date(u.oppdatert * 1000).toLocaleDateString('nb-NO') : ''}</span></div>
+        </button>`).join('')
+      : '<div class="hint">Ingen dokumenter ennå.</div>');
+  $('#dok-ny').addEventListener('click', nyttDokument);
+  $$('.bankpapir', el).forEach(b => b.addEventListener('click', () => apneDokument(Number(b.dataset.id))));
+  if (dokState.id === null && liste.length) await apneDokument(liste[0].id);
+}
+
+async function nyttDokument() {
+  const u = await api('/api/utkast', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ tittel: '', innhold: '' }) });
+  dokState.id = u.id;
+  await lastDokumenter();
+  await apneDokument(u.id);
+  $('#dok-tittel').focus();
+}
+
+async function apneDokument(id) {
+  const ed = lagEditor();
+  if (!ed) return;
+  const u = await api(`/api/utkast/${id}`);
+  dokState.id = u.id;
+  $('#dok-tittel').value = u.tittel === 'Uten tittel' ? '' : (u.tittel || '');
+  const alle = await api('/api/sitater').catch(() => []);
+  dokState.sitater = Object.fromEntries(alle.map(s => [s.id, s]));
+  const md = (u.innhold || '').replace(/\[@sitat:(\d+)\]/g, (m, sid) => {
+    const s = dokState.sitater[Number(sid)];
+    if (!s) return `<sitat-ref data-id="${sid}" data-tekst="(sitatet finnes ikke lenger i banken)" data-kilde=""></sitat-ref>`;
+    return `<sitat-ref data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}" data-tekst="${escapeHtml(s.tekst)}" data-kilde="${escapeHtml(sitatKilde(s))}"></sitat-ref>`;
+  });
+  ed.commands.setContent(md, false);
+  dokState.sisteMd = ed.storage.markdown.getMarkdown();
+  $('#dok-status').textContent = 'lagret';
+  $('#dok-verktoy').hidden = false;
+  $$('#dok-liste .bankpapir').forEach(b => b.classList.toggle('active', Number(b.dataset.id) === u.id));
+  if (dokState.venterSitat) { const s = dokState.venterSitat; dokState.venterSitat = null; settInnSitat(s); }
+}
+
+function planleggLagring() {
+  clearTimeout(dokState.lagreTimer);
+  $('#dok-status').textContent = 'skriver…';
+  dokState.lagreTimer = setTimeout(lagreDokument, 1200);
+}
+
+async function lagreDokument() {
+  if (!dokState.editor || dokState.id === null) return;
+  clearTimeout(dokState.lagreTimer);
+  const md = dokState.editor.storage.markdown.getMarkdown();
+  const tittel = $('#dok-tittel').value.trim();
+  try {
+    await api('/api/utkast', { method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id: dokState.id, tittel, innhold: md }) });
+    $('#dok-status').textContent = 'lagret';
+    if (md !== dokState.sisteMd) { dokState.sisteMd = md; lastVarme({ tvungen: false }); }
+    const aktiv = $(`#dok-liste .bankpapir[data-id="${dokState.id}"] .t`);
+    if (aktiv) aktiv.textContent = tittel || 'Uten tittel';
+  } catch (err) { $('#dok-status').textContent = 'IKKE lagret: ' + err.message; }
+}
+$('#dok-tittel').addEventListener('input', planleggLagring);
+
+function settInnSitat(s) {
+  if (dokState.linse !== 'dok' || !dokState.editor || dokState.id === null) {
+    dokState.venterSitat = s;
+    apneSkuff();
+    velgLinse('dok');
+    if (dokState.id === null) si('Lag et dokument først (+ Nytt dokument), så settes sitatet inn');
+    return;
+  }
+  dokState.editor.chain().focus().insertContent([
+    { type: 'sitat', attrs: { id: s.id, paper: s.paper_id, tekst: s.tekst, kilde: s.kilde || sitatKilde(s) } },
+    { type: 'text', text: ' ' },
+  ]).run();
+}
+
+$$('#dok-verktoy [data-dok]').forEach(btn => btn.addEventListener('click', async () => {
+  if (dokState.id === null) return;
+  const f = btn.dataset.dok, tittel = $('#dok-tittel').value.trim() || 'Dokument';
+  await lagreDokument();
+  if (f === 'md' || f === 'pdf') { lastNedRapport(`/api/rapport/dokument?utkast_id=${dokState.id}`, tittel, f, btn); return; }
+  if (f === 'kopier') {
+    const r = await fetch(`/api/rapport/dokument?utkast_id=${dokState.id}&format=md`);
+    await navigator.clipboard.writeText(await r.text());
+    si('Markdown kopiert til utklippstavlen');
+    return;
+  }
+  if (f === 'slett') {
+    if (!confirm('Slette dokumentet? Sitatene beholdes i banken.')) return;
+    await api(`/api/utkast/${dokState.id}`, { method: 'DELETE' });
+    dokState.id = null; dokState.sisteMd = null;
+    dokState.editor.commands.clearContent(false);
+    $('#dok-tittel').value = '';
+    $('#dok-verktoy').hidden = true;
+    lastDokumenter();
+  }
+}));
 
 (async () => {
   await lastProfil();

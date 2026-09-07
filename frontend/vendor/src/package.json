@@ -1,0 +1,13 @@
+{
+  "name": "forskningssok-vendor",
+  "private": true,
+  "description": "Bygger frontend/vendor/tiptap.js (IIFE) — kjøres kun ved oppgradering, aldri i CI eller i imaget.",
+  "dependencies": {
+    "@tiptap/core": "^2.11.0",
+    "@tiptap/pm": "^2.11.0",
+    "@tiptap/starter-kit": "^2.11.0",
+    "@tiptap/extension-placeholder": "^2.11.0",
+    "tiptap-markdown": "^0.8.10"
+  },
+  "devDependencies": { "esbuild": "^0.24.0" }
+}

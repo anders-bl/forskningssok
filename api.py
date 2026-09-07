@@ -772,8 +772,14 @@ def api_rapport_dokument(utkast_id: int, format: str = "md"):
     utkast = bank.hent_utkast(utkast_id)
     if not utkast:
         raise HTTPException(404, "utkast finnes ikke")
-    sitater = bank.hent_sitater(utkast_id=utkast_id)
-    blokker = rapport.dokument_blokker(utkast, sitater)
+    # Sitatene i dokumentet er unionen av de som er FESTET (utkast_id) og de teksten
+    # REFERERER inline ([@sitat:ID]); det andre settet er editorens (fase 2) og kan peke
+    # på et sitat som er løst eller festet til et annet dokument — det er fortsatt sitert.
+    festet = bank.hent_sitater(utkast_id=utkast_id)
+    ref = set(rapport.sitat_referanser(utkast.get("innhold") or ""))
+    har = {s["id"] for s in festet}
+    ekstra = [s for s in bank.hent_sitater() if s["id"] in ref and s["id"] not in har] if ref - har else []
+    blokker = rapport.dokument_blokker(utkast, festet + ekstra)
     return _rapport_svar(blokker, format, utkast["tittel"], utkast["tittel"])
 
 

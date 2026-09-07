@@ -456,33 +456,82 @@ def boilerplate_blokker(kildepapir: dict, relaterte: list[dict],
 
 # ---------- Mal 5: dokumentet — egen tekst + festede sitater, det som faktisk deles ----------
 
+_SITAT_REF = re.compile(r"\[@sitat:(\d+)\]")
+
+
+def sitat_referanser(innhold: str) -> list[int]:
+    """Sitat-id-ene et dokument refererer INLINE, i tekstrekkefølge, uten dubletter.
+    Editoren (fase 2, 2026-09-06) skriver `[@sitat:ID]` der sitatet står i teksten."""
+    ut: list[int] = []
+    for m in _SITAT_REF.finditer(innhold or ""):
+        i = int(m.group(1))
+        if i not in ut:
+            ut.append(i)
+    return ut
+
+
 def dokument_blokker(utkast: dict, sitater: list[dict], *, tittel: str | None = None) -> list[Blokk]:
     """Den ENESTE malen som blander brukerens egen prosa med sitert kildetekst. Derfor
     er skillet mellom dem bygget inn i blokk-typene («p» for din tekst, «sitat» +
     kildelinje for det som er hentet), ikke overlatt til leserens hukommelse: en delt PDF
     må aldri kunne leses som om du selv skrev det du siterte.
 
-    Sitatene snus til ELDSTE først her (bank leverer nyeste først) — et dokument leses
-    ovenfra, og rekkefølgen du fanget dem i er den eneste rekkefølgen verktøyet vet noe
-    om. Ingen forsøk på å gjette hvor i brødteksten de hører hjemme."""
+    Siden fase 2 (2026-09-06) står sitatene DER de står i teksten: editoren skriver
+    `[@sitat:ID]` inline, og den markøren blir sitat-blokk + kildelinje på stedet.
+    Sitater som er festet til dokumentet men ikke plassert i teksten (den gamle
+    skuff-hybriden, eller et sitat brukeren fjernet fra teksten uten å løsne) samles
+    fortsatt under «Kilder sitert» til slutt, eldste først — ingen forsøk på å gjette
+    hvor de hører hjemme.
+
+    Markdown-lite: `# ` og `## ` i brødteksten blir underoverskrifter (h1 er dokumentets
+    tittel), `- ` blir et avsnitt med kulepunkt. Fet og kursiv rendres bokstavelig; det er
+    fase 5 i prosjekt/rapportmotor-veikart, ikke denne malen."""
     tittel = tittel or utkast.get("tittel") or "Uten tittel"
     blokker = [Blokk("h1", tittel)]
     n = len(sitater)
     blokker.append(Blokk("meta", f"Skrevet i forskningssok, eksportert {_dato()} — "
-                                  f"{n} sitat{'' if n == 1 else 'er'} festet til dokumentet."))
+                                  f"{n} sitat{'' if n == 1 else 'er'} i dokumentet."))
 
+    per_id = {s.get("id"): s for s in sitater}
+    brukt: set[int] = set()
     innhold = (utkast.get("innhold") or "").strip()
     if innhold:
-        for avsnitt in [a.strip() for a in innhold.split("\n") if a.strip()]:
-            blokker.append(Blokk("p", avsnitt))
+        for linje in innhold.split("\n"):
+            l = linje.strip()
+            if not l:
+                continue
+            if l.startswith("## "):
+                blokker.append(Blokk("h3", l[3:].strip()))
+                continue
+            if l.startswith("# "):
+                blokker.append(Blokk("h2", l[2:].strip()))
+                continue
+            if l.startswith(("- ", "* ")):
+                l = "• " + l[2:]
+            deler = _SITAT_REF.split(l)
+            for i, d in enumerate(deler):
+                if i % 2 == 0:
+                    if d.strip():
+                        blokker.append(Blokk("p", d.strip()))
+                    continue
+                s = per_id.get(int(d))
+                if not s:
+                    blokker.append(Blokk("meta", f"[sitat {d} finnes ikke lenger i banken]"))
+                    continue
+                brukt.add(int(d))
+                blokker.append(Blokk("sitat", s.get("tekst", "")))
+                # meta rendres i kursiv i begge format; kildelinjens egen *tidsskrift*-
+                # kursiv ville da nøstet stjerner i Markdown og stått bokstavelig i PDF.
+                blokker.append(Blokk("meta", _kildelinje(s).replace("*", "")))
     else:
         blokker.append(Blokk("meta", "(Ingen brødtekst skrevet ennå.)"))
 
-    if not sitater:
+    rest = [s for s in sitater if s.get("id") not in brukt]
+    if not rest:
         return blokker
 
     blokker.append(Blokk("h2", "Kilder sitert"))
-    for s in sorted(sitater, key=lambda x: x.get("opprettet", 0)):
+    for s in sorted(rest, key=lambda x: x.get("opprettet", 0)):
         blokker.append(Blokk("sitat", s.get("tekst", "")))
         blokker.append(Blokk("p", _kildelinje(s)))
         if (s.get("kommentar") or "").strip():

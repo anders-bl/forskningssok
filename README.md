@@ -677,6 +677,36 @@ PDF-en til `10.1111/jfd.70099` (ikke-OA) → fulltekst i leseflaten → markert 
 vedlegget lot sitatet stå. En skannet PDF ga den ærlige meldingen. Null konsollfeil.
 Fanget underveis: «1 sider».
 
+## Dokumentet er tilbake: TipTap i skuffen (2026-09-07, gren `dokument-tiptap`)
+
+Fase 2 i plattformwikiens `prosjekt/rapportmotor-veikart`, og utfall A på utkast-loven fra
+`prosjekt/forskningssok-veikart`: utkast-endepunktene har en kaller igjen. Skuffen har to
+linser, **Sitatbank** (alt du har sitert) og **Dokument** (det du skriver).
+
+- **Editoren er TipTap på ProseMirror**, vendoret som ett IIFE-bundle i `frontend/vendor/
+  tiptap.js` (bygget av `frontend/vendor/src/build.sh` med esbuild; kjøres kun ved
+  oppgradering, aldri i CI eller imaget). Ingen CDN: dette er en privat flate bak auth.
+  Lisenser MIT (tiptap, tiptap-markdown, prosemirror).
+- **Et sitat er en egen node i teksten**, ikke en markering. Den bærer sitat-id, papir,
+  tekst og kildelinje; klikk åpner papiret. «Sett inn» i sitatbanken legger det der
+  markøren står, og Sitér i leseflaten gjør det samme når dokumentet er åpent.
+- **Lagring er Markdown med `[@sitat:ID]`** i `utkast.innhold`, autolagret 1,2 s etter siste
+  tastetrykk. Ved åpning byttes markøren til en `<sitat-ref>` med tekst og kilde fra banken
+  FØR markdown-parseren, så noden kommer tilbake hel. Et sitat som er slettet fra banken
+  vises som «finnes ikke lenger», aldri som tom tekst.
+- **Rapporten rendrer sitatet på stedet.** `rapport.dokument_blokker` deler avsnittet ved
+  markøren og setter sitatblokk pluss kildelinje der det sto; sitater som er festet til
+  dokumentet men ikke plassert i teksten, samles under «Kilder sitert» som før. Markdown og
+  PDF fra samme Blokk-liste, PDF gjennom Typst. `# ` og `## ` i teksten blir underoverskrifter.
+- **Varmens «nå»-lag følger dokumentet** når linsen er åpen, sitatbanken ellers.
+
+Live-verifisert i Chrome mot ekte cache: nytt dokument, tittel, tekst, «Sett inn» fra
+banken, autolagring, reload med noden intakt (id, papir, kildelinje), Sitér-mens-åpent,
+PDF og Markdown lest tilbake med sitatet mellom de to setningene det sto mellom.
+
+**Ikke bygget, sagt høyt:** dra-og-slipp fra banken inn i teksten (klikk er veien nå),
+fet/kursiv i PDF (markdown-lite, fase 5), deling av dokumenter (ren enkeltbruker).
+
 ## PDF-motor: Typst bak Blokk-modellen (2026-09-06, gren `rapportmotor-typst`)
 
 Første steg i husstandarden for rapportgenerering (plattformwiki

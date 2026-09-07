@@ -295,3 +295,42 @@ def test_til_typst_limer_inn_malen_og_bruker_forste_h1_som_tittel():
     assert "#let rapport(" in src                      # malen er inlined, ikke importert
     assert src.count("#skille()") == 1                 # kun etter FØRSTE h1
     assert '#set document(title: "Dok"' in src
+
+
+# ---------- Dokument med inline sitater (fase 2, prosjekt/rapportmotor-veikart) ----------
+
+def _sitat(i, tekst, **kw):
+    base = dict(id=i, paper_id=f"10.1/{i}", tekst=tekst, kommentar="", opprettet=100 + i,
+                paper_tittel=f"Papir {i}", paper_doi=f"10.1/{i}", utkast_id=None,
+                paper_forfattere="Doe J, Roe R", paper_tidsskrift="J Fish Dis", paper_aar=2024)
+    base.update(kw)
+    return base
+
+
+def test_sitat_referanser_i_tekstrekkefolge_uten_dubletter():
+    from rapport import sitat_referanser
+    assert sitat_referanser("a [@sitat:7] b [@sitat:3] c [@sitat:7]") == [7, 3]
+    assert sitat_referanser("") == []
+
+
+def test_dokument_setter_inline_sitat_der_det_staar_i_teksten():
+    from rapport import dokument_blokker
+    utkast = {"tittel": "Notat", "innhold": "Innledning før.\nMidt i [@sitat:7] og etter.\n# Del to\n- punkt"}
+    b = dokument_blokker(utkast, [_sitat(7, "sitert setning"), _sitat(9, "ikke plassert")])
+    typer = [(x.type, x.tekst) for x in b]
+    i = typer.index(("p", "Midt i"))
+    assert typer[i + 1] == ("sitat", "sitert setning")
+    assert typer[i + 2][0] == "meta" and "Doe J et al." in typer[i + 2][1]
+    assert typer[i + 3] == ("p", "og etter.")
+    assert ("h2", "Del to") in typer and ("p", "• punkt") in typer
+    # det u-plasserte sitatet havner under «Kilder sitert», det plasserte gjentas ikke
+    j = typer.index(("h2", "Kilder sitert"))
+    etter = [t for t in typer[j:] if t[0] == "sitat"]
+    assert etter == [("sitat", "ikke plassert")]
+
+
+def test_dokument_med_referanse_til_slettet_sitat_sier_fra():
+    from rapport import dokument_blokker
+    b = dokument_blokker({"tittel": "N", "innhold": "x [@sitat:42] y"}, [])
+    assert any(x.type == "meta" and "42" in x.tekst and "ikke lenger" in x.tekst for x in b)
+    assert not any(x.type == "sitat" for x in b)
