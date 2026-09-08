@@ -72,6 +72,11 @@ services:
       # dokumenterte felle, gjentatt her 2026-09-08: env-var når containeren KUN via
       # denne blokken) — nøyaktig det som skjedde her før denne linjen ble lagt til.
       CORE_API_KEY: ${CORE_API_KEY:-}
+      # Semantic Scholar-nøkkel (adapters/semantic_scholar.py), registrert 2026-09-08.
+      # Usatt = anonym delt pool (samme rate-limit-oppførsel, kan gå tom under andres
+      # trafikk) — ALDRI en oppstartsblokkering. Samme Dokploy-felle som CORE_API_KEY
+      # over: satt i UI-panelet ALENE gjør ingenting uten denne linja.
+      SEMANTIC_SCHOLAR_API_KEY: ${SEMANTIC_SCHOLAR_API_KEY:-}
     volumes:
       - forskningssok_data:/data
     networks:
