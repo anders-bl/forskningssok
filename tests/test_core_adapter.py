@@ -73,3 +73,22 @@ def test_tomt_treffsett_gir_aerlig_tom_liste(tmp_path):
     db = tmp_path / "cache.db"
     with patch("adapters.core.httpx.get", return_value=_mock_get(json_data={"results": []})):
         assert core.sok("et sikkert ubesvarlig søk xyzzy123", db_path=db) == []
+
+
+def test_nokkel_sendes_som_bearer_token_naar_satt(tmp_path, monkeypatch):
+    """2026-09-08: Anders registrerte en CORE-nøkkel (non-academic/professional-tier)
+    etter at den delte anonyme rate-limiten (10 kall/vindu) stoppet en høste-kveld.
+    Bearer, IKKE query-param — CORE v3 sin eneste dokumenterte auth-form."""
+    monkeypatch.setenv("CORE_API_KEY", "hemmelig-test-nokkel")
+    db = tmp_path / "cache.db"
+    with patch("adapters.core.httpx.get", return_value=_mock_get()) as m:
+        core.sok("nephrocalcinosis salmon", db_path=db)
+    assert m.call_args.kwargs["headers"]["Authorization"] == "Bearer hemmelig-test-nokkel"
+
+
+def test_ingen_nokkel_gir_ingen_authorization_header(tmp_path, monkeypatch):
+    monkeypatch.delenv("CORE_API_KEY", raising=False)
+    db = tmp_path / "cache.db"
+    with patch("adapters.core.httpx.get", return_value=_mock_get()) as m:
+        core.sok("nephrocalcinosis salmon", db_path=db)
+    assert "Authorization" not in m.call_args.kwargs["headers"]

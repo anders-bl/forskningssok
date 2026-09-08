@@ -20,6 +20,7 @@ men det er en påstand om KILDEN, ikke en verifisert per-dokument-flagg slik Eur
 ADR-004-disiplin: spørretid + TTL-cache, ingen crawler.
 """
 import json
+import os
 import re
 import sqlite3
 import time
@@ -33,6 +34,21 @@ from schemas import PaperDossier
 BASE = "https://api.core.ac.uk/v3/search/works"
 UA = "lauvasdata-research (kontakt@lauvasdata.no)"
 TTL_SEKUNDER = 24 * 3600
+
+
+def _headers() -> dict:
+    """Bearer-token, IKKE query-param — CORE v3 sin eneste dokumenterte auth-form.
+    Valgfri: anonym tilgang virker fortsatt, bare hardere rate-limitert (10 kall/
+    vindu, målt 2026-09-08 — traff veggen midt i en høste-kveld i bøker-repoet).
+    CORE_API_KEY settes i Dokploy sitt env-panel for denne tjenesten, ALDRI
+    hardkodet/committet (samme hemmelighets-disiplin som resten av huset).
+    Registrert 2026-09-08 (Anders, non-academic/professional-tier, 30-dagers
+    prøve)."""
+    h = {"User-Agent": UA}
+    nokkel = os.environ.get("CORE_API_KEY")
+    if nokkel:
+        h["Authorization"] = f"Bearer {nokkel}"
+    return h
 
 
 def _db(db_path: Path = DB) -> sqlite3.Connection:
@@ -61,7 +77,7 @@ def sok(query: str, limit: int = 10, *, tving_fersk: bool = False,
             return _parse(json.loads(rad[1]))
     try:
         r = httpx.get(BASE, params={"q": query, "limit": limit},
-                       headers={"User-Agent": UA}, timeout=30, follow_redirects=True)
+                       headers=_headers(), timeout=30, follow_redirects=True)
         r.raise_for_status()
     except (httpx.HTTPError, httpx.TimeoutException) as e:
         db.close()
