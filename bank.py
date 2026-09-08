@@ -39,6 +39,8 @@ from pathlib import Path
 import httpx
 import sqlite_vec
 
+import dokumenttype as dt
+
 from domeneprofil import arts_naer_tekst, domene_naer_tekst
 from paths import DB
 from schemas import PaperDossier
@@ -312,6 +314,13 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
     # paper_vec separat og returnerer ærlig tom liste, varmeliste() joiner kun papers.
     lagret = 0
     for p in nye:
+        # Sjanger fra pubtyper er GRATIS (ren funksjon, ingen nettverk) der NLM alt har
+        # gitt oss den — utsett den ALDRI til bakgrunnsjobben (berik_dokumenttype er kun
+        # for CORE-treff, som ikke har pubtyper i det hele tatt). Rører aldri en verdi
+        # PaperDossier alt satte eksplisitt.
+        dokumenttype = p.dokumenttype
+        if not dokumenttype and p.pubtyper:
+            dokumenttype = dt.fra_nlm(p.pubtyper, p.tittel)
         # OR IGNORE, ikke ren INSERT: SELECT-sjekken over og denne INSERT-en er IKKE én
         # atomisk operasjon — to overlappende søk på samme uncachede spørring (f.eks. en
         # bruker som reloader mens embeddingen fortsatt kjører server-side) kan begge se
@@ -328,7 +337,7 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
              rens_markup(p.abstract),
              p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode,
              p.volum, p.hefte, p.sider, p.issn,
-             "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major), p.dokumenttype))
+             "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major), dokumenttype))
         if cur.rowcount:
             lagret += 1
     db.commit()
@@ -364,6 +373,30 @@ def embed_manglende(*, embed_fn=None, db_path: Path = DB) -> int:
     for (rowid, _, _), emb in zip(rader, embeddinger):
         db.execute("INSERT OR IGNORE INTO paper_vec(chunk_id, embedding) VALUES (?,?)",
                    (rowid, sqlite_vec.serialize_float32(emb)))
+        n += 1
+    db.commit()
+    db.close()
+    return n
+
+
+def berik_dokumenttype(*, db_path: Path = DB, maks: int = 20) -> int:
+    """Slår opp sjanger (rapport/avhandling/bok/formidling) for CORE-kilder uten
+    dokumenttype ennå. KUN kalt fra bakgrunnsjobben (api.py sin `_lagre_bakgrunn`) —
+    ALDRI fra en synkron søke-respons, se dokumenttype.py sin `slaa_opp_nva`-docstring
+    for hvorfor. `maks` begrenser NVA-kall per bakgrunnsjobb-kjøring — et søk med mange
+    nye CORE-treff skal ikke henge bakgrunnsjobben i minuttvis.
+
+    Feiler ALDRI utover: dokumenttype.slaa_opp_nva() svelger sine egne feil (returnerer
+    UKJENT), så en NVA-nedetid her kan i verste fall skrive UKJENT — aldri kaste og
+    dermed hverken velte cachingen eller la feltet stå tomt for alltid uten et forsøk."""
+    db = _db(db_path)
+    rader = db.execute(
+        "SELECT id, tittel FROM papers WHERE kilde_kode='CORE' "
+        "AND (dokumenttype IS NULL OR dokumenttype='') LIMIT ?", (maks,)).fetchall()
+    n = 0
+    for pid, tittel in rader:
+        kategori = dt.slaa_opp_nva(tittel)
+        db.execute("UPDATE papers SET dokumenttype=? WHERE id=?", (kategori, pid))
         n += 1
     db.commit()
     db.close()

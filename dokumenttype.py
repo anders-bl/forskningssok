@@ -18,8 +18,16 @@ dette») uten å svare på VÅRT spørsmål (»er dette forskning eller skolefor
 
 Ingen gjetning uten et treff — «Ukjent» er et gyldig, hyppig utfall (samme prinsipp som
 evidensniva.py: et dokument uten treff er «Ukjent», ALDRI en gjettet kategori).
-"""
+
+`slaa_opp_nva()` gjør selve NVA-kallet — KUN ment for bakgrunnsjobben (api.py sin
+`_lagre_bakgrunn`), ALDRI for en synkron søke-respons. Samme grunn som
+`_fulltekst_for_papir()` sin kommentar i api.py: et NVA-kall per treff ville gjort hvert
+søk tregere med N nettverkskall for et felt svært få faktisk trenger med det samme.
+Spørringen kuttes til 8 hele ord (samme fiks som bøker/core_lisens_sjekk.py — et brutt
+siste ord fra en avkuttet tittel gir 0 NVA-treff, selv om resten matcher perfekt)."""
 import re
+
+import httpx
 
 FORMIDLING = "Formidling"
 INSTITUSJONELL_RAPPORT = "Institusjonell rapport"
@@ -90,3 +98,47 @@ def fra_nlm(pubtyper: tuple[str, ...], tittel: str = "") -> str:
         if (kat := _NLM_KART.get(pt.strip().lower())):
             return kat
     return UKJENT
+
+
+_NVA = "https://api.nva.unit.no"
+_UA = "Mozilla/5.0 (research; lauvasdata open-corpus; kontakt@lauvasdata.no)"
+
+
+def _sokestreng(tittel: str, maks_ord: int = 8) -> str:
+    return " ".join(tittel.split()[:maks_ord])
+
+
+def slaa_opp_nva(tittel: str, *, timeout: float = 10.0) -> str:
+    """Søker NVA på tittel, henter documentType for beste treff, klassifiserer.
+    UKJENT ved ENHVER feil (ingen treff, timeout, uventet svar) — dette kallet skal
+    ALDRI kaste, kun eventuelt bruke tid. Kun for bakgrunnsjobben, se moduldocstring."""
+    try:
+        r = httpx.get(f"{_NVA}/search/resources",
+                      params={"query": _sokestreng(tittel), "results": 5},
+                      headers={"User-Agent": _UA, "Accept": "application/json"},
+                      timeout=timeout, follow_redirects=True)
+        if r.status_code != 200:
+            return UKJENT
+        treff = r.json().get("hits", [])
+        if not treff:
+            return UKJENT
+        # Foretrekk et treff UTEN «(Kapittel»/«(Chapter» — samme forbehold som
+        # bøker/core_lisens_sjekk.py sin _beste_treff().
+        def hit_tittel(h):
+            return h.get("mainTitle") or (h.get("entityDescription") or {}).get("mainTitle") or ""
+        ikke_kapittel = [h for h in treff if not re.search(r"\(kapittel|\(chapter", hit_tittel(h).lower())]
+        hit = (ikke_kapittel or treff)[0]
+        identifier = hit.get("identifier")
+        if not identifier:
+            return UKJENT
+        pr = httpx.get(f"{_NVA}/publication/{identifier}",
+                       headers={"User-Agent": _UA, "Accept": "application/json"},
+                       timeout=timeout, follow_redirects=True)
+        if pr.status_code != 200:
+            return UKJENT
+        pub = pr.json()
+        dt = ((pub.get("entityDescription") or {}).get("reference") or {}) \
+            .get("publicationInstance", {}).get("type")
+        return fra_nva(dt, tittel)
+    except Exception:
+        return UKJENT

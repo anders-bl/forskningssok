@@ -87,14 +87,21 @@ app = FastAPI(title="forskningssok API")
 logger = logging.getLogger("forskningssok")
 
 
-def _lagre_bakgrunn(papirer: list) -> None:
+def _lagre_bakgrunn(papirer: list, *, ekte_bakgrunn: bool = True) -> None:
     """Wrapper rundt bank.lagre for BackgroundTasks — fanger ALT. lagre() sin egen
     docstring lover «feiler stille aldri kritisk», men en ufanget exception i en
     BackgroundTask propagerer likevel opp til ASGI-serveren (uvicorn logger den som en
     krasjet request, selv om klienten alt har fått sitt 200-svar) — dette gjør løftet
-    ekte, ikke bare en kommentar."""
+    ekte, ikke bare en kommentar.
+
+    `ekte_bakgrunn=False` (linje ~935, konvergens-ruta) betyr denne funksjonen kalles
+    SYNKRONT, ikke via BackgroundTasks — `berik_dokumenttype()` sine NVA-kall (opptil
+    20 × ~0,3s) skal ALDRI legges til en synkron respons (samme disiplin som
+    `_fulltekst_for_papir()` sin kommentar lenger ned: bundet kostnad, ikke N-per-kall)."""
     try:
         bank.lagre(papirer)
+        if ekte_bakgrunn:
+            bank.berik_dokumenttype()
     except Exception:
         # Etter 2026-09-04 er dette IKKE lenger «papirene gikk tapt». lagre() setter inn
         # radene FØR den embedder, så et unntak her betyr at embeddingen falt mens
@@ -924,7 +931,7 @@ def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", 
         raise HTTPException(502, f"søk feilet: {e}")
     if not papirer_d:
         raise HTTPException(404, f"ingen treff for «{q}»")
-    _lagre_bakgrunn(papirer_d[:n])  # synkront: cacher papirene (gap trenger topptreffets vektor)
+    _lagre_bakgrunn(papirer_d[:n], ekte_bakgrunn=False)  # synkront: cacher papirene (gap trenger topptreffets vektor)
     # Hent den KANONISKE dict-formen fra cachen (samme som alle andre rapporter bruker) —
     # asdict(PaperDossier) gir pubtyper/mesh som tupler, bank.hent() gir «|»-strenger som
     # rapport-byggerne forventer. Falt på nettopp det (2026-09-05).
