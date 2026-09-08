@@ -42,6 +42,15 @@ class PaperDossier:
     pubtyper: tuple[str, ...] = ()
     mesh: tuple[str, ...] = ()
     mesh_major: tuple[str, ...] = ()
+    # Sjanger, IKKE studiedesign — lagt til 2026-09-08. `pubtyper` over er bevisst smalt
+    # scopet til NLMs studiedesign-vokabular (evidensniva.py sitt hierarki); et institusjons-
+    # arkiv-treff har ALDRI pubtyper (CORE/NVA gir det ikke), men kan likevel være en
+    # årsrapport, en avhandling, en fagbok eller et skoleformidlingsprosjekt — fire ting med
+    # helt ulik epistemisk vekt som i dag deler samme udifferensierte rad. Se
+    # dokumenttype.py for den kontrollerte listen og NVA→kategori-normaliseringen.
+    # Tom streng = ikke klassifisert, ALDRI en gjettet verdi (samme ærlighetsprinsipp som
+    # resten av dataclassen).
+    dokumenttype: str = ""
 
     @property
     def id(self) -> str:

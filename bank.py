@@ -97,7 +97,7 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     # MeSH-termer og NLM-publikasjonstyper (verifisert mot NLMs vokabular — ingen av dem
     # inneholder rør). rapport.py splitter allerede på «|».
     for kolonne in ("kilde_kode TEXT", "volum TEXT", "hefte TEXT", "sider TEXT", "issn TEXT",
-                    "pubtyper TEXT", "mesh TEXT", "mesh_major TEXT"):
+                    "pubtyper TEXT", "mesh TEXT", "mesh_major TEXT", "dokumenttype TEXT"):
         try:  # migrasjon for cache.db skrevet før feltet fantes — idempotent
             db.execute(f"ALTER TABLE papers ADD COLUMN {kolonne}")
             db.commit()
@@ -322,13 +322,13 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
         cur = db.execute(
             """INSERT OR IGNORE INTO papers(id,tittel,forfattere,tidsskrift,aar,doi,pmid,abstract,
                siteringstall,open_access,kilde_url,kilde_kode,volum,hefte,sider,issn,
-               pubtyper,mesh,mesh_major)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               pubtyper,mesh,mesh_major,dokumenttype)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (p.id, rens_markup(p.tittel), p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid,
              rens_markup(p.abstract),
              p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode,
              p.volum, p.hefte, p.sider, p.issn,
-             "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major)))
+             "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major), p.dokumenttype))
         if cur.rowcount:
             lagret += 1
     db.commit()
@@ -372,7 +372,8 @@ def embed_manglende(*, embed_fn=None, db_path: Path = DB) -> int:
 
 _PAPER_KOLONNER = ("id", "tittel", "forfattere", "tidsskrift", "aar", "doi", "pmid",
                    "abstract", "siteringstall", "open_access", "kilde_url", "kilde_kode",
-                   "volum", "hefte", "sider", "issn", "pubtyper", "mesh", "mesh_major")
+                   "volum", "hefte", "sider", "issn", "pubtyper", "mesh", "mesh_major",
+                   "dokumenttype")
 
 
 def berik_sitasjonsfelt(*, db_path: Path = DB, batch: int = 20, sok_fn=None) -> int:
