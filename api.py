@@ -26,7 +26,7 @@ import verifiser as verifiser_modul
 import sti as sti_modul
 import rapport
 import scoping
-from adapters import openalex, unpaywall
+from adapters import openalex, semantic_scholar, unpaywall
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
@@ -525,6 +525,22 @@ def api_tilgang(paper_id: str):
     if oa is None and up is None:  # begge kildene nede -> ærlig feil, ikke stille tomt
         raise HTTPException(502, f"OpenAlex: {oa_feil}; Unpaywall: {up_feil}")
     return _flett_tilgang(oa, up)
+
+
+@app.get("/api/siteringsgraf/{paper_id:path}")
+def api_siteringsgraf(paper_id: str):
+    """Semantic Scholar sin siteringsgraf MED KONTEKST (intents/isInfluential) — se
+    adapters/semantic_scholar.py sin docstring for hvorfor det er noe utover
+    OpenAlex sin referanseliste. Kun for papirer med DOI (samme forutsetning som
+    /api/tilgang og /api/emner), ærlig tomt objekt ellers — aldri en 404 for noe
+    som bare mangler forutsetningen."""
+    tomt = {"siteringer": [], "referanser": []}
+    if not paper_id.startswith("10."):
+        return tomt
+    try:
+        return semantic_scholar.siteringsgraf(paper_id)
+    except RuntimeError as e:
+        raise HTTPException(502, str(e)) from e
 
 
 @app.get("/api/emne/{emne_id}")
