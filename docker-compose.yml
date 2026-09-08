@@ -66,6 +66,12 @@ services:
       GLITCHTIP_DSN: ${GLITCHTIP_DSN:-}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       AI_PROXY_WIKI_ID: ${AI_PROXY_WIKI_ID:-forskningssok}
+      # CORE-nøkkel (adapters/core.py), registrert 2026-09-08. Usatt = anonym CORE-
+      # tilgang, bare hardere rate-limitert — ALDRI en oppstartsblokkering. [OBS]
+      # satt i Dokploy sitt env-panel ALENE gjør INGENTING (lauvasdata/CLAUDE.md sin
+      # dokumenterte felle, gjentatt her 2026-09-08: env-var når containeren KUN via
+      # denne blokken) — nøyaktig det som skjedde her før denne linjen ble lagt til.
+      CORE_API_KEY: ${CORE_API_KEY:-}
     volumes:
       - forskningssok_data:/data
     networks:
