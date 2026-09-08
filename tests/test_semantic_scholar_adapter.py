@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -92,11 +93,51 @@ def test_ttl_cache_unngaar_nytt_kall(tmp_path):
     assert m.call_count == 1
 
 
-def test_kilde_feil_gir_ikke_stille_tomt_resultat(tmp_path):
+def test_vedvarende_429_gir_til_slutt_en_tydelig_feil_ikke_stille_tomt(tmp_path):
+    """time.sleep mockes bort — testen skal verifisere BACKOFF-LOGIKKEN (antall forsøk,
+    ingen krasj), ikke faktisk sitte og vente i 14 sekunder hver kjøring."""
     db = tmp_path / "cache.db"
-    with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(status=429)):
+    with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(status=429)) as m, \
+         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+        with pytest.raises(RuntimeError, match="rate-limitet etter"):
+            semantic_scholar.sok("noe", db_path=db)
+    assert m.call_count == semantic_scholar.MAKS_FORSOEK
+    # 3 ventinger for 4 forsøk (aldri sov FØR første, aldri sov ETTER siste — se
+    # moduldocstring: en bruker skal ikke vente bare for å få en feil rett etterpå).
+    assert sleep_m.call_count == semantic_scholar.MAKS_FORSOEK - 1
+
+
+def test_backoff_dobler_ventetiden_eksponentielt(tmp_path):
+    db = tmp_path / "cache.db"
+    with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(status=429)), \
+         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+        with pytest.raises(RuntimeError):
+            semantic_scholar.sok("noe", db_path=db)
+    ventetider = [c.args[0] for c in sleep_m.call_args_list]
+    assert ventetider == [2.0, 4.0, 8.0]
+
+
+def test_429_etterfulgt_av_suksess_gir_ekte_resultat_ikke_feil(tmp_path):
+    """Den faktiske protokoll-forpliktelsen («exponential backoff to help protect
+    their systems») testet ende-til-ende: en midlertidig 429 skal IKKE se ut som en
+    permanent feil — retry-en skal faktisk lykkes når serveren har kapasitet igjen."""
+    db = tmp_path / "cache.db"
+    svar_rekkefolge = [_mock_get(status=429), _mock_get(status=429), _mock_get(json_data=SOK_RESPONS)]
+    with patch("adapters.semantic_scholar.httpx.get", side_effect=svar_rekkefolge), \
+         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+        treff = semantic_scholar.sok("nephrocalcinosis salmon", db_path=db)
+    assert len(treff) == 1
+    assert treff[0]["tittel"] == "Nephrocalcinosis in farmed Atlantic salmon"
+    assert sleep_m.call_count == 2  # to 429-er ble ventet ut, tredje forsøk lyktes
+
+
+def test_forbindelsesfeil_faar_ogsaa_backoff_ikke_umiddelbar_retry(tmp_path):
+    db = tmp_path / "cache.db"
+    with patch("adapters.semantic_scholar.httpx.get", side_effect=httpx.ConnectError("nede")), \
+         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
         with pytest.raises(RuntimeError, match="utilgjengelig"):
             semantic_scholar.sok("noe", db_path=db)
+    assert sleep_m.call_count == semantic_scholar.MAKS_FORSOEK - 1
 
 
 def test_nokkel_sendes_som_header_naar_satt(tmp_path, monkeypatch):

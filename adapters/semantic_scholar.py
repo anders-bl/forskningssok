@@ -8,15 +8,22 @@ gir: OpenAlex sier KUN at A siterer B, Semantic Scholar sier OGSÅ om siteringen
 arbeidet. Det er det [[research-utkast/artikkel-bank-akse]] sitt siteringsgap-spor
 faktisk trenger for å skille «nevnt i forbifarten» fra «bygget videre på».
 
-[OBS] Skjemaet under er IKKE live-verifisert i denne økten (2026-09-08) — Semantic Scholar
-sin DELTE anonyme rate-limit-pool var mettet (429 på alle forsøk, flere ganger, med
-høflig ventetid mellom). Feltnavnene (paperId, externalIds.DOI, citationCount,
-isOpenAccess, openAccessPdf.url, contexts, intents, isInfluential) er hentet fra
-Semantic Scholar sin offentlige, stabile API-dokumentasjon (uendret i flere år per
-egne endringslogger) — IKKE gjettet fra løse minner, men heller ikke bekreftet mot et
-ekte svar herfra. Første reelle live-kall (helst med registrert nøkkel, se under) bør
-kryssjekke denne docstringen mot faktisk respons og rette den om noe avviker — samme
-disiplin som resten av adapters/ (unpaywall.py, openalex.py) allerede følger.
+[OBS] Feltskjemaet under er IKKE live-verifisert mot et ekte 200-svar i denne økten
+(2026-09-08) — Semantic Scholar sin DELTE anonyme rate-limit-pool var mettet (429 på
+gjentatte forsøk). Feltnavnene (paperId, externalIds.DOI, citationCount, isOpenAccess,
+openAccessPdf.url, contexts, intents, isInfluential) er hentet fra Semantic Scholar
+sin offentlige, stabile API-dokumentasjon — IKKE gjettet, men heller ikke bekreftet mot
+et ekte svar herfra ennå. Første reelle live-kall bør kryssjekke denne docstringen.
+
+Retry/backoff-oppførselen ER derimot verifisert mot kilde (semanticscholar.readthedocs.io
++ CASRAI sin målte gjennomgang, begge 2026-09-08): INGEN Retry-After-header på 429 —
+eneste signal er statuskoden selv, ulikt CORE (som gir et eksakt reset-tidspunkt vi kan
+sove til, se ops/core_lisens_sjekk.py i bøker-repoet). Offisiell Python-klients egen
+strategi er 10 forsøk, start 5s, dobler til tak 60s — for tungt for en SYNKRON web-
+respons her (forskningssok sitt /api/siteringsgraf-endepunkt kaller dette direkte, ikke
+i en bakgrunnsjobb). `_hent()` bruker derfor samme PRINSIPP (eksponentiell backoff på
+429, aldri umiddelbar retry) skalert til en akseptabel verst-tenkelig ventetid: 4 forsøk,
+2s→4s→8s, gir opp med en tydelig feil fremfor å holde en bruker ventende i minuttvis.
 
 INGEN nøkkel kreves for grunnleggende bruk, men den DELTE poolen (alle anonyme
 brukere i verden) er tydeligvis lett å mette. En gratis registrert nøkkel gir en
@@ -62,6 +69,15 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     return db
 
 
+# 2s→4s→8s — se moduldocstring for hvorfor dette er skalert NED fra den offisielle
+# klientens 5s→60s×10-forsøk: den er bygget for batch-jobber, dette kalles synkront
+# fra en HTTP-respons. MAKS_FORSOEK=4 betyr 3 faktiske ventinger (2+4+8=14s verst
+# tenkelig) FØR vi gir opp — en bruker skal aldri holdes ventende i minuttvis for ett
+# siteringsgraf-oppslag.
+MAKS_FORSOEK = 4
+BACKOFF_START_SEKUNDER = 2.0
+
+
 def _hent(url: str, params: dict, *, cache_key: str, db_path: Path = DB) -> dict:
     db = _db(db_path)
     rad = db.execute("SELECT hentet_ved, respons FROM semantic_scholar_cache WHERE key=?",
@@ -69,10 +85,38 @@ def _hent(url: str, params: dict, *, cache_key: str, db_path: Path = DB) -> dict
     if rad and (time.time() - rad[0]) < TTL_SEKUNDER:
         db.close()
         return json.loads(rad[1])
+
+    ventetid = BACKOFF_START_SEKUNDER
+    r = None
+    for forsoek in range(MAKS_FORSOEK):
+        siste_forsoek = forsoek == MAKS_FORSOEK - 1
+        try:
+            r = httpx.get(url, params=params, headers=_headers(), timeout=30)
+        except (httpx.HTTPError, httpx.TimeoutException) as e:
+            if siste_forsoek:
+                db.close()
+                raise RuntimeError(f"Semantic Scholar utilgjengelig: {e}") from e
+            time.sleep(ventetid)
+            ventetid *= 2
+            continue
+        if r.status_code == 429:
+            # INGEN Retry-After her (verifisert, se moduldocstring) — ren eksponentiell
+            # backoff er eneste vei, uansett hvilken feilklasse (429 ELLER en
+            # forbindelsesfeil) — begge betyr "ikke prøv igjen med det samme".
+            if siste_forsoek:
+                db.close()
+                raise RuntimeError(
+                    f"Semantic Scholar rate-limitet etter {MAKS_FORSOEK} forsøk (429, "
+                    f"ingen Retry-After å vente på — prøv igjen senere eller registrer "
+                    f"SEMANTIC_SCHOLAR_API_KEY for en dedikert rate)")
+            time.sleep(ventetid)
+            ventetid *= 2
+            continue
+        break  # ekte svar, verken unntak eller 429 — ut av retry-løkka
+
     try:
-        r = httpx.get(url, params=params, headers=_headers(), timeout=30)
         r.raise_for_status()
-    except (httpx.HTTPError, httpx.TimeoutException) as e:
+    except httpx.HTTPError as e:
         db.close()
         raise RuntimeError(f"Semantic Scholar utilgjengelig: {e}") from e
     data = r.json()
