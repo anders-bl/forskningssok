@@ -25,6 +25,14 @@ i en bakgrunnsjobb). `_hent()` bruker derfor samme PRINSIPP (eksponentiell backo
 429, aldri umiddelbar retry) skalert til en akseptabel verst-tenkelig ventetid: 4 forsøk,
 2s→4s→8s, gir opp med en tydelig feil fremfor å holde en bruker ventende i minuttvis.
 
+Rate-grensen for den registrerte nøkkelen ER oppgitt eksplisitt (Semantic Scholars
+registreringsside, lest av Anders 2026-09-08): «1 request per second, cumulative across
+all endpoints.» Det er en HARD, kjent grense — ikke noe vi må gjette oss til reaktivt via
+429-er. `_vent_pa_rate_limit()` håndhever den PROAKTIVT (≥1,0s mellom hvert faktiske
+HTTP-kall, på tvers av /search og /paper) — 429-backoffen over er belte-og-seler for det
+som likevel går galt (samtidige requests fra andre prosesser, kortvarige overskridelser),
+ikke hovedforsvaret lenger.
+
 INGEN nøkkel kreves for grunnleggende bruk, men den DELTE poolen (alle anonyme
 brukere i verden) er tydeligvis lett å mette. En gratis registrert nøkkel gir en
 DEDIKERT rate i stedet for den delte — https://www.semanticscholar.org/product/api#api-key-form
@@ -39,6 +47,7 @@ ADR-004-disiplin: spørretid + TTL-cache, ingen crawler.
 import json
 import os
 import sqlite3
+import threading
 import time
 from pathlib import Path
 
@@ -77,6 +86,25 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
 MAKS_FORSOEK = 4
 BACKOFF_START_SEKUNDER = 2.0
 
+# Proaktiv rate-grense — se moduldocstring: «1 request per second, cumulative across
+# all endpoints», oppgitt av Semantic Scholar selv på registreringssiden (2026-09-08),
+# ikke gjettet. threading.Lock fordi forskningssok sine FastAPI-handlers er BEVISST
+# synkrone (ADR-004) og kjører i en threadpool — flere samtidige requests i SAMME
+# prosess skal likevel serialiseres til ≥1,0s mellomrom, ikke race mot hverandre.
+_RATE_LOCK = threading.Lock()
+_MIN_INTERVALL_SEKUNDER = 1.0
+_siste_kall_monotonic = 0.0
+
+
+def _vent_pa_rate_limit() -> None:
+    global _siste_kall_monotonic
+    with _RATE_LOCK:
+        na = time.monotonic()
+        vent = _siste_kall_monotonic + _MIN_INTERVALL_SEKUNDER - na
+        if vent > 0:
+            time.sleep(vent)
+        _siste_kall_monotonic = time.monotonic()
+
 
 def _hent(url: str, params: dict, *, cache_key: str, db_path: Path = DB) -> dict:
     db = _db(db_path)
@@ -90,6 +118,7 @@ def _hent(url: str, params: dict, *, cache_key: str, db_path: Path = DB) -> dict
     r = None
     for forsoek in range(MAKS_FORSOEK):
         siste_forsoek = forsoek == MAKS_FORSOEK - 1
+        _vent_pa_rate_limit()
         try:
             r = httpx.get(url, params=params, headers=_headers(), timeout=30)
         except (httpx.HTTPError, httpx.TimeoutException) as e:

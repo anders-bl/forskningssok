@@ -13,6 +13,35 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from adapters import semantic_scholar  # noqa: E402
 
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """_siste_kall_monotonic er modul-globalt (proaktiv 1 req/s-rate, se
+    adapters/semantic_scholar.py sin moduldocstring) — uten reset ville rekkefølgen
+    testene kjører i påvirke om rate-limiteren tror den nettopp har ringt. 0.0 er
+    trygt mot EKTE time.monotonic() (alltid langt større), så tester som ikke
+    patcher klokken (enkelt-kall, ingen retry) rammes aldri av dette."""
+    semantic_scholar._siste_kall_monotonic = 0.0
+    yield
+    semantic_scholar._siste_kall_monotonic = 0.0
+
+
+class _FakeKlokke:
+    """Lar sleep() FAKTISK flytte klokken retry-løkka leser (time.monotonic), uten å
+    vente i ekte tid. Uten denne ville rate-limiteren (som leser ekte monotonic-tid)
+    tro at null tid gikk mellom retry-forsøk — fordi den mockede sleep()-en over ikke
+    flytter klokken — og legge REELLE ekstra sleep-kall attpå backoffen i hvert forsøk,
+    noe som aldri skjer i produksjon (der 2s/4s/8s-backoffen suverent dekker 1s-kravet)."""
+
+    def __init__(self):
+        self.t = 1_000_000.0  # vilkårlig, langt unna 0.0-resetten over
+
+    def monotonic(self):
+        return self.t
+
+    def sleep(self, sekunder):
+        self.t += sekunder
+
 SOK_RESPONS = {
     "data": [
         {
@@ -97,8 +126,10 @@ def test_vedvarende_429_gir_til_slutt_en_tydelig_feil_ikke_stille_tomt(tmp_path)
     """time.sleep mockes bort — testen skal verifisere BACKOFF-LOGIKKEN (antall forsøk,
     ingen krasj), ikke faktisk sitte og vente i 14 sekunder hver kjøring."""
     db = tmp_path / "cache.db"
+    klokke = _FakeKlokke()
     with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(status=429)) as m, \
-         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+         patch("adapters.semantic_scholar.time.sleep", side_effect=klokke.sleep) as sleep_m, \
+         patch("adapters.semantic_scholar.time.monotonic", klokke.monotonic):
         with pytest.raises(RuntimeError, match="rate-limitet etter"):
             semantic_scholar.sok("noe", db_path=db)
     assert m.call_count == semantic_scholar.MAKS_FORSOEK
@@ -109,8 +140,10 @@ def test_vedvarende_429_gir_til_slutt_en_tydelig_feil_ikke_stille_tomt(tmp_path)
 
 def test_backoff_dobler_ventetiden_eksponentielt(tmp_path):
     db = tmp_path / "cache.db"
+    klokke = _FakeKlokke()
     with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(status=429)), \
-         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+         patch("adapters.semantic_scholar.time.sleep", side_effect=klokke.sleep) as sleep_m, \
+         patch("adapters.semantic_scholar.time.monotonic", klokke.monotonic):
         with pytest.raises(RuntimeError):
             semantic_scholar.sok("noe", db_path=db)
     ventetider = [c.args[0] for c in sleep_m.call_args_list]
@@ -122,9 +155,11 @@ def test_429_etterfulgt_av_suksess_gir_ekte_resultat_ikke_feil(tmp_path):
     their systems») testet ende-til-ende: en midlertidig 429 skal IKKE se ut som en
     permanent feil — retry-en skal faktisk lykkes når serveren har kapasitet igjen."""
     db = tmp_path / "cache.db"
+    klokke = _FakeKlokke()
     svar_rekkefolge = [_mock_get(status=429), _mock_get(status=429), _mock_get(json_data=SOK_RESPONS)]
     with patch("adapters.semantic_scholar.httpx.get", side_effect=svar_rekkefolge), \
-         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+         patch("adapters.semantic_scholar.time.sleep", side_effect=klokke.sleep) as sleep_m, \
+         patch("adapters.semantic_scholar.time.monotonic", klokke.monotonic):
         treff = semantic_scholar.sok("nephrocalcinosis salmon", db_path=db)
     assert len(treff) == 1
     assert treff[0]["tittel"] == "Nephrocalcinosis in farmed Atlantic salmon"
@@ -133,11 +168,46 @@ def test_429_etterfulgt_av_suksess_gir_ekte_resultat_ikke_feil(tmp_path):
 
 def test_forbindelsesfeil_faar_ogsaa_backoff_ikke_umiddelbar_retry(tmp_path):
     db = tmp_path / "cache.db"
+    klokke = _FakeKlokke()
     with patch("adapters.semantic_scholar.httpx.get", side_effect=httpx.ConnectError("nede")), \
-         patch("adapters.semantic_scholar.time.sleep") as sleep_m:
+         patch("adapters.semantic_scholar.time.sleep", side_effect=klokke.sleep) as sleep_m, \
+         patch("adapters.semantic_scholar.time.monotonic", klokke.monotonic):
         with pytest.raises(RuntimeError, match="utilgjengelig"):
             semantic_scholar.sok("noe", db_path=db)
     assert sleep_m.call_count == semantic_scholar.MAKS_FORSOEK - 1
+
+
+def test_to_kall_under_ett_sekund_fra_hverandre_venter_ut_differansen(tmp_path):
+    """Den faktiske, oppgitte grensen (Semantic Scholars registreringsside, lest av
+    Anders 2026-09-08): «1 request per second, cumulative across all endpoints».
+    To ETTERFØLGENDE, uavhengige kall (ulike cache-nøkler, så ingen TTL-cache-treff)
+    skal vente ut mellomrommet FØR det andre faktiske HTTP-kallet, proaktivt — ikke
+    reagere på en 429 som allerede har skjedd."""
+    db = tmp_path / "cache.db"
+    klokke = _FakeKlokke()
+    with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(json_data=SOK_RESPONS)) as m, \
+         patch("adapters.semantic_scholar.time.sleep", side_effect=klokke.sleep) as sleep_m, \
+         patch("adapters.semantic_scholar.time.monotonic", klokke.monotonic):
+        semantic_scholar.sok("første spørring", db_path=db)
+        klokke.t += 0.3  # bare 0,3s har "gått" — under 1,0s-grensen
+        semantic_scholar.sok("andre spørring", db_path=db)
+    assert m.call_count == 2
+    sleep_m.assert_called_once()
+    ventet = sleep_m.call_args.args[0]
+    assert 0.65 < ventet < 0.75  # ~0,7s — resten opp til 1,0s
+
+
+def test_kall_over_ett_sekund_fra_hverandre_venter_ikke(tmp_path):
+    db = tmp_path / "cache.db"
+    klokke = _FakeKlokke()
+    with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(json_data=SOK_RESPONS)) as m, \
+         patch("adapters.semantic_scholar.time.sleep", side_effect=klokke.sleep) as sleep_m, \
+         patch("adapters.semantic_scholar.time.monotonic", klokke.monotonic):
+        semantic_scholar.sok("første spørring", db_path=db)
+        klokke.t += 1.5  # alt over 1,0s har gått
+        semantic_scholar.sok("andre spørring", db_path=db)
+    assert m.call_count == 2
+    sleep_m.assert_not_called()
 
 
 def test_nokkel_sendes_som_header_naar_satt(tmp_path, monkeypatch):
