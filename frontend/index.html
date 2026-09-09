@@ -1076,7 +1076,15 @@ async function loadGap(id) {
       lastNedRapport(`/api/rapport/gap/${encodeURIComponent(id)}`, `Citation-gap - ${kildeTittel}`, btn.dataset.format, btn);
     }));
   } catch (err) {
-    el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)} — prøv igjen senere.</div>`;
+    // "mangler PMID/DOI" er en strukturell egenskap ved PAPIRET, ikke en forbigående
+    // feil — et nytt forsøk kan aldri lykkes for akkurat dette papiret (api.py:453/1020,
+    // citation_gap.py:57). "prøv igjen senere" var derfor misvisende for nøyaktig den
+    // vanligste feilen her (masteroppgaver/preprints uten identifikator).
+    const strukturell = /mangler (både )?PMID( og| eller) DOI/i.test(err.message);
+    const forklaring = strukturell
+      ? ' — ingen identifikator å slå opp referanser mot; et nytt forsøk endrer ikke det.'
+      : ' — prøv igjen senere.';
+    el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}${forklaring}</div>`;
   }
 }
 
