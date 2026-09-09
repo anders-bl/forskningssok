@@ -54,7 +54,7 @@ def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
     for ord in query_ord:
         rows = conn.execute("""
             SELECT id, tittel, forfattere, aar, kilde, abstract, doi
-            FROM papirer
+            FROM papers
             WHERE tittel LIKE ? OR abstract LIKE ?
             ORDER BY aar DESC
         """, (f"%{ord}%", f"%{ord}%")).fetchall()

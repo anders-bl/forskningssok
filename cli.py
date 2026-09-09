@@ -131,8 +131,40 @@ def main():
     ap.add_argument("--evaluer", metavar="SPØRRING", help="LOKAL: måler om rangeringen er god (Ollama-dommer, se evaluer.py)")
     ap.add_argument("--kilder", action="store_true", help="referanse-kildenes liveness (felle 38: skiller «0» fra «nede»)")
     ap.add_argument("--embed-renhet", action="store_true", dest="embed_renhet", help="LOKAL: er cache.db embeddet av ÉN modell? (re-embed + sammenlign)")
+    ap.add_argument("--oppdater", action="store_true", help="oppdater cache")
     ap.add_argument("--konformans", action="store_true", help="følger eget /health husstandarden? (konsepter/helsesjekk)")
     a = ap.parse_args()
+
+    # --oppdater må kjøres FØR query-sjekken
+    if a.oppdater:
+        print("Oppdaterer cache fra alle kilder...")
+        from bank import lagre
+        try:
+            from adapters.core import sok as core_sok
+            core_result = core_sok("laks lever ultralyd", limit=20)
+            lagre(core_result)
+            print(f"  CORE: {len(core_result)} papirer")
+        except Exception as e:
+            print(f"  CORE feilet: {e}")
+        
+        try:
+            from adapters.europe_pmc import sok as pmc_sok
+            pmc_result = pmc_sok("salmon liver ultrasound", page_size=20)
+            lagre(pmc_result)
+            print(f"  Europe PMC: {len(pmc_result)} papirer")
+        except Exception as e:
+            print(f"  Europe PMC feilet: {e}")
+        
+        try:
+            from adapters.semantic_scholar import sok as scholar_sok
+            scholar_result = scholar_sok("salmon hepat* ultrasound", limit=20)
+            lagre(scholar_result)
+            print(f"  Semantic Scholar: {len(scholar_result)} papirer")
+        except Exception as e:
+            print(f"  Semantic Scholar feilet: {e}")
+        
+        print("\nCache oppdatert! Nå kan du søke.")
+        return
 
     if a.konformans:
         import os
