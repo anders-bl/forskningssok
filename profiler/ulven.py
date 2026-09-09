@@ -63,30 +63,33 @@ SYNONYMER = {
 
 # Forhåndsdefinerte søk som gir Ulven en god start
 FORHAANDSSOK = [
+    # Europe PMC-optimalisert (unngår "salmon" = etternavn-felle)
     {
-        "navn": "Lever + ultralyd hos laks",
+        "navn": "Lever + ultralyd (atlantisk laks)",
+        "query": "atlantic salmon hepatic ultrasound",
+        "beskrivelse": "Unngår medisinske treff. Bruker 'hepatic' ikke 'liver'",
+    },
+    {
+        "navn": "Nefrokalsinose (nyre)",
+        "query": "Salmo salar kidney nephrocalcinosis",
+        "beskrivelse": "Vitenskapelig navn + nyre + nyrestein",
+    },
+    {
+        "navn": "Ikke-invasiv avbildning",
+        "query": "aquaculture fish health ultrasound imaging",
+        "beskrivelse": "Bredt søk på akvakultur + helse + avbildning",
+    },
+    # CORE-optimalisert (norske studier)
+    {
+        "navn": "Norske studier (CORE)",
         "query": "laks lever ultralyd",
-        "beskrivelse": "Grunnleggende søk for ikke-invasiv levervurdering",
+        "beskrivelse": "Norske masteroppgaver og PhD-er",
     },
+    # Semantic Scholar-optimalisert (når rate-limit reset)
     {
-        "navn": "Nefrokalsinose + ultralyd",
-        "query": "laks nyre nefrokalsinose ultralyd",
-        "beskrivelse": "Oppdager nyrestein tidlig med ultralyd",
-    },
-    {
-        "navn": "Fiskehelse + avbildning",
-        "query": "fiskehelse ultralyd avbildning ikke-invasiv",
-        "beskrivelse": "Oversikt over ikke-invasive metoder",
-    },
-    {
-        "navn": "Norske studier (gråtekst)",
-        "query": "laks lever ultralyd site:ntnu.no OR site:nmbu.no OR site:uit.no",
-        "beskrivelse": "Masteroppgaver og PhD-er fra norske institusjoner",
-    },
-    {
-        "navn": "Internasjonale studier",
-        "query": "salmon liver ultrasound aquaculture",
-        "beskrivelse": "Internasjonal forskning på laksehelse",
+        "navn": "Siteringsgrafer",
+        "query": "salmon hepat* cit:*",
+        "beskrivelse": "Bruker wildcard og siterings-filter (krever API-nøkkel)",
     },
 ]
 

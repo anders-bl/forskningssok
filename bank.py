@@ -318,9 +318,9 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
         # gitt oss den — utsett den ALDRI til bakgrunnsjobben (berik_dokumenttype er kun
         # for CORE-treff, som ikke har pubtyper i det hele tatt). Rører aldri en verdi
         # PaperDossier alt satte eksplisitt.
-        dokumenttype = p.dokumenttype
-        if not dokumenttype and p.pubtyper:
-            dokumenttype = dt.fra_nlm(p.pubtyper, p.tittel)
+        dokumenttype = (p.get("dokumenttype") if isinstance(p, dict) else p.dokumenttype)
+        if not dokumenttype and (p.get("pubtyper") if isinstance(p, dict) else p.pubtyper):
+            dokumenttype = dt.fra_nlm(p.pubtyper, (p.get("tittel") if isinstance(p, dict) else p.tittel))
         # OR IGNORE, ikke ren INSERT: SELECT-sjekken over og denne INSERT-en er IKKE én
         # atomisk operasjon — to overlappende søk på samme uncachede spørring (f.eks. en
         # bruker som reloader mens embeddingen fortsatt kjører server-side) kan begge se
@@ -333,11 +333,11 @@ def lagre(papirer: list[PaperDossier], *, embed_fn=None, db_path: Path = DB) -> 
                siteringstall,open_access,kilde_url,kilde_kode,volum,hefte,sider,issn,
                pubtyper,mesh,mesh_major,dokumenttype)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (p.id, rens_markup(p.tittel), p.forfattere, p.tidsskrift, p.aar, p.doi, p.pmid,
-             rens_markup(p.abstract),
-             p.siteringstall, int(p.open_access), p.kilde_url, p.kilde_kode,
+            (p.id, rens_markup(p.tittel), p.forfattere, p.tidsskrift, p.aar, p.doi, (p.get("pmid") if isinstance(p, dict) else p.pmid),
+             rens_markup((p.get("abstract") if isinstance(p, dict) else p.abstract)),
+             p.siteringstall, int(p.open_access), (p.get("kilde_url") if isinstance(p, dict) else p.kilde_url), p.kilde_kode,
              p.volum, p.hefte, p.sider, p.issn,
-             "|".join(p.pubtyper), "|".join(p.mesh), "|".join(p.mesh_major), dokumenttype))
+             "|".join(p.pubtyper), "|".join(p.mesh), "|".join((p.get("mesh_major") if isinstance(p, dict) else p.mesh_major)), dokumenttype))
         if cur.rowcount:
             lagret += 1
     db.commit()

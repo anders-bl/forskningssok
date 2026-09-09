@@ -163,7 +163,7 @@ def _paper_dict(p: dict) -> dict:
     ext = p.get("externalIds") or {}
     oa_pdf = p.get("openAccessPdf") or {}
     return {
-        "ss_id": p.get("paperId"),
+        "id": p.get("paperId"),
         "doi": ext.get("DOI"),
         "tittel": p.get("title") or "",
         "abstract": p.get("abstract") or "",
@@ -173,6 +173,9 @@ def _paper_dict(p: dict) -> dict:
         "open_access": bool(p.get("isOpenAccess")),
         "fri_pdf_url": oa_pdf.get("url"),
         "pubtyper": tuple(p.get("publicationTypes") or ()),
+        "dokumenttype": "",  # Semantic Scholar har ikke dette feltet
+        "mesh": (),          # Semantic Scholar har ikke MeSH
+        "mesh_major": (),    # Semantic Scholar har ikke MeSH major topics
     }
 
 

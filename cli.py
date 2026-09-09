@@ -163,13 +163,14 @@ def main():
         except Exception as e:
             print(f"  Semantic Scholar feilet: {e}")
         
-        try:
-            from adapters.google_scholar import sok as google_sok
-            google_result = google_sok("salmon liver ultrasound", limit=10)
-            lagre(google_result)
-            print(f"  Google Scholar: {len(google_result)} papirer")
-        except Exception as e:
-            print(f"  Google Scholar feilet: {e}")
+        # Google Scholar krever SERPAPI_KEY - kommentert ut til nøkkel er satt
+        # try:
+        #     from adapters.google_scholar import sok as google_sok
+        #     google_result = google_sok("salmon liver ultrasound", limit=10)
+        #     lagre(google_result)
+        #     print(f"  Google Scholar: {len(google_result)} papirer")
+        # except Exception as e:
+        #     print(f"  Google Scholar feilet: {e}")
         
         print("\nCache oppdatert! Nå kan du søke.")
         return

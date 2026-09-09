@@ -27,6 +27,7 @@ import time
 from pathlib import Path
 
 import httpx
+import urllib.parse
 
 from paths import DB
 from schemas import PaperDossier
@@ -76,6 +77,7 @@ def sok(query: str, limit: int = 10, *, tving_fersk: bool = False,
             db.close()
             return _parse(json.loads(rad[1]))
     try:
+        # httpx URL-encoder params selv - ikke pre-encode (da blir %20 til %2520)
         r = httpx.get(BASE, params={"q": query, "limit": limit},
                        headers=_headers(), timeout=30, follow_redirects=True)
         r.raise_for_status()
@@ -110,5 +112,9 @@ def _parse(data: dict) -> list[PaperDossier]:
             kilde_url=lenke or f"https://core.ac.uk/works/{core_id}",
             kilde="core",
             kilde_kode="CORE",
+            dokumenttype="",  # CORE har ikke dette feltet
+            pubtyper=(),      # CORE har ikke NLM pubtyper
+            mesh=(),          # CORE har ikke MeSH
+            mesh_major=(),    # CORE har ikke MeSH major
         ))
     return ut
