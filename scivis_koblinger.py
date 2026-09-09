@@ -38,7 +38,7 @@ import numpy as np
 # Importer forskningssøk sine adaptere
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
-from adapters import core_sok, europe_pmc_sok, openalex_sok
+from adapters import core_sok, europe_pmc_sok
 
 
 def hent_papirer(query: str, limit: int = 50) -> list[dict]:
@@ -47,7 +47,7 @@ def hent_papirer(query: str, limit: int = 50) -> list[dict]:
     
     # CORE (norske institusjonelle arkiv)
     try:
-        core_result = core_sok(query, limit=limit // 3)
+        core_result = core_sok(query)
         for p in core_result:
             alle_papirer.append({
                 "id": p.get("id", ""),
@@ -64,7 +64,7 @@ def hent_papirer(query: str, limit: int = 50) -> list[dict]:
     
     # Europe PMC (biomedisin)
     try:
-        pmc_result = europe_pmc_sok(query, limit=limit // 3)
+        pmc_result = europe_pmc_sok(query)
         for p in pmc_result:
             alle_papirer.append({
                 "id": p.get("id", ""),
@@ -81,7 +81,7 @@ def hent_papirer(query: str, limit: int = 50) -> list[dict]:
     
     # OpenAlex (generell akademisk)
     try:
-        alex_result = openalex_sok(query, limit=limit // 3)
+        alex_result = openalex_sok(query, limit=10)
         for p in alex_result:
             alle_papirer.append({
                 "id": p.get("id", ""),
