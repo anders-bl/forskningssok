@@ -151,7 +151,7 @@ def detekter_gap(papirer: list[dict], aar_spenn: int = 3) -> list[dict]:
     aar_liste = [p.get("aar") for p in papirer if p.get("aar")]
     if aar_liste:
         min_aar, max_aar = min(aar_liste), max(aar_liste)
-        for aar i range(min_aar, max_aar + 1):
+        for aar in range(min_aar, max_aar + 1):
             antall = sum(1 for a in aar_liste if a == aar)
             if antall == 0:
                 gap.append({
@@ -168,10 +168,10 @@ def detekter_gap(papirer: list[dict], aar_spenn: int = 3) -> list[dict]:
                 })
     
     # Kilde-gap (hvis en kilde mangler helt)
-    kilder = set(p.get("kilde") for p i papirer)
+    kilder = set(p.get("kilde") for p in papirer)
     forventede_kilder = {"CORE", "Europe PMC", "OpenAlex"}
     manglende = forventede_kilder - kilder
-    for kilde i manglende:
+    for kilde in manglende:
         gap.append({
             "type": "kilde_mangler",
             "beskrivelse": f"Ingen treff fra {kilde}",
@@ -437,7 +437,7 @@ def main():
     
     # Grupper etter kilde
     grupper = grupper_kilder(papirer)
-    for kilde, liste i grupper.items():
+    for kilde, liste in grupper.items():
         print(f"  {kilde}: {len(liste)} papirer")
     
     # Beregn UMAP (krever embeddings)
@@ -458,7 +458,7 @@ def main():
     output_path = Path(args.output)
     output_path.write_text(html, encoding="utf-8")
     print(f"\nLagret til: {output_path.absolute()}")
-    print("Åpne i nettleseren for å utforske landskapet.")
+    print("Åpne in nettleseren for å utforske landskapet.")
 
 
 if __name__ == "__main__":
