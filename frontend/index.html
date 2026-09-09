@@ -1086,12 +1086,17 @@ function renderKart() {
   if (!naboer.length) { el.innerHTML = '<div class="hint">Ingen naboer å tegne ennå.</div>'; return; }
   const cx=150, cy=150, maxR=120;
   const maxDist = Math.max(...naboer.map(n=>n.avstand), .001);
-  // viewBox utvidet -60/-30 margin 2026-09-07: node-posisjon spenner x/y ∈ [-10,310]
-  // (cx/cy=150 ± maxR 160), og et 22-tegns tittel-label sentrert PÅ noden stikker ~48px
-  // til hver side ved fontsize 8 — begge deler av det gamle "0 0 300 300"-vinduet, så
-  // labels nær venstre/høyre kant ble klippet av selve SVG-en (kjent, aldri fikset —
-  // se idébank #30 «Kart-fanens tekst-labels klipper av og til ved venstre kant»).
-  let svg = `<svg viewBox="-60 -30 420 360" style="width:100%">`;
+  // viewBox RETTET 2026-09-09 (idébank #30 «Kart-fanens tekst-labels klipper av og til
+  // ved venstre kant», kjent siden 09-03). Node-posisjon spenner x/y ∈ [-10,310]
+  // (cx/cy=150 ± maxR 160). 09-07-utvidelsen (-60/-30-margin) antok et 22-tegns label
+  // stikker ~48px til hver side ved fontsize 8 — MÅLT nå med ekte SF Pro-metrikk (PIL,
+  // ikke antatt): et verste-fall-label av kun brede store bokstaver («WWMWWM…», den
+  // slags forekommer i akronym-tunge titler) er 158px bredt = 79px halvbredde fra
+  // senter. 60-marginen ga bare 50px reell klaring (60 minus node-offset 10) — 29px for
+  // lite, verifisert visuelt (rsvg-convert av gammel vs. ny viewBox, se commit). 90px
+  // margin gir ~11px buffer over det matte verste fallet; bunn-marginen økt tilsvarende
+  // for avstand-labelen under noden (y+21 + tekst-høyde).
+  let svg = `<svg viewBox="-100 -30 500 380" style="width:100%">`;
   const pts = naboer.map((n,i) => {
     const ang = (i / naboer.length) * 2*Math.PI - Math.PI/2;
     const r = 40 + (n.avstand / maxDist) * maxR;
