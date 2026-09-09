@@ -51,7 +51,7 @@ def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
     query_ord = query.lower().split()
     papirer = []
     
-    for ord i query_ord:
+    for ord in query_ord:
         rows = conn.execute("""
             SELECT id, tittel, forfattere, aar, kilde, abstract, doi
             FROM papirer
@@ -67,7 +67,7 @@ def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
     # Fjern duplikater (basert på DOI eller tittel)
     sett = set()
     unike = []
-    for p i papirer:
+    for p in papirer:
         ident = p.get("doi") or p.get("tittel", "")
         if ident not in sett:
             sett.add(ident)
@@ -79,17 +79,17 @@ def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
 def grupper_etter_kilde(papirer: list[dict]) -> dict[str, list]:
     """Grupper papirer etter kilde."""
     grupper = {}
-    for p i papirer:
+    for p in papirer:
         kilde = p.get("kilde", "Ukjent")
         # Normaliser kildenavn
-        if "CORE" i kilde:
+        if "CORE" in kilde:
             kilde = "CORE"
-        elif "PMC" i kilde or "PubMed" i kilde:
+        elif "PMC" in kilde or "PubMed" in kilde:
             kilde = "PubMed/Europe PMC"
-        elif "OpenAlex" i kilde:
+        elif "OpenAlex" in kilde:
             kilde = "OpenAlex"
         
-        if kilde not i grupper:
+        if kilde not in grupper:
             grupper[kilde] = []
         grupper[kilde].append(p)
     
@@ -99,10 +99,10 @@ def grupper_etter_kilde(papirer: list[dict]) -> dict[str, list]:
 def grupper_etter_aar(papirer: list[dict]) -> dict[int, list]:
     """Grupper papirer etter år."""
     grupper = {}
-    for p i papirer:
+    for p in papirer:
         aar = p.get("aar")
         if aar:
-            if aar not i grupper:
+            if aar not in grupper:
                 grupper[aar] = []
             grupper[aar].append(p)
     return dict(sorted(grupper.items(), reverse=True))
@@ -118,12 +118,12 @@ def detekter_hovedfunn(papirer: list[dict]) -> list[dict]:
     """
     funn = []
     
-    for p i papirer:
+    for p in papirer:
         abstract = (p.get("abstract") or "").lower()
         tittel = p.get("tittel", "")
         
         # Mønster 1: Signifikante resultater
-        if "signifikant" i abstract or "p<" i abstract or "p <" i abstract:
+        if "signifikant" in abstract or "p<" in abstract or "p <" in abstract:
             funn.append({
                 "type": "signifikant",
                 "papir": p,
@@ -132,7 +132,7 @@ def detekter_hovedfunn(papirer: list[dict]) -> list[dict]:
             })
         
         # Mønster 2: Deteksjon/diagnose
-        if any(ord i abstract for ord i ["detektere", "oppdage", "diagnostisere", "identifisere"]):
+        if any(ord in abstract for ord in ["detektere", "oppdage", "diagnostisere", "identifisere"]):
             funn.append({
                 "type": "deteksjon",
                 "papir": p,
@@ -141,7 +141,7 @@ def detekter_hovedfunn(papirer: list[dict]) -> list[dict]:
             })
         
         # Mønster 3: Korrelasjon/årsak
-        if any(ord i abstract for ord i ["korrelerer", "assosiert", "påvirker", "årsak"]):
+        if any(ord in abstract for ord in ["korrelerer", "assosiert", "påvirker", "årsak"]):
             funn.append({
                 "type": "korrelasjon",
                 "papir": p,
@@ -169,17 +169,17 @@ def detekter_gap(papirer: list[dict], query: str) -> list[str]:
         "laks": ["laks", "salmon", "salmo"],
     }
     
-    alle_abstract = " ".join(p.get("abstract", "").lower() for p i papirer)
+    alle_abstract = " ".join(p.get("abstract", "").lower() for p in papirer)
     
-    for kategori, begreper i forventede_begrep.items():
-        if not any(b i alle_abstract for b i begreper):
+    for kategori, begreper in forventede_begrep.items():
+        if not any(b in alle_abstract for b in begreper):
             gap.append(f"Ingen studier nevner {kategori} eksplisitt")
     
     # Tids-gap
     aar_grupper = grupper_etter_aar(papirer)
     if aar_grupper:
         aar_liste = sorted(aar_grupper.keys())
-        for i i range(len(aar_liste) - 1):
+        for i in range(len(aar_liste) - 1):
             if aar_liste[i+1] - aar_liste[i] > 2:
                 gap.append(f"Få eller ingen studier mellom {aar_liste[i]} og {aar_liste[i+1]}")
     
@@ -215,18 +215,18 @@ For Ulven: Prøv ett av de forhåndsdefinerte søkene i profiler.ulven.FORHAANDS
     
     # 1. Kilde-oversikt
     svar.append("### 📊 Kilde-fordeling")
-    for kilde, liste i sorted(etter_kilde.items(), key=lambda x: -len(x[1])):
+    for kilde, liste in sorted(etter_kilde.items(), key=lambda x: -len(x[1])):
         svar.append(f"• {kilde}: {len(liste)} studier")
     
     # 2. Tidsfordeling
     svar.append("\n### 📅 Tidsfordeling")
-    for aar, liste i list(etter_aar.items())[:5]:  # Topp 5 år
+    for aar, liste in list(etter_aar.items())[:5]:  # Topp 5 år
         svar.append(f"• {aar}: {len(liste)} studier")
     
     # 3. Hovedfunn
     if funn:
         svar.append("\n### 🔍 Hovedfunn (med kilder)")
-        for f i funn[:5]:  # Topp 5 funn
+        for f in funn[:5]:  # Topp 5 funn
             p = f["papir"]
             svar.append(f"• {f['utsagn']}")
             svar.append(f"  → {p.get('forfattere', ['Ukjent'])[0]} et al. ({p.get('aar', 'u.å.')})")
@@ -237,12 +237,12 @@ For Ulven: Prøv ett av de forhåndsdefinerte søkene i profiler.ulven.FORHAANDS
     # 4. Gap
     if gap:
         svar.append("\n### ⚠️  Detekterte gap")
-        for g i gap:
+        for g in gap:
             svar.append(f"• {g}")
     
     # 5. Alle kilder (liste)
     svar.append("\n### 📚 Alle studier ({})".format(len(papirer)))
-    for i, p i enumerate(papirer[:10], 1):  # Vis topp 10
+    for i, p in enumerate(papirer[:10], 1):  # Vis topp 10
         svar.append(f"{i}. **{p.get('tittel', 'Ukjent tittel')}**")
         svar.append(f"   {p.get('forfattere', ['Ukjent'])[0]} et al. ({p.get('aar', 'u.å.')})")
         svar.append(f"   Kilde: {p.get('kilde', 'Ukjent')}")
