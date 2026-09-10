@@ -50,78 +50,73 @@ Anbefalt: **Én gang i uka** for å få med nyeste forskning.
 
 ## Funksjoner
 
-### 🔍 AI-assistent (uten konfabulering)
+### Forskningsrapport (med hovedfunn, uten konfabulering)
 
-Spør på naturlig språk, få svar **med harde kilder**:
+Søk i appen, trykk **"Forskningsrapport"**. Du får ett dokument som fletter:
+
+- **Kilde-fordeling** — hvor mange treff fra CORE, PubMed/Europe PMC, OpenAlex
+- **Hovedfunn** — mønstergjenkjente påstander fra abstractene ("signifikant funn",
+  "kan detektere", "assosiert med"), hver med lenke til papiret den kom fra
+- **Detekterte gap** — tidsrom eller temaer med få/ingen studier
+- **Citation-gap** på topptreffet, omfang per akse, formaterte referanser (Vancouver/APA)
+
+**Prinsipp:** Hver påstand har en kilde-knapp. Ingen AI-generering av fakta — kun
+strukturering av det som allerede finnes i cachen.
+
+Foretrekker du terminalen fremfor nettleseren, er samme motor tilgjengelig som CLI:
 
 ```bash
 python3 ai_assistent.py --query "laks lever ultralyd" --svar
 ```
 
-**Eksempelsvar:**
-```
-**Forskningsassistent: 14 studier funnet**
-
-### 📊 Kilde-fordeling
-• CORE: 3 studier (norske masteroppgaver)
-• PubMed/Europe PMC: 8 studier
-• OpenAlex: 3 studier
-
-### 🔍 Hovedfunn (med kilder)
-• Ultralyd kan detektere nefrokalsinose tidlig
-  → Hansen et al. (2023, NTNU)
-  DOI: 10.xxxx/xxxxx
-
-• Leverekko endres ved stress
-  → Johansen et al. (2022, NMBU)
-  DOI: 10.xxxx/xxxxx
-
-### ⚠️  Detekterte gap
-• Ingen studier på ultralyd + hepatitt hos laks
-• Få studier mellom 2020-2022
-```
-
-**Prinsipp:** Hver påstand har en kilde. Ingen AI-generering av fakta.
-
 ---
 
-### 🗺️ Visuelle koblinger
+### Kart-fanen
 
-Se forskningslandskapet som et interaktivt kart:
-
-```bash
-python3 scivis_koblinger.py --query "laks lever ultralyd" --output landskap.html
-```
+Åpne et papir i leseren og velg **"Kart"**-fanen for å se relasjonskartet: de
+semantisk nærmeste studiene som sirkler rundt papiret du leser.
 
 **Hva du ser:**
-- **Punkter:** Hver sirkel er en studie
-- **Farger:** Kilde (blå=CORE/norsk, oransje=PubMed, grønn=OpenAlex)
-- **Nærhet:** Studier som handler om det samme ligger nær hverandre
-- **Størrelse:** Hvor mye sitert (større = mer innflytelsesrik)
-
-**Gap-deteksjon:**
-- Røde områder: Tidsrom med få studier
-- Manglende kilder: Hvis f.eks. ingen norske studier finnes
-- Tema-gap: Emner som nesten ikke er forsket på
-
-Åpne `landskap.html` i nettleseren og utforsk!
+- **Punkter:** hver sirkel er en studie
+- **Farger:** kilde (CORE, Europe PMC, OpenAlex — se fargeforklaringen i appens
+  Om-panel)
+- **Nærhet:** studier som handler om det samme ligger nær hverandre
+- **Størrelse:** hvor mye sitert (større = mer innflytelsesrik)
 
 ---
 
-### 📊 Evidensnivå
+### Evidensnivå
 
-Hver studie får et badge som viser studiedesign:
+Hver studie får et merke som viser studiedesign, fra Europe PMCs egen menneske-
+kuraterte indeksering der den finnes, ellers mønstergjenkjent fra tittel/abstract:
 
-| Badge | Betydning | Eksempel |
-|-------|-----------|----------|
-| 🟦 **Systematisk oversikt** | Oppsummerer mange studier | Meta-analyse av 20 studier |
-| 🟩 **Randomisert kontrollert** | Gullstandard for eksperimenter | 45 laks randomisert til 2 grupper |
-| 🟨 **Observasjonsstudie** | Naturlige variasjoner | Måler leverekko i et oppdrettsanlegg |
-| 🟧 **Case-rapport** | Enkelttilfeller | Beskrivelse av én syk laks |
+| Nivå | Betydning | Kilde |
+|------|-----------|-------|
+| **Systematisk oversikt/meta-analyse** | Oppsummerer mange studier | NLM-indeksert eller mønstergjenkjent |
+| **Randomisert kontrollert studie** | Gullstandard for eksperimenter | NLM-indeksert eller mønstergjenkjent |
+| **Kohort-/observasjonsstudie** | Naturlige variasjoner, prevalensstudier | NLM-indeksert eller mønstergjenkjent |
+| **Case-rapport/case-serie** | Enkelttilfeller | Mønstergjenkjent |
 
-**Kilde til badge:**
-- **"nlm"**: Indeksert av PubMed (menneske-kuratert)
-- **"monster"**: Ordmønster i tittel/abstract (automatisk)
+- **NLM-indeksert**: Europe PMC/PubMed har selv klassifisert publikasjonstypen
+- **Mønstergjenkjent**: forskningssøk har gjettet ut fra ord i tittel/abstract —
+  mindre sikkert, merket som sådan
+
+---
+
+### Eksport av litteraturlister
+
+Under et søkeresultat: **"Kildesamling"**-knappene eksporterer hele treffsettet i
+fire formater:
+
+| Format | Til hva |
+|--------|---------|
+| **BibTeX** | LaTeX-arbeidsflyt |
+| **RIS** | Importeres direkte i Zotero eller EndNote |
+| **CSL-JSON** | Rendringsformatet bak 10 000+ ferdige tidsskriftstiler (Zotero, Pandoc, citeproc-js) |
+| **PDF** | Én delbar rapport — kilder gruppert på nordisk fagmiljø/øvrige, med abstract-utdrag, evidensnivå og en formatert referanseliste, satt med ekte typografi (Typst) |
+
+Samme knapperad ligger på selve Forskningsrapporten (Markdown/PDF) for det
+sammenstilte dokumentet, ikke bare rålisten av kilder.
 
 ---
 
@@ -154,16 +149,14 @@ python3 cli.py --oppdater
 
 ### Ettermiddag: Utforskning
 ```bash
-# Start med et bredt søk
+# Start med et bredt søk fra terminalen
 python3 ai_assistent.py --query "ikke-invasiv fiskehelse" --svar
-
-# Lag et landskap for å se sammenhenger
-python3 scivis_koblinger.py --query "laks lever ultralyd"
 ```
+Eller søk direkte i appen — samme hovedfunn og kilde-fordeling der, i Forskningsrapporten.
 
 ### Kveld: Dypdykk
-1. Åpne `landskap.html` i nettleseren
-2. Klikk på interessante punkter
+1. Åpne et interessant papir i leseren
+2. Se "Kart"-fanen for semantisk nærmeste studier
 3. Les abstractene i leseren
 4. Siter viktige funn (de lagres i sitatbanken)
 5. Se "Varmt"-fanen for å finne flere lignende studier
@@ -172,20 +165,26 @@ python3 scivis_koblinger.py --query "laks lever ultralyd"
 
 ## Neste steg (under utvikling)
 
-### 1. Eksport av litteraturlister
-- BibTeX for Zotero/Mendeley
-- PDF-samling med alle abstractene
-- Rapport-generering (Typst)
+Eksport av litteraturlister (BibTeX/RIS/CSL-JSON/PDF) sto lenge her som "under
+utvikling" — den er ferdig, se **Eksport av litteraturlister** i Funksjoner over.
+Det som faktisk gjenstår:
 
-### 2. Samarbeid med kolleger
+### 1. Samarbeid med kolleger
 - Del sitatbank med Lumic-teamet
 - Kommenter studier sammen
 - Felles "varme" kart
 
-### 3. Automatiske varsler
+Størst gjenstående jobb: appen har ingen bruker-/kontomodell i dag (én delt
+database, ingen innlogging) — ekte per-person-funksjoner krever det bygget først,
+ikke bare en ny knapp.
+
+### 2. Automatiske varsler
 - "3 nye studier på laks + lever denne uka"
-- "Noen siterte Hansen et al. (2023)"
-- "Nefrokalsinose er trending"
+- "Noen siterte [et sitert papir]"
+- "[Et tema] er trending"
+
+Trenger en leveringskanal (e-post, eller en side Ulven sjekker) og en planlagt jobb —
+ikke bygget ennå.
 
 ---
 
@@ -194,7 +193,7 @@ python3 scivis_koblinger.py --query "laks lever ultralyd"
 **For Ulven spesifikt:**
 - Synonymer kan utvides (si ifra hvilke ord du bruker)
 - Nye kilder kan legges til (har du tilgang til betalingsvegger?)
-- Landskapet kan tilpasses (vil du se andre dimensjoner?)
+- Kart-fanen kan tilpasses (vil du se andre dimensjoner enn semantisk nærhet?)
 
 **Kontakt:** kontakt@lauvasdata.no
 
@@ -205,6 +204,7 @@ python3 scivis_koblinger.py --query "laks lever ultralyd"
 Se hoved-README.md for generell dokumentasjon om forskningssøk.
 
 **Profiler:** `profiler/ulven.py`  
-**AI-assistent:** `ai_assistent.py`  
-**Visuell koblinger:** `scivis_koblinger.py`  
-**Evidensnivå:** `adapters/evidensniva.py`
+**AI-assistent / hovedfunn:** `ai_assistent.py`, `api.py:api_rapport_konvergens`  
+**Kart-fanen:** `frontend/index.html:renderKart`, `bank.py:lignende`  
+**Evidensnivå:** `adapters/evidensniva.py`  
+**Eksport:** `rapport.py` (`til_bibtex`/`til_ris`/`til_csl_json`/`til_pdf_bytes`), `api.py:api_rapport_kildesamling`

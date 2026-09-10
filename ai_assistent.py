@@ -2,25 +2,11 @@
 """ai_assistent.py — AI-assistent som svarer MED harde kilder, uten konfabulering.
 
 Prinsipp: Hver påstand har en kilde-knapp → åpner papiret i leseren.
-Ingen AI-generering av fakta — kun strukturering av det som allerede finnes i cachen.
-
-For Ulven:
-  Bruker: "Hva sier forskningen om ultralyd av lakselever?"
-
-  Assistent:
-    "Jeg fant 14 relevante studier:
-
-    - 3 norske masteroppgaver (NTNU 2023, NMBU 2022, UiT 2019)
-    - 8 internasjonale artikler (PubMed: 5, Semantic Scholar: 3)
-    - 2 rapporter (Havforskningsinstituttet)
-
-    Hovedfunn:
-    • Ultralyd kan detektere nefrokalsinose tidlig (NTNU 2023, n=45) [Kilde]
-    • Leverekko endres ved stress (NMBU 2022, p<0.05) [Kilde]
-
-    OBS: Gap: Ingen studier på ultralyd + hepatitt hos laks
-
-    [Vis alle 14 kilder med DOI/PMID]"
+Ingen AI-generering av fakta — kun strukturering (kilde-fordeling, mønstergjenkjente
+hovedfunn via detekter_hovedfunn(), gap-deteksjon) av det som allerede finnes i cachen.
+Samme motor som Forskningsrapport-fanens «Hovedfunn»-seksjon i selve web-appen
+(api.py:api_rapport_konvergens) — denne CLI-en er en frittstående, terminalvennlig
+inngang til det samme, ikke et eget system.
 
 Bruk:
   python3 ai_assistent.py --query "laks lever ultralyd" --svar
@@ -37,10 +23,11 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent))
 import domeneprofil
 from adapters import evidensniva
+from paths import DB
 from profiler.ulven import FORHAANDSSOK, PRIORITERTE_KILDER
 
 
-def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
+def hent_fra_cache(query: str, db_path: Path = DB) -> list[dict]:
     """Hent papirer fra cachen som matcher queryen."""
     if not db_path.exists():
         return []
@@ -54,7 +41,7 @@ def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
     
     for ord in query_ord:
         rows = conn.execute("""
-            SELECT id, tittel, forfattere, aar, kilde, abstract, doi
+            SELECT id, tittel, forfattere, aar, kilde_kode AS kilde, abstract, doi
             FROM papers
             WHERE tittel LIKE ? OR abstract LIKE ?
             ORDER BY aar DESC
@@ -78,22 +65,27 @@ def hent_fra_cache(query: str, db_path: Path = Path("bank.db")) -> list[dict]:
 
 
 def grupper_etter_kilde(papirer: list[dict]) -> dict[str, list]:
-    """Grupper papirer etter kilde."""
+    """Grupper papirer etter kilde. `kilde` her er `papers.kilde_kode` — Europe PMC sin
+    EGEN kildekode (MED/AGR/PPR/…, se schemas.py:PaperDossier.kilde_kode), ikke et
+    forhåndsformatert visningsnavn. Samme «alt som ikke er CORE/OpenAlex er Europe
+    PMC»-gruppering som frontend/index.html sin kildeGruppe() — matcher DEN, ikke en
+    egen liste over Europe PMC-kildekoder som ville driftet fra virkeligheten hver
+    gang Europe PMC legger til en ny (fant MED/AGR/PPR i cachen 2026-09-10, ikke en
+    uttømmende liste)."""
     grupper = {}
     for p in papirer:
-        kilde = p.get("kilde", "Ukjent")
-        # Normaliser kildenavn
-        if "CORE" in kilde:
+        kilde = (p.get("kilde") or "").upper()
+        if kilde == "CORE":
             kilde = "CORE"
-        elif "PMC" in kilde or "PubMed" in kilde:
-            kilde = "PubMed/Europe PMC"
-        elif "OpenAlex" in kilde:
+        elif kilde == "OPENALEX":
             kilde = "OpenAlex"
-        
+        else:
+            kilde = "PubMed/Europe PMC"
+
         if kilde not in grupper:
             grupper[kilde] = []
         grupper[kilde].append(p)
-    
+
     return grupper
 
 
@@ -277,11 +269,11 @@ def main():
                        help=f"Spørsmål eller søkeord, f.eks. '{domeneprofil.PROFIL['sok_eksempel']}'")
     parser.add_argument("--svar", action="store_true",
                        help="Generer svar (ellers vis info)")
-    parser.add_argument("--db", type=str, default="bank.db",
+    parser.add_argument("--db", type=str, default=str(DB),
                        help="Database-sti")
-    
+
     args = parser.parse_args()
-    
+
     if args.svar:
         print(f"Søker etter: '{args.query}'...")
         papirer = hent_fra_cache(args.query, Path(args.db))
@@ -308,9 +300,10 @@ Profil: {domeneprofil.NAVN}
   • Detekterer gap i forskningen
 
 Neste steg:
-  1. Oppdater cachen: python3 bank.py --oppdater
+  1. Oppdater cachen: python3 cli.py --oppdater
   2. Kjør assistenten: python3 ai_assistent.py --svar
-  3. Utforsk visuelle koblinger: python3 scivis_koblinger.py
+  3. Se hovedfunn og visuelle koblinger i selve appen: Forskningsrapport-fanen og
+     Kart-fanen for et gitt søk (nettleser, ikke kommandolinje)
 """)
 
 
