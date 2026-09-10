@@ -119,6 +119,21 @@ button{ font:inherit; }
 .om-prikk{ width:.55rem; height:.55rem; border-radius:99px; flex:none; background:var(--muted); }
 .om-prikk.opp{ background:var(--accent); }
 .om-prikk.nede{ background:var(--warn); }
+.om-feedback{ display:flex; flex-direction:column; gap:.45rem; margin-top:.4rem; }
+.om-feedback-rad{ display:flex; align-items:center; gap:.6rem; }
+.om-feedback select{ border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+  border-radius:6px; padding:.25rem .4rem; font:inherit; font-size:.75rem; }
+.om-feedback textarea{ width:100%; box-sizing:border-box; border:1px solid var(--border);
+  background:var(--surface-2); color:var(--text); font:inherit; font-size:.8125rem;
+  resize:vertical; padding:.5rem; border-radius:8px; }
+.om-feedback textarea:focus{ border-color:var(--accent); outline:none; }
+.om-feedback-send{ border:1px solid var(--accent); background:none; color:var(--accent);
+  border-radius:99px; padding:.3rem .8rem; font-size:.75rem; font-weight:600; cursor:pointer; }
+.om-feedback-send:hover:not(:disabled){ background:var(--accent); color:var(--surface); }
+.om-feedback-send:disabled{ opacity:.5; cursor:default; }
+#feedback-status{ font-size:.75rem; margin:0; min-height:1em; }
+#feedback-status.feil{ color:var(--warn); }
+#feedback-status.ok{ color:var(--accent); }
 
 /* ---------- Arbeidsrommet: tre paneler + skuff, ETT skall (ingen modusbryter) ---------- */
 .arbeidsrom{ flex:1; min-height:0; display:flex; flex-direction:column; }
@@ -467,6 +482,25 @@ svg text{ font-family:system-ui,sans-serif; }
       denne maskinen — ingenting sendes videre til tredjepart utover selve søketeksten
       til kildene over. Deling skjer ved at DU eksporterer en fil og sender den; verktøyet
       laster ingenting opp av seg selv.</p>
+
+    <h3>Si fra</h3>
+    <p>Fant du en feil, eller savner du noe? Det havner rett i innboksen vår —
+      ingen e-post å skrive.</p>
+    <div class="om-feedback">
+      <div class="om-feedback-rad">
+        <select id="feedback-kategori">
+          <option value="forslag">Forslag</option>
+          <option value="bug">Feil</option>
+          <option value="ros">Skryt</option>
+          <option value="annet" selected>Annet</option>
+        </select>
+      </div>
+      <textarea id="feedback-tekst" rows="3" placeholder="Skriv her …"></textarea>
+      <div class="om-feedback-rad">
+        <button class="om-feedback-send" id="feedback-send" type="button">Send</button>
+        <p id="feedback-status" role="status" aria-live="polite"></p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1717,6 +1751,43 @@ function lukkOmPanel() { $('#om-overlay').hidden = true; }
 $('#om-knapp').addEventListener('click', apneOmPanel);
 $('#om-lukk').addEventListener('click', lukkOmPanel);
 $('#om-overlay').addEventListener('click', e => { if (e.target.id === 'om-overlay') lukkOmPanel(); });
+
+// Videresendes server-side til lauvasdata sin ALLEREDE eksisterende cockpit-bjelle
+// (se api.py:api_tilbakemelding) — ikke en ny kanal Anders må huske å sjekke.
+// Søketeksten sendes automatisk med som kontekst (ikke et eget felt Ulven må fylle ut).
+async function sendTilbakemelding() {
+  const meldingEl = $('#feedback-tekst');
+  const statusEl = $('#feedback-status');
+  const melding = meldingEl.value.trim();
+  if (!melding) {
+    statusEl.textContent = 'Skriv noe først.';
+    statusEl.className = 'feil';
+    return;
+  }
+  const sendBtn = $('#feedback-send');
+  sendBtn.disabled = true;
+  statusEl.textContent = 'Sender…';
+  statusEl.className = '';
+  const sok = $('#search-input').value.trim();
+  try {
+    await api('/api/tilbakemelding', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        melding, kategori: $('#feedback-kategori').value,
+        kontekst: sok ? `søk: «${sok}»` : '',
+      }),
+    });
+    meldingEl.value = '';
+    statusEl.textContent = 'Sendt — takk!';
+    statusEl.className = 'ok';
+  } catch (e) {
+    statusEl.textContent = 'Kunne ikke sende akkurat nå — prøv igjen om litt.';
+    statusEl.className = 'feil';
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+$('#feedback-send').addEventListener('click', sendTilbakemelding);
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('#om-overlay').hidden) { lukkOmPanel(); return; }

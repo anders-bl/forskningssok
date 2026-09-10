@@ -47,6 +47,13 @@ _KILDE_TERSKEL = 3
 
 _GLITCHTIP_DSN = os.environ.get("GLITCHTIP_DSN", "")
 
+# Samme konvensjon som stromkontrol/app.py sin PORTAL_API_URL — det offentlige
+# API-domenet, ALDRI docker-nettverkets interne containernavn (se README.md §To
+# tilgangsmiddlewares for den kjente fellen det skapte for forwardauth-middlewaren;
+# et rett httpx.post herfra er ett enkelt hopp og rammes ikke av den, men adressen
+# skal likevel være den offentlige — samme app kan flytte docker-nettverk).
+_PORTAL_API_URL = os.environ.get("PORTAL_API_URL", "https://api.lauvasdata.no").rstrip("/")
+
 
 def _skal_rapporteres(hendelse, hint):
     """Scoping-porten. Uten den fanger feilsporing enten for LITE eller for MYE.
@@ -1057,6 +1064,35 @@ def api_omfang(tekst: str):
     """Akse-dekning for Omfang-fanen — se scoping.py for hvorfor dette er en bevisst
     enkel nøkkelord-heuristikk, ikke en semantisk klassifikator."""
     return {"akser": scoping.akse_dekning(tekst)}
+
+
+@app.post("/api/tilbakemelding")
+def api_tilbakemelding(body: dict):
+    """Videresender til lauvasdata sin ALLEREDE eksisterende tilbakemeldings-mekanikk
+    (DemoFeedback/api/demo/feedback, se lauvasdata/backend/app/routers/demo.py) i
+    stedet for å bygge en ny lagringstabell forskningssok verken har eller trenger.
+    Samme sted Anders alt sjekker (cockpit-bjella via notify()), ikke en ny kanal han
+    må huske å se på — demo_slug="forskningssok" identifiserer kilden på tvers av
+    husets apper. Endepunktet er offentlig på lauvasdata-siden (ingen auth-header
+    trengs, submit_feedback() der har ingen Depends())."""
+    melding = (body.get("melding") or "").strip()
+    if not melding:
+        raise HTTPException(400, "melding er påkrevd")
+    kategori = body.get("kategori") or "annet"
+    if kategori not in ("bug", "forslag", "ros", "annet"):
+        kategori = "annet"
+    payload = {"demo_slug": "forskningssok", "message": melding, "kategori": kategori}
+    kontekst = (body.get("kontekst") or "").strip()
+    if kontekst:
+        payload["context"] = kontekst
+    try:
+        r = httpx.post(f"{_PORTAL_API_URL}/api/demo/feedback", json=payload, timeout=8.0)
+        r.raise_for_status()
+    except httpx.HTTPError as e:
+        # Ærlig feil til Ulven, ikke en stille "sendt!" som aldri kom fram — samme
+        # disiplin som identify_text() sin 503-håndtering ellers i huset.
+        raise HTTPException(502, f"kunne ikke sende tilbakemelding akkurat nå: {e}") from e
+    return {"ok": True}
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
