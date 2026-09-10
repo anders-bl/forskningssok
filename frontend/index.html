@@ -1149,9 +1149,10 @@ async function lastHistorikk() {
       const nar = new Date(s.tid * 1000).toLocaleString('no-NO', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
       const kilde = r.cache_alder_s == null ? 'ekte kall' : `cache ${Math.round(r.cache_alder_s/60)} min`;
       const coreNede = r.kilder && r.kilder.core === false ? ', CORE nede' : '';
+      const alexNede = r.kilder && r.kilder.openalex === false ? ', OpenAlex nede' : '';
       return `<div style="padding:.3rem 0;border-bottom:1px solid var(--border)">
         <b>«${escapeHtml(s.query)}»</b> — ${s.treff} treff · ${nar}<br>
-        <span style="color:var(--muted)">EPMC ${tpk.europe_pmc ?? '?'} + CORE ${tpk.core ?? 0}${coreNede}
+        <span style="color:var(--muted)">EPMC ${tpk.europe_pmc ?? '?'} + CORE ${tpk.core ?? 0}${coreNede} + OpenAlex ${tpk.openalex ?? 0}${alexNede}
         · ${r.dubletter_fjernet ?? 0} dublett(er) fjernet · ${kilde} · profil «${escapeHtml(r.profil || '?')}»</span>
       </div>`;
     }).join('') + '</div>';
@@ -1174,7 +1175,9 @@ function visRevisjon(r) {
   el.innerHTML = `
     <div><b>Kilder:</b> Europe PMC ${tpk.europe_pmc ?? '?'} treff (${fersk}) ·
       CORE ${tpk.core ?? 0} treff${r.kilder && r.kilder.core === false
-        ? ' <span class="nede">— UTILGJENGELIG, lista er kun Europe PMC</span>' : ''}</div>
+        ? ' <span class="nede">— UTILGJENGELIG</span>' : ''} ·
+      OpenAlex ${tpk.openalex ?? 0} treff${r.kilder && r.kilder.openalex === false
+        ? ' <span class="nede">— UTILGJENGELIG</span>' : ''}</div>
     <div><b>Sammenslåing:</b> ${r.dubletter_fjernet} dublett(er) fjernet → ${r.etter_dedup} unike</div>
     <div><b>Rangering:</b> profil «${escapeHtml(r.profil || '?')}» ·
       ${r.baand ? `${r.baand.domene_naer} domene-nære og ${r.baand.arts_naer} artsnære båndet foran` : '—'}</div>

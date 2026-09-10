@@ -15,6 +15,7 @@ import sys
 import time
 
 from adapters import core as core_adapter
+from adapters import openalex as openalex_adapter
 from adapters.europe_pmc import cache_alder as europe_pmc_cache_alder, sok
 from bank import hent, lagre, lignende
 from citation_gap import gap_kandidater
@@ -35,10 +36,13 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     alltid, rangert av ranking.py.
 
     Europe PMC er PÅKREVD kilde — en feil der forplantes uendret (uendret oppførsel).
-    CORE er en TILLEGGSKILDE (institusjonsarkiv/gråtekst Europe PMC ikke indekserer,
-    se adapters/core.py) — en CORE-feil skal ikke ta ned et ellers fungerende søk, men
-    skal heller ikke skjules: returnerte `kilder`-dict rapporterer om den lyktes, samme
-    transparens-prinsipp som citation_gap.py sin `referanse_kilde`.
+    CORE og OpenAlex er TILLEGGSKILDER (institusjonsarkiv/gråtekst Europe PMC ikke
+    indekserer, se adapters/core.py; bred akademisk dekning uten nøkkel/kostnad — det
+    dekningshullet Google Scholar/SerpAPI opprinnelig var tenkt til å fylle, se
+    adapters/openalex.py sin moduldocstring for hvorfor) — en feil i en av dem skal
+    ikke ta ned et ellers fungerende søk, men skal heller ikke skjules: returnerte
+    `kilder`-dict rapporterer om hver av dem lyktes, samme transparens-prinsipp som
+    citation_gap.py sin `referanse_kilde`.
 
     Tredje returverdi er REVISJONEN, ikke lenger bare `kilder` (kontraktendring
     2026-09-05). Den gamle dicten ligger uendret under nøkkelen `kilder`; resten er nytt.
@@ -57,13 +61,18 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     start = time.perf_counter()
 
     epmc = sok(query, page_size=page_size)
-    kilder = {"europe_pmc": True, "core": True}
+    kilder = {"europe_pmc": True, "core": True, "openalex": True}
     kjerne = []
     try:
         kjerne = core_adapter.sok(query, limit=page_size)
     except RuntimeError:
         kilder["core"] = False
-    kandidater = dedupliser(epmc + kjerne)
+    alex = []
+    try:
+        alex = openalex_adapter.sok(query, limit=page_size)
+    except RuntimeError:
+        kilder["openalex"] = False
+    kandidater = dedupliser(epmc + kjerne + alex)
     rangert = ranger(kandidater, query=query)
     resultat = resolve(query, rangert, tekst=lambda p: p.tittel)
     eksakt_id = resultat.eksakt.id if resultat.eksakt else None
@@ -75,9 +84,9 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     # som alle endrer hvordan et menneske skal lese lista.
     return rangert, eksakt_id, {
         "kilder": kilder,
-        "treff_per_kilde": {"europe_pmc": len(epmc), "core": len(kjerne)},
+        "treff_per_kilde": {"europe_pmc": len(epmc), "core": len(kjerne), "openalex": len(alex)},
         "etter_dedup": len(kandidater),
-        "dubletter_fjernet": len(epmc) + len(kjerne) - len(kandidater),
+        "dubletter_fjernet": len(epmc) + len(kjerne) + len(alex) - len(kandidater),
         "cache_alder_s": round(alder) if alder is not None else None,
         "profil": domeneprofil.NAVN,
         "baand": {
@@ -96,6 +105,7 @@ def _print_revisjon(r: dict) -> None:
     fersk = "ekte kall" if alder is None else f"cache, {alder // 60} min gammel"
     print(f"— revisjon: Europe PMC {tpk['europe_pmc']} treff ({fersk}) · "
           f"CORE {tpk['core']} treff{'' if r['kilder']['core'] else ' (UTILGJENGELIG)'} · "
+          f"OpenAlex {tpk['openalex']} treff{'' if r['kilder']['openalex'] else ' (UTILGJENGELIG)'} · "
           f"{r['dubletter_fjernet']} dubletter slått sammen · "
           f"{r['baand']['domene_naer']} domene-nære, {r['baand']['arts_naer']} artsnære · "
           f"profil «{r['profil']}» · {r['ms']} ms")

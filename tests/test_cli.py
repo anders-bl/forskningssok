@@ -25,18 +25,20 @@ def test_emnesporring_med_treff_er_aldri_ingen_treff(tmp_path):
     inneholder ikke noen av titlene — resolve()s kandidat-gren ville gitt tom liste her."""
     treff = [_p("1", "Nephrocalcinosis progression in Atlantic salmon post-seawater transfer")]
     with patch("cli.sok", return_value=treff), patch("cli.core_adapter.sok", return_value=[]), \
+         patch("cli.openalex_adapter.sok", return_value=[]), \
          patch("cli.lagre") as mock_lagre:
         papirer, eksakt_id, revisjon = sok_og_ranger("nephrocalcinosis smolt seawater transfer")
     mock_lagre.assert_not_called()  # 2026-09-04: lagre() er kallerens ansvar, ikke denne
     assert len(papirer) == 1
     assert eksakt_id is None  # ikke en ordrett tittel — skal IKKE feilaktig flagges eksakt
-    assert revisjon["kilder"] == {"europe_pmc": True, "core": True}
+    assert revisjon["kilder"] == {"europe_pmc": True, "core": True, "openalex": True}
 
 
 def test_ordrett_tittel_flagges_eksakt(tmp_path):
     tittel = "Nephrocalcinosis progression in Atlantic salmon post-seawater transfer"
     treff = [_p("1", tittel), _p("2", "Et annet, urelatert papir")]
     with patch("cli.sok", return_value=treff), patch("cli.core_adapter.sok", return_value=[]), \
+         patch("cli.openalex_adapter.sok", return_value=[]), \
          patch("cli.lagre"):
         papirer, eksakt_id, revisjon = sok_og_ranger(tittel)
     assert eksakt_id == "1"
@@ -44,6 +46,7 @@ def test_ordrett_tittel_flagges_eksakt(tmp_path):
 
 def test_tom_europe_pmc_respons_er_aerlig_tomt(tmp_path):
     with patch("cli.sok", return_value=[]), patch("cli.core_adapter.sok", return_value=[]), \
+         patch("cli.openalex_adapter.sok", return_value=[]), \
          patch("cli.lagre"):
         papirer, eksakt_id, revisjon = sok_og_ranger("et sikkert ubesvarlig søk xyzzy123")
     assert papirer == []
@@ -54,22 +57,36 @@ def test_core_treff_slaas_sammen_med_europe_pmc(tmp_path):
     pmc_treff = [_p("1", "Europe PMC-funn")]
     core_treff = [_p(None, "Et CORE-funn (institusjonsarkiv)")]
     with patch("cli.sok", return_value=pmc_treff), patch("cli.core_adapter.sok", return_value=core_treff), \
-         patch("cli.lagre"):
+         patch("cli.openalex_adapter.sok", return_value=[]), patch("cli.lagre"):
         papirer, eksakt_id, revisjon = sok_og_ranger("nephrocalcinosis salmon")
     titler = {p.tittel for p in papirer}
     assert titler == {"Europe PMC-funn", "Et CORE-funn (institusjonsarkiv)"}
-    assert revisjon["kilder"] == {"europe_pmc": True, "core": True}
+    assert revisjon["kilder"] == {"europe_pmc": True, "core": True, "openalex": True}
 
 
 def test_core_feiler_degraderer_synlig_uten_aa_ta_ned_soeket(tmp_path):
     pmc_treff = [_p("1", "Europe PMC-funn")]
     with patch("cli.sok", return_value=pmc_treff), \
          patch("cli.core_adapter.sok", side_effect=RuntimeError("CORE utilgjengelig: 503")), \
+         patch("cli.openalex_adapter.sok", return_value=[]), \
          patch("cli.lagre"):
         papirer, eksakt_id, revisjon = sok_og_ranger("nephrocalcinosis salmon")
     assert len(papirer) == 1  # Europe PMC-resultatet er ikke tapt
-    assert revisjon["kilder"] == {"europe_pmc": True, "core": False}  # kun CORE feilet, synlig
+    assert revisjon["kilder"] == {"europe_pmc": True, "core": False, "openalex": True}  # kun CORE feilet, synlig
     assert revisjon["treff_per_kilde"]["core"] == 0, "en nede kilde teller null, ikke ingenting"
+
+
+def test_openalex_feiler_degraderer_synlig_uten_aa_ta_ned_soeket(tmp_path):
+    """Samme kontrakt som CORE (test over) — OpenAlex er også en tilleggskilde."""
+    pmc_treff = [_p("1", "Europe PMC-funn")]
+    with patch("cli.sok", return_value=pmc_treff), \
+         patch("cli.core_adapter.sok", return_value=[]), \
+         patch("cli.openalex_adapter.sok", side_effect=RuntimeError("OpenAlex utilgjengelig: 503")), \
+         patch("cli.lagre"):
+        papirer, eksakt_id, revisjon = sok_og_ranger("nephrocalcinosis salmon")
+    assert len(papirer) == 1  # Europe PMC-resultatet er ikke tapt
+    assert revisjon["kilder"] == {"europe_pmc": True, "core": True, "openalex": False}
+    assert revisjon["treff_per_kilde"]["openalex"] == 0, "en nede kilde teller null, ikke ingenting"
 
 
 def test_samme_papir_fra_begge_kilder_dedupliseres_paa_tittel(tmp_path):
@@ -79,7 +96,7 @@ def test_samme_papir_fra_begge_kilder_dedupliseres_paa_tittel(tmp_path):
     pmc_treff = [_p("1", delt_tittel, doi="10.1/delt")]
     core_treff = [_p(None, delt_tittel)]  # samme tittel, ingen DOI (typisk CORE-mastergrad)
     with patch("cli.sok", return_value=pmc_treff), patch("cli.core_adapter.sok", return_value=core_treff), \
-         patch("cli.lagre"):
+         patch("cli.openalex_adapter.sok", return_value=[]), patch("cli.lagre"):
         papirer, eksakt_id, revisjon = sok_og_ranger("nephrocalcinosis salmon")
     assert len(papirer) == 1  # ikke to rader for samme papir
 
@@ -90,9 +107,10 @@ def test_revisjonen_forteller_hva_som_faktisk_kjorte(tmp_path):
     pmc = [_p("1", "Et funn"), _p("2", "Et delt funn", doi="10.1/delt")]
     core = [_p(None, "Et delt funn")]  # samme tittel, ingen DOI — dedupliseres bort
     with patch("cli.sok", return_value=pmc), patch("cli.core_adapter.sok", return_value=core), \
+         patch("cli.openalex_adapter.sok", return_value=[]), \
          patch("cli.europe_pmc_cache_alder", return_value=3600.0), patch("cli.lagre"):
         papirer, _, revisjon = sok_og_ranger("nephrocalcinosis salmon")
-    assert revisjon["treff_per_kilde"] == {"europe_pmc": 2, "core": 1}
+    assert revisjon["treff_per_kilde"] == {"europe_pmc": 2, "core": 1, "openalex": 0}
     assert revisjon["dubletter_fjernet"] == 1
     assert revisjon["etter_dedup"] == 2 == len(papirer)
     assert revisjon["cache_alder_s"] == 3600
@@ -105,6 +123,7 @@ def test_cache_alder_leses_FOR_soket_ellers_er_den_alltid_null(tmp_path):
     rekkefolge = []
     with patch("cli.europe_pmc_cache_alder", side_effect=lambda *a, **k: rekkefolge.append("alder")), \
          patch("cli.sok", side_effect=lambda *a, **k: rekkefolge.append("sok") or []), \
-         patch("cli.core_adapter.sok", return_value=[]), patch("cli.lagre"):
+         patch("cli.core_adapter.sok", return_value=[]), \
+         patch("cli.openalex_adapter.sok", return_value=[]), patch("cli.lagre"):
         sok_og_ranger("noe")
     assert rekkefolge == ["alder", "sok"]

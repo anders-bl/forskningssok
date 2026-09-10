@@ -1,4 +1,4 @@
-"""adapters/openalex.py — OpenAlex: emne-/konsept-tagger + referanse-fallback.
+"""adapters/openalex.py — OpenAlex: fritekst-søk + emne-/konsept-tagger + referanse-fallback.
 
 Live-verifisert 2026-09-02 mot et ekte cachet papir (10.1111/jfd.70099): gir treffsikre
 emne-tagger («Aquaculture disease management and microbiota» — ordrett relevant) OG
@@ -6,6 +6,12 @@ batch-oppløser `referenced_works` til ekte titler/DOI-er i ETT kall (opptil 50 
 OR-filter). Sistnevnte er en FUNGERENDE fallback for citation_gap.py når Europe PMC sin
 `/references` er nede — verifisert live samme kveld som EBIs eget endepunkt var det, hele
 kvelden (503 «temporarily unavailable due to maintenance»).
+
+`sok()` lagt til 2026-09-10 som det billige, nøkkel-frie alternativet til Google Scholar
+(adapters/google_scholar.py via SerpAPI — kodet ferdig, men aldri koblet inn: krever
+betalt nøkkel og en skrape-mellomtjeneste for noe OpenAlex alt dekker gratis). Samme
+`search`-parameter/relevans-rangering, samme `_parse()` som `verk_for_emne()` under —
+IKKE en ny kilde-klasse, kun en ny inngang til samme API.
 
 US-hostet non-profit (OurResearch), men åpne bibliografiske metadata uten PII — samme
 vurdering som NVD/CVE-oppslagene i `teknisk-enhets-sok`, ikke et unntak fra EU-preferansen
@@ -16,34 +22,40 @@ Enhetsregisteret-oppslaget i dybdesøk-relasjonsryggrad).
 ADR-004-disiplin: spørretid + TTL-cache, ingen crawler, ingen full korpus-indeksering.
 """
 import json
+import sqlite3
 import time
 from pathlib import Path
 
 import httpx
 
 from paths import DB
+from schemas import PaperDossier
 
 BASE = "https://api.openalex.org"
 # "Polite pool" — OpenAlex prioriterer/stabiliserer trafikk med e-post i UA, samme
 # høflighets-prinsipp som Europe PMC-adapteren og hoster.py sin arXiv-UA.
 UA = "lauvasdata-research (mailto:kontakt@lauvasdata.no)"
 TTL_SEKUNDER = 24 * 3600
+# Delt av verk_for_emne() og sok() — begge bygger PaperDossier via samme _parse().
+_SELECT_FELTER = ("id,title,publication_year,doi,cited_by_count,open_access,"
+                   "authorships,primary_location,abstract_inverted_index")
 
 
-def _db(db_path: Path = DB):
-    import sqlite3
+def _db(db_path: Path = DB) -> sqlite3.Connection:
     db = sqlite3.connect(db_path)
     db.execute("""CREATE TABLE IF NOT EXISTS openalex_cache(
         key TEXT PRIMARY KEY, hentet_ved REAL, respons TEXT)""")
     return db
 
 
-def _hent(key: str, url: str, params: dict | None, *, db_path: Path = DB) -> dict:
+def _hent(key: str, url: str, params: dict | None, *, tving_fersk: bool = False,
+          db_path: Path = DB) -> dict:
     db = _db(db_path)
-    rad = db.execute("SELECT hentet_ved, respons FROM openalex_cache WHERE key=?", (key,)).fetchone()
-    if rad and (time.time() - rad[0]) < TTL_SEKUNDER:
-        db.close()
-        return json.loads(rad[1])
+    if not tving_fersk:
+        rad = db.execute("SELECT hentet_ved, respons FROM openalex_cache WHERE key=?", (key,)).fetchone()
+        if rad and (time.time() - rad[0]) < TTL_SEKUNDER:
+            db.close()
+            return json.loads(rad[1])
     try:
         r = httpx.get(url, params=params, headers={"User-Agent": UA}, timeout=30)
         r.raise_for_status()
@@ -103,24 +115,7 @@ def _rekonstruer_abstract(inv_idx: dict | None) -> str:
     return " ".join(posisjoner[i] for i in sorted(posisjoner))
 
 
-def verk_for_emne(emne_id: str, limit: int = 20, *, db_path: Path = DB) -> list:
-    """FDR: søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen).
-    Alle OpenAlex-verk under ett emne, nyeste/mest siterte først (OpenAlex sin egen
-    sortering — vår egen ranking.ranger() domene-vekting påføres i api.py, ikke her,
-    siden den regner på PaperDossier-objekter og denne funksjonen returnerer dem).
-    Live-verifisert 2026-09-02: emne T10506 («Aquaculture disease management and
-    microbiota») → 218 630 treff i OpenAlex — et EMNE er et bredt FELT (kontrollert
-    taksonomi, ~4500 emner totalt), ikke et smalt tema. Forventet: eldre, kanoniske,
-    høyt siterte artikler dominerer råresultatet uten videre rangering — derfor
-    komponeres denne funksjonen alltid med ranking.ranger() i api.py."""
-    from schemas import PaperDossier
-    data = _hent(f"emne::{emne_id}::{limit}", f"{BASE}/works", {
-        "filter": f"topics.id:{emne_id}",
-        "sort": "cited_by_count:desc",
-        "per_page": limit,
-        "select": "id,title,publication_year,doi,cited_by_count,open_access,"
-                  "authorships,primary_location,abstract_inverted_index",
-    }, db_path=db_path)
+def _parse(data: dict) -> list[PaperDossier]:
     ut = []
     for w in data.get("results", []):
         forfattere = "; ".join(
@@ -142,6 +137,42 @@ def verk_for_emne(emne_id: str, limit: int = 20, *, db_path: Path = DB) -> list:
             kilde_kode="OpenAlex",
         ))
     return ut
+
+
+def sok(query: str, limit: int = 10, *, tving_fersk: bool = False,
+        db_path: Path = DB) -> list[PaperDossier]:
+    """Fritekst-søk (OpenAlex sin egen relevans-rangerte `search`-parameter — matcher
+    tittel+abstract+fulltekst der fulltekst finnes) → kandidat-papirer, TTL-cachet.
+    Samme ærlighets-disiplin som core.py/europe_pmc.py: en kilde-feil raiser via
+    _hent(), blir aldri en stille tom liste som kunne forveksles med et ekte fravær
+    av treff. Gratis, ingen nøkkel — se moduldocstring for hvorfor dette er valgt
+    fremfor SerpAPI/Google Scholar."""
+    key = f"sok::{query.strip().lower()}::{limit}"
+    data = _hent(key, f"{BASE}/works", {
+        "search": query,
+        "per_page": limit,
+        "select": _SELECT_FELTER,
+    }, tving_fersk=tving_fersk, db_path=db_path)
+    return _parse(data)
+
+
+def verk_for_emne(emne_id: str, limit: int = 20, *, db_path: Path = DB) -> list[PaperDossier]:
+    """FDR: søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen).
+    Alle OpenAlex-verk under ett emne, nyeste/mest siterte først (OpenAlex sin egen
+    sortering — vår egen ranking.ranger() domene-vekting påføres i api.py, ikke her,
+    siden den regner på PaperDossier-objekter og denne funksjonen returnerer dem).
+    Live-verifisert 2026-09-02: emne T10506 («Aquaculture disease management and
+    microbiota») → 218 630 treff i OpenAlex — et EMNE er et bredt FELT (kontrollert
+    taksonomi, ~4500 emner totalt), ikke et smalt tema. Forventet: eldre, kanoniske,
+    høyt siterte artikler dominerer råresultatet uten videre rangering — derfor
+    komponeres denne funksjonen alltid med ranking.ranger() i api.py."""
+    data = _hent(f"emne::{emne_id}::{limit}", f"{BASE}/works", {
+        "filter": f"topics.id:{emne_id}",
+        "sort": "cited_by_count:desc",
+        "per_page": limit,
+        "select": _SELECT_FELTER,
+    }, db_path=db_path)
+    return _parse(data)
 
 
 def referanser(doi: str, *, db_path: Path = DB) -> list[dict]:
