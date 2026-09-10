@@ -91,7 +91,13 @@ class TestHentFraCache:
         felter.setdefault("siteringstall", 0)
         felter.setdefault("open_access", False)
         felter.setdefault("kilde_url", "https://example.org/test")
-        bank.lagre([PaperDossier(**felter)], db_path=db_path)
+        # embed_fn eksplisitt satt — uten den prøver bank.lagre() å auto-oppdage en ekte
+        # embedder via silverbullet/ops/semantisk_sok.py (_hus_embed()), som bare finnes på
+        # Anders' egen Mac. Fungerte lokalt, ModuleNotFoundError i CI (2026-09-10, fanget av
+        # selve CI-en — ikke lokalt, nettopp fordi lokalt HAR den fila). Samme mønster som
+        # _fake_embed i test_api_status.py.
+        bank.lagre([PaperDossier(**felter)], embed_fn=lambda tekster: [[0.0] * 1024 for _ in tekster],
+                   db_path=db_path)
 
     def test_finner_ekte_lagret_papir_uten_sql_feil(self, tmp_path):
         db_path = tmp_path / "cache.db"
