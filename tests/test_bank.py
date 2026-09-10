@@ -102,6 +102,23 @@ def test_lignende_finner_naert_papir_ikke_fjernt(tmp_path):
     assert "Ctittel" not in titler[:1]  # 90° unna skal ikke slå 5°-naboen
 
 
+def test_lignende_baerer_kilde_kode_og_siteringstall(tmp_path):
+    """Kart-fanen fargelegger etter kilde og størrelsesskalerer etter siteringstall
+    (2026-09-10) — begge feltene må faktisk følge med ut av _naboer_fra_rader(), ikke
+    bare finnes i papers-tabellen. Reell regresjon dette dekker: feltene ble hentet i
+    SQL-en men falt ut igjen i dict-byggingen, akkurat som forfattere gjorde 2026-09-04
+    (se _naboer_fra_rader sin egen docstring)."""
+    db = tmp_path / "cache.db"
+    lagre([_p("1", "Atittel"),
+           PaperDossier(pmid="2", doi=None, tittel="Btittel", forfattere="", tidsskrift="",
+                       aar=2026, abstract="noe abstract-tekst", siteringstall=42,
+                       open_access=False, kilde_url="https://example.org/2", kilde_kode="CORE")],
+          embed_fn=_fake_embed, db_path=db)
+    naboer = lignende("1", k=1, db_path=db)
+    assert naboer[0]["kilde_kode"] == "CORE"
+    assert naboer[0]["siteringstall"] == 42
+
+
 def test_lignende_flagger_arts_naer_og_domene_naer_uten_aa_filtrere(tmp_path):
     """Species-trap-motvekt (Svart hatt-funn 2026-09-02) — se domeneprofil.py. Naboen
     forblir ALLTID i lista (ingen fjernes) — kun annotert og (se test under) omordnet."""

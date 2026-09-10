@@ -27,6 +27,7 @@
   --text:#1C1C1A; --muted:#5A5A56;
   --warn:#9C4A30; --warn-soft:#F3DED6;
   --kald:#6F9FB8; --lunken:#D8B26A; --varm:#C4633A;
+  --kilde-core:#5B8A8A; --kilde-alex:#8A6BA0;
   --shadow:0 1px 2px rgba(20,20,18,.06), 0 6px 20px -8px rgba(20,20,18,.18);
   --shadow-opp:0 -2px 4px rgba(20,20,18,.05), 0 -12px 32px -14px rgba(20,20,18,.22);
 }
@@ -37,6 +38,7 @@
     --text:#EDECE7; --muted:#A8A7A0;
     --warn:#E2795C; --warn-soft:#3A231C;
     --kald:#7FA8BE; --lunken:#E3C07A; --varm:#E08758;
+    --kilde-core:#7FADAD; --kilde-alex:#B49BC9;
     --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
     --shadow-opp:0 -2px 4px rgba(0,0,0,.3), 0 -14px 34px -14px rgba(0,0,0,.55);
   }
@@ -47,6 +49,7 @@
   --text:#EDECE7; --muted:#A8A7A0;
   --warn:#E2795C; --warn-soft:#3A231C;
   --kald:#7FA8BE; --lunken:#E3C07A; --varm:#E08758;
+  --kilde-core:#7FADAD; --kilde-alex:#B49BC9;
   --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
   --shadow-opp:0 -2px 4px rgba(0,0,0,.3), 0 -14px 34px -14px rgba(0,0,0,.55);
 }
@@ -603,7 +606,7 @@ svg text{ font-family:system-ui,sans-serif; }
 <script>
 const state = {
   paperId: null, papers: {}, sisteResultat: { ids: [], tittel: '' },
-  lastNaboer: [], varmet: new Set(), sitatLinse: 'dokument', sisteVarmeTekst: null,
+  lastNaboer: [], lastKartNaboer: [], varmet: new Set(), sitatLinse: 'dokument', sisteVarmeTekst: null,
   // Fagfeltet kommer fra /api/profil, aldri fra strenger i denne fila. Fallbacken er
   // bevisst NØYTRAL, ikke fisk: laster profilen ikke, skal flaten si mindre — ikke
   // påstå feil fagfelt. Se domeneprofil.py for hvorfor dette er hele generaliseringen.
@@ -955,11 +958,10 @@ async function openPaper(id) {
   // — MEN et nytt papir kan åpnes mens en av dem alt ER den aktive fanen (bla i trefflista
   // uten å bytte fane), og da fyrer aldri klikk-lytteren. Uten dette sto panelet fast på
   // placeholderen over for alltid — Kart på et evig "Laster…" som aldri lastet noe. Samme
-  // last-kall klikket ville kjørt, for fanen som FAKTISK er åpen nå. (Kart selv trigges fra
-  // loadLignende() sin fullførelse et par linjer over, ikke herfra — den deler datakilde
-  // med Lignende-fanen og må vente på state.lastNaboer.)
+  // last-kall klikket ville kjørt, for fanen som FAKTISK er åpen nå.
   const aktivFane = $('.shell .tab.active')?.dataset.tab;
   if (aktivFane === 'gap') { loadGapLazy = false; loadGap(id); }
+  if (aktivFane === 'kart') loadKart(id);
   if (aktivFane === 'sti') { state.cachede = null; loadSti(id); }
 }
 
@@ -976,7 +978,7 @@ $$('.shell .tab').forEach(t => t.addEventListener('click', () => {
   $('#tab-' + t.dataset.tab).classList.add('active');
   if (t.dataset.tab === 'varmt') lastVarme();
   if (t.dataset.tab === 'gap' && loadGapLazy && state.paperId) { loadGapLazy = false; loadGap(state.paperId); }
-  if (t.dataset.tab === 'kart' && state.paperId) renderKart(state.paperId);
+  if (t.dataset.tab === 'kart' && state.paperId) loadKart(state.paperId);
   // Sti lastes ved hvert fanevalg, ikke lazy én gang: plukklista må speile cachen slik
   // den er NÅ, og cachen vokser mens man søker.
   if (t.dataset.tab === 'sti' && state.paperId) { state.cachede = null; loadSti(state.paperId); }
@@ -1070,13 +1072,19 @@ async function loadLignende(id) {
         </div>`).join('');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
   } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
-  finally {
-    // Kart deler datakilde med Lignende (state.lastNaboer) — se openPaper() sin
-    // kommentar om hvorfor dette IKKE kan vente på et fanebytte som kanskje aldri
-    // kommer. finally, ikke etter try: skal også kjøre om selve hentingen feilet
-    // (samme oppførsel brukeren fikk før ved å klikke bort og tilbake til Kart).
-    if ($('.shell .tab.active')?.dataset.tab === 'kart') renderKart();
-  }
+}
+
+// Kart har EGEN, større k enn Lignende-lista (18 mot 6) — et lesbart landskap trenger
+// flere punkter enn en tekstliste er behagelig lang, se renderKart(). Egen henting,
+// ikke gjenbruk av state.lastNaboer, nettopp derfor.
+async function loadKart(id) {
+  const el = $('#tab-kart');
+  el.innerHTML = '<div class="hint">Laster…</div>';
+  try {
+    const data = await api(`/api/lignende/${encodeURIComponent(id)}?k=18`);
+    state.lastKartNaboer = data.naboer;
+    renderKart();
+  } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
 }
 
 async function loadGap(id) {
@@ -1132,12 +1140,32 @@ async function loadGap(id) {
   }
 }
 
+// kilde_kode i papers-tabellen er Europe PMC sin EGEN interne kildekode for de fleste
+// rader (MED/AGR/PPR/PMC …, se adapters/europe_pmc.py) — bart "CORE"/"OpenAlex" kun for
+// de to andre adapterne. Kart-fanen fargelegger etter den grovere tre-veis gruppen, ikke
+// den rå koden (samme normalisering som ai_assistent.py:grupper_etter_kilde gjør på sin
+// egen kilde-streng).
+function kildeGruppe(kode) {
+  const k = (kode || '').toUpperCase();
+  if (k === 'CORE') return 'core';
+  if (k === 'OPENALEX') return 'openalex';
+  return 'pmc';
+}
+const KILDE_FARGE = { pmc: 'var(--accent)', core: 'var(--kilde-core)', openalex: 'var(--kilde-alex)' };
+const KILDE_NAVN = { pmc: 'Europe PMC', core: 'CORE', openalex: 'OpenAlex' };
+
 function renderKart() {
   const el = $('#tab-kart');
-  const naboer = state.lastNaboer || [];
+  const naboer = state.lastKartNaboer || [];
   if (!naboer.length) { el.innerHTML = '<div class="hint">Ingen naboer å tegne ennå.</div>'; return; }
   const cx=150, cy=150, maxR=120;
   const maxDist = Math.max(...naboer.map(n=>n.avstand), .001);
+  const maxSit = Math.max(...naboer.map(n=>n.siteringstall||0), 1);
+  // Labelen krymper med antall noder (fast 22 tegn holdt for de opprinnelige 6 naboene,
+  // men 18+ noder jevnt fordelt på samme sirkel gir ~52px avstand mellom naboer der et
+  // 22-tegns label alene er ~120px bredt — garantert kollisjon). Gulvet på 10 tegn er
+  // fortsatt nok til å gjenkjenne treffet; full tittel står uansett i <title> (hover).
+  const labelLen = Math.max(10, Math.min(22, Math.round(260 / naboer.length)));
   // viewBox RETTET 2026-09-09 (idébank #30 «Kart-fanens tekst-labels klipper av og til
   // ved venstre kant», kjent siden 09-03). Node-posisjon spenner x/y ∈ [-10,310]
   // (cx/cy=150 ± maxR 160). 09-07-utvidelsen (-60/-30-margin) antok et 22-tegns label
@@ -1156,23 +1184,36 @@ function renderKart() {
   });
   for (const {n,x,y} of pts) {
     const w = 3.2 - (n.avstand/maxDist)*2.2;
-    svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--accent)" stroke-width="${w.toFixed(2)}" opacity=".55"/>`;
+    const farge = KILDE_FARGE[kildeGruppe(n.kilde_kode)];
+    svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="${farge}" stroke-width="${w.toFixed(2)}" opacity=".55"/>`;
   }
   for (const {n,x,y} of pts) {
     // <title> som FØRSTE barn av <g> — SVG-spec: gjelder da hele gruppen (sirkel +
-    // begge tekstene), ikke bare sirkelen. Nødvendig fordi label-teksten er kuttet til
-    // 22 tegn (viewBox-notatet over) og ellers ikke har noen måte å vise hele tittelen
-    // på uten å faktisk åpne papiret.
+    // begge tekstene), ikke bare sirkelen. Nødvendig fordi label-teksten er kuttet
+    // (labelLen over) og ellers ikke har noen måte å vise hele tittelen på uten å
+    // faktisk åpne papiret.
+    const farge = KILDE_FARGE[kildeGruppe(n.kilde_kode)];
+    // Kvadratrot, ikke lineær: ett 100-siteringer-papir skal ikke gjøre naboene
+    // usynlig små ved siden av — arealoppfatning skalerer med radius², så sqrt(andel)
+    // holder den visuelle STØRRELSEN proporsjonal med siteringstallet, ikke arealet.
+    const r = 7 + Math.sqrt((n.siteringstall||0) / maxSit) * 7;
     svg += `<g data-id="${escapeHtml(n.id)}" class="kart-node" style="cursor:pointer">` +
-      `<title>${escapeHtml(n.tittel||'')}</title>` +
-      `<circle cx="${x}" cy="${y}" r="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6"/>` +
-      `<text x="${x}" y="${y-13}" text-anchor="middle" font-size="8" fill="var(--muted)">${escapeHtml((n.tittel||'').slice(0,22))}</text>` +
-      `<text x="${x}" y="${y+21}" text-anchor="middle" font-size="7.5" fill="var(--accent)">${n.avstand.toFixed(3)}</text>` +
+      `<title>${escapeHtml(n.tittel||'')} — ${escapeHtml(KILDE_NAVN[kildeGruppe(n.kilde_kode)])}` +
+      `${n.siteringstall != null ? ` · ${n.siteringstall} siteringer` : ''}</title>` +
+      `<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="var(--surface)" stroke="${farge}" stroke-width="1.6"/>` +
+      `<text x="${x}" y="${y-13}" text-anchor="middle" font-size="8" fill="var(--muted)">${escapeHtml((n.tittel||'').slice(0,labelLen))}</text>` +
+      `<text x="${x}" y="${y+21}" text-anchor="middle" font-size="7.5" fill="${farge}">${n.avstand.toFixed(3)}</text>` +
       `</g>`;
   }
   svg += `<circle cx="${cx}" cy="${cy}" r="14" fill="var(--accent)"/><text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="8" fill="var(--bg)" font-weight="700">åpen</text>`;
   svg += `</svg>`;
-  el.innerHTML = svg + '<div class="hint" style="margin-top:.6rem">Node-link av samme naboer som «Lignende» (Ghoniem et al. 2005: graf for nabolag, liste for eksakt avstand).</div>';
+  const legend = Object.keys(KILDE_NAVN).map(g =>
+    `<span style="display:inline-flex;align-items:center;gap:.3rem;margin-right:.9rem">` +
+    `<span style="width:8px;height:8px;border-radius:50%;background:${KILDE_FARGE[g]};display:inline-block"></span>` +
+    `${escapeHtml(KILDE_NAVN[g])}</span>`).join('');
+  el.innerHTML = svg +
+    `<div class="hint" style="margin-top:.6rem">${legend}<span style="color:var(--muted)">· størrelse = siteringstall</span></div>` +
+    '<div class="hint" style="margin-top:.3rem">Node-link av samme naboer som «Lignende» (Ghoniem et al. 2005: graf for nabolag, liste for eksakt avstand).</div>';
   $$('.kart-node', el).forEach(c => c.addEventListener('click', () => openPaper(c.dataset.id)));
 }
 

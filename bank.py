@@ -600,7 +600,7 @@ def relaterte_sitater(paper_id: str, k: int = 5, *, db_path: Path = DB) -> list[
     # og et smalt K ville gitt tomt svar så snart de nærmeste naboene er usiterte.
     rows = db.execute("""
         SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance,
-               p.forfattere, p.abstract
+               p.forfattere, p.abstract, p.kilde_kode, p.siteringstall
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
         ORDER BY v.distance""", (qvec[0], 60, rad[0])).fetchall()
@@ -628,7 +628,14 @@ def _naboer_fra_rader(rows, k: int, band: bool = True) -> list[dict]:
                # referanse uten forfatter er ikke en referanse.
                "forfattere": r[7],
                "domene_naer": domene_naer_tekst(f"{r[7]} {r[2]}"),
-               "arts_naer": arts_naer_tekst(f"{r[1]} {r[8]}")}
+               "arts_naer": arts_naer_tekst(f"{r[1]} {r[8]}"),
+               # kilde_kode/siteringstall lagt til 2026-09-10 for Kart-fanen (fargelegg
+               # etter kilde, størrelse etter siteringer) — r[9]/r[10] finnes kun hvis
+               # kalleren faktisk ba om dem i SELECT-en; defensivt indeksert (len-sjekk)
+               # så en fremtidig fjerde kaller med kortere rader ikke krasjer stille om
+               # noen glemmer å utvide sin egen SELECT.
+               "kilde_kode": r[9] if len(r) > 9 else None,
+               "siteringstall": r[10] if len(r) > 10 else None}
               for r in rows]
     # band=False finnes for sti.py: banding sorterer FØR kuttet til k, så den kan skyve
     # den aller nærmeste naboen ut av settet når den er bånd-svak. For et menneske som
@@ -657,7 +664,7 @@ def lignende(paper_id: str, k: int = 5, *, band: bool = True, db_path: Path = DB
         db.close()
         return []
     rows = db.execute("""
-        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.forfattere, p.abstract
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.forfattere, p.abstract, p.kilde_kode, p.siteringstall
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ? AND v.chunk_id != ?
         ORDER BY v.distance""", (qvec[0], k + 1, rad[0])).fetchall()
@@ -681,7 +688,7 @@ def lignende_tekst(tekst: str, k: int = 5, *, embed_fn=None, db_path: Path = DB)
     embed_fn = embed_fn or _hus_embed()
     qvec = embed_fn([tekst])[0]
     rows = db.execute("""
-        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.forfattere, p.abstract
+        SELECT p.id, p.tittel, p.tidsskrift, p.aar, p.doi, p.kilde_url, v.distance, p.forfattere, p.abstract, p.kilde_kode, p.siteringstall
         FROM paper_vec v JOIN papers p ON p.rowid = v.chunk_id
         WHERE v.embedding MATCH ? AND K = ?
         ORDER BY v.distance""", (sqlite_vec.serialize_float32(qvec), k)).fetchall()
