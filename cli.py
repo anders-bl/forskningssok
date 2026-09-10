@@ -148,7 +148,6 @@ def main():
     # --oppdater må kjøres FØR query-sjekken
     if a.oppdater:
         print("Oppdaterer cache fra alle kilder...")
-        from bank import lagre
         oppdater_query = domeneprofil.PROFIL["sok_standard"]
 
         try:
