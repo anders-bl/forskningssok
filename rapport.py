@@ -688,7 +688,7 @@ def _proveniens_linje(revisjon: dict) -> str:
 def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | None = None,
                        gap: dict | None = None, omfang: dict[str, float] | None = None,
                        revisjon: dict | None = None, verifisering: dict | None = None,
-                       tverrfaglig: list[dict] | None = None,
+                       tverrfaglig: list[dict] | None = None, hovedfunn: list[dict] | None = None,
                        stil: str = "vancouver", tittel: str | None = None) -> list[Blokk]:
     """Én forskningsrapport for `query`, bygget av de ferdig-beregnede bitene. Hver seksjon
     er ærlig om fravær: mangler gap-papiret, står seksjonen ikke; er verifisering ikke
@@ -715,6 +715,23 @@ def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | Non
         b.append(Blokk("h3", "Øvrige treff"))
         for p in andre:
             b.extend(_kildesamling_papir_blokker(p))
+
+    # 1.5 Hovedfunn — mønstergjenkjente påstander MED kilde, ALDRI en AI-generert syntese
+    # (samme ærlighetsprinsipp som resten av rapporten — se ai_assistent.py:detekter_hovedfunn).
+    # Delt funksjon med CLI-verktøyet ai_assistent.py, lagt til her 2026-09-10 — samme logikk,
+    # men nå der Ulven faktisk ser den (i nettappen), ikke bare i en terminal.
+    if hovedfunn:
+        b.append(Blokk("h2", "Hovedfunn"))
+        b.append(Blokk("meta", "Ordmønster i abstractet (signifikant resultat / deteksjonsmetode "
+                               "/ sammenheng) — IKKE en syntese. Hver linje peker til kildepapiret "
+                               "som faktisk sier det; les selv om mønsteret traff riktig."))
+        for f in hovedfunn[:8]:
+            p = f["papir"]
+            forf = (p.get("forfattere") or "").split(",")[0].split(";")[0].strip() or "Ukjent forfatter"
+            lenke = p.get("kilde_url") or (f"https://doi.org/{p['doi']}" if p.get("doi") else "")
+            b.append(Blokk("p", f"· {f['utsagn']} — {forf} et al. ({p.get('aar') or 'u.å.'})"))
+            if lenke:
+                b.append(Blokk("lenke", lenke))
 
     # 2. Hva litteraturen mangler (citation-gap) — differensieringen (Aaron Tay-proben)
     if gap and gap_papir:

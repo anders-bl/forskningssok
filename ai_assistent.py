@@ -109,47 +109,59 @@ def grupper_etter_aar(papirer: list[dict]) -> dict[int, list]:
     return dict(sorted(grupper.items(), reverse=True))
 
 
+# Bokmål OG engelsk — korpuset er i praksis overveiende engelsk (Europe PMC/OpenAlex),
+# og de norske mønstrene alene traff kun 7 % av 191 ekte cachede abstracts (målt
+# 2026-09-10, kun via en tilfeldig "identifi*"-delstreng-overlapp). Substreng-match, ikke
+# ordgrense: fanger bøyningsformer (detect/detects/detected, correlat-ion/-ed/-es) uten en
+# egen stemmer.
+_SIGNIFIKANT_ORD = ("signifikant", "significant", "p<", "p <")
+_DETEKSJON_ORD = ("detektere", "oppdage", "diagnostisere", "identifisere",
+                   "detect", "discover", "diagnos", "identif")
+_KORRELASJON_ORD = ("korrelerer", "assosiert", "påvirker", "årsak",
+                     "correlat", "associat", "affect", "linked to")
+
+
 def detekter_hovedfunn(papirer: list[dict]) -> list[dict]:
     """Detekter hovedfunn basert på abstract-mønstre.
-    
+
     Dette er IKKE AI-generering — vi leter etter spesifikke mønstre forfatterne selv bruker:
-    - "signifikant" + tall (p-verdier)
-    - "kan detektere" / "muliggjør"
-    - "foreslår" / "indikerer"
+    - "signifikant"/"significant" + tall (p-verdier)
+    - "kan detektere"/"can detect" / "muliggjør"
+    - "foreslår"/"suggests" / "indikerer"/"indicates"
     """
     funn = []
-    
+
     for p in papirer:
         abstract = (p.get("abstract") or "").lower()
         tittel = p.get("tittel", "")
-        
+
         # Mønster 1: Signifikante resultater
-        if "signifikant" in abstract or "p<" in abstract or "p <" in abstract:
+        if any(ord in abstract for ord in _SIGNIFIKANT_ORD):
             funn.append({
                 "type": "signifikant",
                 "papir": p,
                 "utsagn": f"{tittel} rapporterer signifikante funn",
                 "kilde_type": "statistisk",
             })
-        
+
         # Mønster 2: Deteksjon/diagnose
-        if any(ord in abstract for ord in ["detektere", "oppdage", "diagnostisere", "identifisere"]):
+        if any(ord in abstract for ord in _DETEKSJON_ORD):
             funn.append({
                 "type": "deteksjon",
                 "papir": p,
                 "utsagn": f"{tittel} beskriver en deteksjonsmetode",
                 "kilde_type": "metode",
             })
-        
+
         # Mønster 3: Korrelasjon/årsak
-        if any(ord in abstract for ord in ["korrelerer", "assosiert", "påvirker", "årsak"]):
+        if any(ord in abstract for ord in _KORRELASJON_ORD):
             funn.append({
                 "type": "korrelasjon",
                 "papir": p,
                 "utsagn": f"{tittel} finner en sammenheng",
                 "kilde_type": "observasjon",
             })
-    
+
     return funn
 
 

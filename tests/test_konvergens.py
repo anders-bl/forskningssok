@@ -52,6 +52,25 @@ def test_uten_gap_ingen_gap_seksjon():
     assert "Hva litteraturen mangler" not in _tekst(b)
 
 
+def test_uten_hovedfunn_ingen_hovedfunn_seksjon():
+    b = rapport.konvergens_blokker("q", [_PAPIR], hovedfunn=None)
+    assert "Hovedfunn" not in _tekst(b)
+
+
+def test_hovedfunn_seksjon_med_kilde_og_lenke():
+    """Hovedfunn kommer fra ai_assistent.py:detekter_hovedfunn (api.py sitt ansvar å
+    kjøre den) — rapport.py bygger kun blokkene, og hver linje skal peke til kilden."""
+    hovedfunn = [{"type": "signifikant", "papir": _PAPIR,
+                  "utsagn": f"{_PAPIR['tittel']} rapporterer signifikante funn",
+                  "kilde_type": "statistisk"}]
+    b = rapport.konvergens_blokker("q", [_PAPIR], hovedfunn=hovedfunn)
+    md = _tekst(b)
+    assert "Hovedfunn" in md
+    assert "rapporterer signifikante funn" in md
+    assert "Klykken C" in md  # forfatter
+    assert "doi.org/10.1111/jfd.13815" in md  # kilde-lenke, ikke bare påstanden
+
+
 def test_verifisering_utilgjengelig_sies_rett_ut():
     """Ærlig fravær: kapabiliteten finnes men er gated (Mistral-abonnement). Rapporten sier
     det, den utelater det ikke stille."""

@@ -19,6 +19,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException,
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+import ai_assistent
 import bank
 import dokumenter
 import versjon
@@ -955,6 +956,11 @@ def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", 
     if not papirer:
         raise HTTPException(404, f"ingen av treffene for «{q}» ble cachet")
 
+    # Hovedfunn — mønstergjenkjenning over abstractene, IKKE AI-generert syntese (samme
+    # ærlighetsprinsipp som resten av rapporten). Ren funksjon, ingen nettverk/bivirkning
+    # — trygt å kjøre uansett om noe annet i rapporten feiler.
+    hovedfunn = ai_assistent.detekter_hovedfunn(papirer)
+
     # Gap på topptreffet — differensieringen. Faller ærlig bort hvis kilden er nede.
     gap = gap_papir = None
     topp = papirer[0]
@@ -996,7 +1002,7 @@ def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", 
 
     blokker = rapport.konvergens_blokker(
         q, papirer, gap_papir=gap_papir, gap=gap, omfang=omfang, revisjon=revisjon,
-        verifisering=verifisering, tverrfaglig=tverrfaglig, stil=stil)
+        verifisering=verifisering, tverrfaglig=tverrfaglig, hovedfunn=hovedfunn, stil=stil)
     return _rapport_svar(blokker, format, _slug(q) or "rapport", f"Forskningsrapport: {q}")
 
 
