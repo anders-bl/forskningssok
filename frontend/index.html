@@ -223,7 +223,9 @@ button{ font:inherit; }
 .verifiser-kilder a{ display:block; color:var(--accent); font-size:.8125rem; text-decoration:none; margin-bottom:.35rem; }
 .verifiser-kilder a:hover{ text-decoration:underline; }
 .slippsone{ position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 12%, transparent); border:2px dashed var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.9375rem; color:var(--accent); font-weight:600; pointer-events:none; z-index:20; }
-#empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; }
+.slippsone[hidden]{ display:none; }
+#empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; min-height:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:center; }
+#empty-reader[hidden]{ display:none; }
 .tomflate{ max-width:22rem; margin:0 auto; }
 .tomflate b{ display:block; color:var(--text); font-size:1rem; margin-bottom:.4rem; }
 /* Taglinen bor i masthead-en, ikke i leseflatens hviletilstand. Første forsøk la den
@@ -998,16 +1000,23 @@ async function lastVarme({tvungen = true} = {}) {
       el.innerHTML = '<div class="hint">Ingenting er varmt ennå. Åpne et papir og siter noe, så dukker det som ligner opp her. Kaldt betyr ubrukt, ikke uinteressant.</div>';
       return;
     }
-    const naaHint = data.har_naa_lag ? '' :
-      '<div class="hint" style="margin-bottom:.6rem">Bare det varige laget vises. Siter noe, så legges «nå»-laget (nærhet til sitatene dine) til.</div>';
+    // To ulike skalaer (se api.py:api_varme) — forklart én gang her, ikke gjettet fra
+    // to enslige ord på hvert kort: varig er RELATIV (mot listas egen maks), nå er
+    // ABSOLUTT (1 - avstand/2). Samme tall-type ville sett likt ut og betydd noe ulikt.
+    const VARIG_TT = 'Hvor varmt papiret er sammenlignet med dine andre varme treff — relativ skala, bruk over tid';
+    const NAA_TT = 'Hvor nært papiret er det du nettopp siterte — absolutt skala, semantisk avstand';
+    const naaHint = '<div class="hint" style="margin-bottom:.6rem"><b>varig</b> = relativt varmest av dine treff (bruk over tid) · '
+      + '<b>nå</b> = nærhet til det du nettopp siterte'
+      + (data.har_naa_lag ? '' : ' — aktiveres når du siterer noe')
+      + '</div>';
     el.innerHTML = naaHint + data.papirer.map(p => {
       const samlet = Math.max(p.varig_andel, p.naa_andel);
       return `
       <div class="varmekort" data-id="${escapeHtml(p.id)}" style="border-left-color:${varmeFarge(samlet)}">
         <div class="vk-tittel">${escapeHtml(p.tittel)}</div>
         <div class="vk-meta">${domeneMerke(p)}<span>${p.aar||'?'} · ${escapeHtml(p.tidsskrift||'')}</span>${artMerke(p)}</div>
-        <div class="lagrad"><span>varig</span><span class="lagbar"><i style="width:${Math.round(p.varig_andel*100)}%;background:${varmeFarge(p.varig_andel)}"></i></span></div>
-        <div class="lagrad"><span>nå</span><span class="lagbar"><i style="width:${Math.round(p.naa_andel*100)}%;background:${varmeFarge(p.naa_andel)}"></i></span></div>
+        <div class="lagrad"><span title="${VARIG_TT}">varig</span><span class="lagbar"><i style="width:${Math.round(p.varig_andel*100)}%;background:${varmeFarge(p.varig_andel)}"></i></span></div>
+        <div class="lagrad"><span title="${NAA_TT}">nå</span><span class="lagbar"><i style="width:${Math.round(p.naa_andel*100)}%;background:${varmeFarge(p.naa_andel)}"></i></span></div>
         <div class="vk-aarsak">${escapeHtml(p.aarsaker.join(' · '))}${p.avstand != null ? ` · avstand ${p.avstand.toFixed(3)}` : ''}</div>
       </div>`;
     }).join('');
