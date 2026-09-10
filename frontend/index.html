@@ -934,6 +934,17 @@ async function openPaper(id) {
   loadGapLazy = true; // gap hentes når fanen faktisk åpnes (unngå unødig EBI-kall)
   $('#tab-gap').innerHTML = `<div class="hint">Åpne fanen for å kjøre citation-gap-testen mot dette papiret.</div>`;
   $('#tab-kart').innerHTML = `<div class="hint">Laster…</div>`;
+
+  // Kart/Gap/Sti lastes normalt kun ved fanebytte (se klikk-lytteren på .shell .tab under)
+  // — MEN et nytt papir kan åpnes mens en av dem alt ER den aktive fanen (bla i trefflista
+  // uten å bytte fane), og da fyrer aldri klikk-lytteren. Uten dette sto panelet fast på
+  // placeholderen over for alltid — Kart på et evig "Laster…" som aldri lastet noe. Samme
+  // last-kall klikket ville kjørt, for fanen som FAKTISK er åpen nå. (Kart selv trigges fra
+  // loadLignende() sin fullførelse et par linjer over, ikke herfra — den deler datakilde
+  // med Lignende-fanen og må vente på state.lastNaboer.)
+  const aktivFane = $('.shell .tab.active')?.dataset.tab;
+  if (aktivFane === 'gap') { loadGapLazy = false; loadGap(id); }
+  if (aktivFane === 'sti') { state.cachede = null; loadSti(id); }
 }
 
 // ---------- Fanevalg (høyre panel) ----------
@@ -1043,6 +1054,13 @@ async function loadLignende(id) {
         </div>`).join('');
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
   } catch (err) { el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}</div>`; }
+  finally {
+    // Kart deler datakilde med Lignende (state.lastNaboer) — se openPaper() sin
+    // kommentar om hvorfor dette IKKE kan vente på et fanebytte som kanskje aldri
+    // kommer. finally, ikke etter try: skal også kjøre om selve hentingen feilet
+    // (samme oppførsel brukeren fikk før ved å klikke bort og tilbake til Kart).
+    if ($('.shell .tab.active')?.dataset.tab === 'kart') renderKart();
+  }
 }
 
 async function loadGap(id) {
@@ -1125,9 +1143,16 @@ function renderKart() {
     svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--accent)" stroke-width="${w.toFixed(2)}" opacity=".55"/>`;
   }
   for (const {n,x,y} of pts) {
-    svg += `<circle cx="${x}" cy="${y}" r="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6" style="cursor:pointer" data-id="${escapeHtml(n.id)}" class="kart-node"/>`;
-    svg += `<text x="${x}" y="${y-13}" text-anchor="middle" font-size="8" fill="var(--muted)">${escapeHtml((n.tittel||'').slice(0,22))}</text>`;
-    svg += `<text x="${x}" y="${y+21}" text-anchor="middle" font-size="7.5" fill="var(--accent)">${n.avstand.toFixed(3)}</text>`;
+    // <title> som FØRSTE barn av <g> — SVG-spec: gjelder da hele gruppen (sirkel +
+    // begge tekstene), ikke bare sirkelen. Nødvendig fordi label-teksten er kuttet til
+    // 22 tegn (viewBox-notatet over) og ellers ikke har noen måte å vise hele tittelen
+    // på uten å faktisk åpne papiret.
+    svg += `<g data-id="${escapeHtml(n.id)}" class="kart-node" style="cursor:pointer">` +
+      `<title>${escapeHtml(n.tittel||'')}</title>` +
+      `<circle cx="${x}" cy="${y}" r="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6"/>` +
+      `<text x="${x}" y="${y-13}" text-anchor="middle" font-size="8" fill="var(--muted)">${escapeHtml((n.tittel||'').slice(0,22))}</text>` +
+      `<text x="${x}" y="${y+21}" text-anchor="middle" font-size="7.5" fill="var(--accent)">${n.avstand.toFixed(3)}</text>` +
+      `</g>`;
   }
   svg += `<circle cx="${cx}" cy="${cy}" r="14" fill="var(--accent)"/><text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="8" fill="var(--bg)" font-weight="700">åpen</text>`;
   svg += `</svg>`;
