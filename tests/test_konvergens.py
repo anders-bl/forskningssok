@@ -17,8 +17,9 @@ _PAPIR = {
     "forfattere": "Klykken C, Reed AK", "tidsskrift": "Journal of Fish Diseases",
     "aar": 2023, "volum": "46", "sider": "943-956",
 }
-_REVISJON = {"treff_per_kilde": {"europe_pmc": 20, "core": 5}, "cache_alder_s": 1800,
-             "dubletter_fjernet": 2, "kilder": {"europe_pmc": True, "core": True}, "profil": "Fiskehelse"}
+_REVISJON = {"treff_per_kilde": {"europe_pmc": 20, "core": 5, "openalex": 8}, "cache_alder_s": 1800,
+             "dubletter_fjernet": 2,
+             "kilder": {"europe_pmc": True, "core": True, "openalex": True}, "profil": "Fiskehelse"}
 
 
 def _tekst(blokker):
@@ -40,7 +41,7 @@ def test_alle_fem_seksjoner_naar_alt_er_gitt():
 def test_proveniens_linje_baerer_hard_empiri():
     b = rapport.konvergens_blokker("q", [_PAPIR], revisjon=_REVISJON)
     md = _tekst(b)
-    assert "Europe PMC 20" in md and "CORE 5" in md
+    assert "Europe PMC 20" in md and "CORE 5" in md and "OpenAlex 8" in md
     assert "Fiskehelse" in md
     assert "av Lauvasdata" in md
 

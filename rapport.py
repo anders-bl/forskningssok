@@ -677,8 +677,10 @@ def _proveniens_linje(revisjon: dict) -> str:
     fersk = "ekte kall" if alder is None else f"cache {alder // 60} min gammel"
     kilder = revisjon.get("kilder", {})
     core = "" if kilder.get("core", True) else " (CORE utilgjengelig)"
+    alex = "" if kilder.get("openalex", True) else " (OpenAlex utilgjengelig)"
     return (f"Proveniens: Europe PMC {tpk.get('europe_pmc', '?')} treff ({fersk}), "
             f"CORE {tpk.get('core', 0)} treff{core}, "
+            f"OpenAlex {tpk.get('openalex', 0)} treff{alex}, "
             f"{revisjon.get('dubletter_fjernet', 0)} dubletter slått sammen. "
             f"Profil «{revisjon.get('profil', '?')}».")
 
