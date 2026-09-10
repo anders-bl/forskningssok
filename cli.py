@@ -139,34 +139,36 @@ def main():
     if a.oppdater:
         print("Oppdaterer cache fra alle kilder...")
         from bank import lagre
+        oppdater_query = domeneprofil.PROFIL["sok_standard"]
+
         try:
             from adapters.core import sok as core_sok
-            core_result = core_sok("laks lever ultralyd", limit=20)
+            core_result = core_sok(oppdater_query, limit=20)
             lagre(core_result)
             print(f"  CORE: {len(core_result)} papirer")
         except Exception as e:
             print(f"  CORE feilet: {e}")
-        
+
         try:
             from adapters.europe_pmc import sok as pmc_sok
-            pmc_result = pmc_sok("salmon liver ultrasound", page_size=20)
+            pmc_result = pmc_sok(oppdater_query, page_size=20)
             lagre(pmc_result)
             print(f"  Europe PMC: {len(pmc_result)} papirer")
         except Exception as e:
             print(f"  Europe PMC feilet: {e}")
-        
+
         try:
             from adapters.semantic_scholar import sok as scholar_sok
-            scholar_result = scholar_sok("salmon hepat* ultrasound", limit=20)
+            scholar_result = scholar_sok(oppdater_query, limit=20)
             lagre(scholar_result)
             print(f"  Semantic Scholar: {len(scholar_result)} papirer")
         except Exception as e:
             print(f"  Semantic Scholar feilet: {e}")
-        
+
         # Google Scholar krever SERPAPI_KEY - kommentert ut til nøkkel er satt
         # try:
         #     from adapters.google_scholar import sok as google_sok
-        #     google_result = google_sok("salmon liver ultrasound", limit=10)
+        #     google_result = google_sok(oppdater_query, limit=10)
         #     lagre(google_result)
         #     print(f"  Google Scholar: {len(google_result)} papirer")
         # except Exception as e:

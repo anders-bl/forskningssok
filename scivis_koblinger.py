@@ -35,6 +35,8 @@ except ImportError:
 
 import numpy as np
 
+import domeneprofil
+
 # Importer forskningssøk sine adaptere
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
@@ -418,8 +420,8 @@ def lag_html_landkap(papirer: list[dict], koordinater: list[list[float]], gap: l
 
 def main():
     parser = argparse.ArgumentParser(description="Lag visuelt forskningslandskap")
-    parser.add_argument("--query", type=str, default="laks lever ultralyd",
-                       help="Søkeord")
+    parser.add_argument("--query", type=str, default=domeneprofil.PROFIL["sok_standard"],
+                       help=f"Søkeord, f.eks. '{domeneprofil.PROFIL['sok_eksempel']}'")
     parser.add_argument("--limit", type=int, default=50,
                        help="Maks antall papirer")
     parser.add_argument("--output", type=str, default="landskap.html",

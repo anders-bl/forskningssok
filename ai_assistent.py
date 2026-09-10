@@ -6,20 +6,20 @@ Ingen AI-generering av fakta — kun strukturering av det som allerede finnes i 
 
 For Ulven:
   Bruker: "Hva sier forskningen om ultralyd av lakselever?"
-  
+
   Assistent:
     "Jeg fant 14 relevante studier:
-    
-    📊 3 norske masteroppgaver (NTNU 2023, NMBU 2022, UiT 2019)
-    📊 8 internasjonale artikler (PubMed: 5, Semantic Scholar: 3)
-    📊 2 rapporter (Havforskningsinstituttet)
-    
+
+    - 3 norske masteroppgaver (NTNU 2023, NMBU 2022, UiT 2019)
+    - 8 internasjonale artikler (PubMed: 5, Semantic Scholar: 3)
+    - 2 rapporter (Havforskningsinstituttet)
+
     Hovedfunn:
     • Ultralyd kan detektere nefrokalsinose tidlig (NTNU 2023, n=45) [Kilde]
     • Leverekko endres ved stress (NMBU 2022, p<0.05) [Kilde]
-    
-    ⚠️  Gap: Ingen studier på ultralyd + hepatitt hos laks
-    
+
+    OBS: Gap: Ingen studier på ultralyd + hepatitt hos laks
+
     [Vis alle 14 kilder med DOI/PMID]"
 
 Bruk:
@@ -35,6 +35,7 @@ from collections import Counter
 # Importer forskningssøk sine moduler
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
+import domeneprofil
 from adapters import evidensniva
 from profiler.ulven import FORHAANDSSOK, PRIORITERTE_KILDER
 
@@ -154,25 +155,25 @@ def detekter_hovedfunn(papirer: list[dict]) -> list[dict]:
 
 def detekter_gap(papirer: list[dict], query: str) -> list[str]:
     """Detekter mulige forskningsgap.
-    
+
     Gap er:
     - Emner som ikke nevnes i noen abstract
     - Tidsrom med få studier
     - Kilder som mangler
+
+    Nøkkelbegrepene hentes fra profilens forskningsakser (domeneprofil.AKSER), ikke
+    hardkodet her — akkurat de aksene rapport.py allerede bruker til «Omfang»-panelet,
+    så et profilbytte (FORSKNINGSSOK_PROFIL) endrer gap-kategoriene med, ikke bare
+    domene-matchingen.
     """
     gap = []
-    
-    # Sjekk om nøkkelbegreper mangler
-    forventede_begrep = {
-        "ultralyd": ["ultralyd", "ultrasound", "sonografi"],
-        "lever": ["lever", "hepatic", "liver"],
-        "laks": ["laks", "salmon", "salmo"],
-    }
-    
+
+    forventede_begrep = domeneprofil.AKSER
+
     alle_abstract = " ".join(p.get("abstract", "").lower() for p in papirer)
     
     for kategori, begreper in forventede_begrep.items():
-        if not any(b in alle_abstract for b in begreper):
+        if not any(b.lower() in alle_abstract for b in begreper):
             gap.append(f"Ingen studier nevner {kategori} eksplisitt")
     
     # Tids-gap
@@ -214,18 +215,18 @@ For Ulven: Prøv ett av de forhåndsdefinerte søkene i profiler.ulven.FORHAANDS
     svar.append(f"**Forskningsassistent: {len(papirer)} studier funnet**\n")
     
     # 1. Kilde-oversikt
-    svar.append("### 📊 Kilde-fordeling")
+    svar.append("### Kilde-fordeling")
     for kilde, liste in sorted(etter_kilde.items(), key=lambda x: -len(x[1])):
         svar.append(f"• {kilde}: {len(liste)} studier")
-    
+
     # 2. Tidsfordeling
-    svar.append("\n### 📅 Tidsfordeling")
+    svar.append("\n### Tidsfordeling")
     for aar, liste in list(etter_aar.items())[:5]:  # Topp 5 år
         svar.append(f"• {aar}: {len(liste)} studier")
-    
+
     # 3. Hovedfunn
     if funn:
-        svar.append("\n### 🔍 Hovedfunn (med kilder)")
+        svar.append("\n### Hovedfunn (med kilder)")
         for f in funn[:5]:  # Topp 5 funn
             p = f["papir"]
             svar.append(f"• {f['utsagn']}")
@@ -236,12 +237,12 @@ For Ulven: Prøv ett av de forhåndsdefinerte søkene i profiler.ulven.FORHAANDS
     
     # 4. Gap
     if gap:
-        svar.append("\n### ⚠️  Detekterte gap")
+        svar.append("\n### Detekterte gap")
         for g in gap:
             svar.append(f"• {g}")
-    
+
     # 5. Alle kilder (liste)
-    svar.append("\n### 📚 Alle studier ({})".format(len(papirer)))
+    svar.append("\n### Alle studier ({})".format(len(papirer)))
     for i, p in enumerate(papirer[:10], 1):  # Vis topp 10
         svar.append(f"{i}. **{p.get('tittel', 'Ukjent tittel')}**")
         svar.append(f"   {p.get('forfattere', ['Ukjent'])[0]} et al. ({p.get('aar', 'u.å.')})")
@@ -260,8 +261,8 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description="AI-assistent uten konfabulering")
-    parser.add_argument("--query", type=str, default="laks lever ultralyd",
-                       help="Spørsmål eller søkeord")
+    parser.add_argument("--query", type=str, default=domeneprofil.PROFIL["sok_standard"],
+                       help=f"Spørsmål eller søkeord, f.eks. '{domeneprofil.PROFIL['sok_eksempel']}'")
     parser.add_argument("--svar", action="store_true",
                        help="Generer svar (ellers vis info)")
     parser.add_argument("--db", type=str, default="bank.db",
@@ -276,20 +277,20 @@ def main():
         print("\n" + svar)
     else:
         # Vis info om assistenten
-        print("""
+        print(f"""
 AI-assistent for forskningssøk — uten konfabulering
 
 Prinsipper:
-  ✓ Hver påstand har en kilde
-  ✓ Ingen AI-generering av fakta
-  ✓ Åpne kilde-knapp → les originalen
-  ✓ Gap detekteres, ikke gjettes
+  - Hver påstand har en kilde
+  - Ingen AI-generering av fakta
+  - Åpne kilde-knapp → les originalen
+  - Gap detekteres, ikke gjettes
 
 Bruk:
-  python3 ai_assistent.py --query "laks lever ultralyd" --svar
+  python3 ai_assistent.py --query "{domeneprofil.PROFIL['sok_eksempel']}" --svar
 
-For Ulven (Lumic):
-  • Spesialisert på fiskehelse + ultralyd + lever
+Profil: {domeneprofil.NAVN}
+  • {domeneprofil.PROFIL['kort']}
   • Finner norske masteroppgaver (CORE)
   • Finner internasjonale studier (PubMed, OpenAlex)
   • Detekterer gap i forskningen
