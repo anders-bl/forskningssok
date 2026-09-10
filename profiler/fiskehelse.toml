@@ -30,6 +30,16 @@ fagmiljoer = [
   # instituttet ligger i Bergen, NTNU har tung marin forskning. De er lagt til fordi de
   # HØRER hjemme i lista, ikke fordi de løftet et tall.
   "ntnu", "norwegian university of science and technology", "bergen",
+  # UiT manglet — ULVEN_README.md lovet henne "UiT Munin (arktisk fiskehelse)" som
+  # prioritert kilde, men ordet fantes ikke her, så et ekte Munin-treff fikk aldri
+  # [fag]-merket. Funnet 2026-09-10 ved korpus-måling (samme metode som NTNU/Bergen
+  # over): et allerede cachet papir har tidsskrift="Munin - Open Research Archive,
+  # NORA - Norwegian Open Research Archives". Trygt som bart substreng — domene_naer()
+  # matcher KUN forfattere+tidsskrift (ranking.py), aldri tittel/abstract, så et papir
+  # om det USLEKTEDE "Munin"-dataprogrammet (Carter/Bennett/Zwaenepoel 1991) ikke
+  # treffer her uansett. Et treff uten fiskeart i abstractet får likevel [art?] av
+  # arts_naer_tekst — de to aksene er uavhengige med vilje, se domeneprofil.py.
+  "munin",
 ]
 fagtidsskrifter = [
   "journal of fish diseases", "aquaculture", "diseases of aquatic organisms",

@@ -41,7 +41,7 @@ Spar tid med ferdige søk som gir gode resultater med en gang:
 
 ```bash
 # Hent ferske studier fra alle kilder
-python3 bank.py --oppdater
+python3 cli.py --oppdater
 ```
 
 Anbefalt: **Én gang i uka** for å få med nyeste forskning.
@@ -149,7 +149,7 @@ Hver studie får et badge som viser studiedesign:
 ### Morgen: Oppdatering
 ```bash
 # Hent nyeste forskning (tar 2-3 minutter)
-python3 bank.py --oppdater
+python3 cli.py --oppdater
 ```
 
 ### Ettermiddag: Utforskning
