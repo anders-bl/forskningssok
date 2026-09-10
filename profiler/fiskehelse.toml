@@ -15,6 +15,13 @@ kort = "norsk oppdrettslaks-patologi (nyre/lever/ultralyd-validering)"
 # Søkefeltets standardverdi ved sidelast, og eksempelet i placeholderen.
 sok_standard = "nephrocalcinosis salmon"
 sok_eksempel = "nephrocalcinosis smolt seawater transfer"
+# Valgfritt (i motsetning til sok_standard): eget søkespor for AVBILDNINGSUTSTYRET selv,
+# ikke fiskehelsen det brukes på. dossier.py (2026-09-10) slår dette sammen med
+# emne-treffet i SAMME cache, slik at et dossier om f.eks. øye-skanning kan trekke på
+# både biologi-litteratur og maskinvare/metode-litteratur samtidig. Domeneprofil.py
+# validerer den IKKE som påkrevd — et fagfelt uten eget utstyrsspor lar bare feltet stå
+# tomt, og dossier.py hopper stille over utvidelsen.
+sok_utstyr = "aquaculture fish imaging ultrasound X-ray computer vision sensor"
 
 [domene]
 # Domene-nærhet matches mot forfatter-affiliasjon + tidsskriftnavn — de to strengene
