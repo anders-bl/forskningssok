@@ -1195,11 +1195,15 @@ function renderKart() {
   const cx=150, cy=150, maxR=120;
   const maxDist = Math.max(...naboer.map(n=>n.avstand), .001);
   const maxSit = Math.max(...naboer.map(n=>n.siteringstall||0), 1);
-  // Labelen krymper med antall noder (fast 22 tegn holdt for de opprinnelige 6 naboene,
-  // men 18+ noder jevnt fordelt på samme sirkel gir ~52px avstand mellom naboer der et
-  // 22-tegns label alene er ~120px bredt — garantert kollisjon). Gulvet på 10 tegn er
-  // fortsatt nok til å gjenkjenne treffet; full tittel står uansett i <title> (hover).
-  const labelLen = Math.max(10, Math.min(22, Math.round(260 / naboer.length)));
+  // Labelen krymper med antall noder (fast 10 tegn ved 6 naboer, men 18+ noder jevnt
+  // fordelt på samme sirkel gir ~52px avstand mellom naboer der et lengre label
+  // garantert kolliderer). Gulvet på 4 tegn er fortsatt nok til å ane treffet; full
+  // tittel står uansett i <title> (hover). Konstantene krympet 2026-09-10 samtidig med
+  // font-size-økningen under (samme rotårsak, se den kommentaren): tegnbredden må
+  // krympe proporsjonalt med at font-size vokser, ellers kolliderer labels på nytt.
+  // MÅLT, ikke antatt — iterert i ekte nettleser til getBoundingClientRect() rapporterte
+  // 0 av 18 label-par som overlappet (var 4/18 ved første forsøk med et for grovt anslag).
+  const labelLen = Math.max(4, Math.min(10, Math.round(75 / naboer.length)));
   // viewBox RETTET 2026-09-09 (idébank #30 «Kart-fanens tekst-labels klipper av og til
   // ved venstre kant», kjent siden 09-03). Node-posisjon spenner x/y ∈ [-10,310]
   // (cx/cy=150 ± maxR 160). 09-07-utvidelsen (-60/-30-margin) antok et 22-tegns label
@@ -1235,11 +1239,20 @@ function renderKart() {
       `<title>${escapeHtml(n.tittel||'')} — ${escapeHtml(KILDE_NAVN[kildeGruppe(n.kilde_kode)])}` +
       `${n.siteringstall != null ? ` · ${n.siteringstall} siteringer` : ''}</title>` +
       `<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="var(--surface)" stroke="${farge}" stroke-width="1.6"/>` +
-      `<text x="${x}" y="${y-13}" text-anchor="middle" font-size="8" fill="var(--muted)">${escapeHtml((n.tittel||'').slice(0,labelLen))}</text>` +
-      `<text x="${x}" y="${y+21}" text-anchor="middle" font-size="7.5" fill="${farge}">${n.avstand.toFixed(3)}</text>` +
+      // font-size RETTET 2026-09-10 (Anders: darkmode «vanskelig å lese» — viste seg IKKE
+      // å være en fargekontrast-sak, se frontend/index.html sin egen dark-token-kontrast
+      // (7-15:1, godt over WCAG). Rotårsaken var bokstavelig størrelse: viewBox 500 SVG-
+      // enheter mot en faktisk skjermbredde på ~272px (målt getBoundingClientRect, ikke
+      // antatt) gir en skala på 0.544 — font-size 8 rendret da som 5 EKTE skjermpiksler,
+      // uleselig i BEGGE fargemoduser. 8→17/7.5→16 sikter mot ~9-9.5px rendret (samme
+      // skala) — labelLen over er krympet tilsvarende for å holde total pikselbredde
+      // omtrent uendret, så viewBox-marginene (09-09-fiksen, se kommentaren over) ikke
+      // trenger å endres på nytt.
+      `<text x="${x}" y="${y-13}" text-anchor="middle" font-size="17" fill="var(--muted)">${escapeHtml((n.tittel||'').slice(0,labelLen))}</text>` +
+      `<text x="${x}" y="${y+21}" text-anchor="middle" font-size="16" fill="${farge}">${n.avstand.toFixed(3)}</text>` +
       `</g>`;
   }
-  svg += `<circle cx="${cx}" cy="${cy}" r="14" fill="var(--accent)"/><text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="8" fill="var(--bg)" font-weight="700">åpen</text>`;
+  svg += `<circle cx="${cx}" cy="${cy}" r="14" fill="var(--accent)"/><text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="17" fill="var(--bg)" font-weight="700">åpen</text>`;
   svg += `</svg>`;
   const legend = Object.keys(KILDE_NAVN).map(g =>
     `<span style="display:inline-flex;align-items:center;gap:.3rem;margin-right:.9rem">` +
