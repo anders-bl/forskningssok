@@ -140,6 +140,7 @@ button{ font:inherit; }
 .rapport-eksport-gruppe{ display:inline-flex; align-items:center; gap:.3rem; font-size:.6875rem; color:var(--muted); flex-wrap:wrap; }
 .rapport-eksport-gruppe.i-meta{ margin-left:auto; }
 .rapport-eksport-gruppe.blokk{ display:flex; margin-bottom:.7rem; }
+.rapport-eksport-gruppe[hidden]{ display:none; }
 .rapport-btn{
   border:1px solid var(--border); background:none; color:var(--muted);
   border-radius:99px; padding:.2rem .55rem; font-size:.6875rem; cursor:pointer;
@@ -728,7 +729,7 @@ function renderResults(papirer) {
     btn.innerHTML = `
       <div class="result-row1">
         ${domeneMerke(p)}<span>${p.aar || '?'} · ${p.siteringstall ?? '?'} sit.</span>
-        ${p.open_access ? '<span class="pill-oa">OA</span>' : ''}
+        ${p.open_access ? '<span class="pill-oa" title="open access">OA</span>' : ''}
         ${artMerke(p)}
         ${evidensBadge(p.evidensniva)}
       </div>
