@@ -64,13 +64,37 @@ def test_bygg_prompt_baerer_id_for_hvert_papir():
         assert seksjon in prompt
 
 
-def test_kall_llm_er_ikke_koblet_til_ennaa():
-    """Kontraktstest: kall_llm() SKAL feile høylytt til en ekte nøkkel er koblet til —
-    en stille fallback (f.eks. tom streng) ville gjort lag_dossier() vanskelig å skille
-    fra en fungerende, men tom, generering."""
+def _importer_ollama_port():
+    """Samme lat sys.path-import som dossier.kall_llm() selv gjør — importert her KUN
+    for å monkeypatche modulen FØR kall_llm() henter den samme (cachede) modulen fra
+    sys.modules. Ingen nettverkskall skjer ved selve importen (kun ved sjekk_dommer/
+    kall_dommer, som testene under erstatter)."""
+    sys.path.insert(0, str(Path.home() / "prosjekter" / "silverbullet" / "ops"))
+    import _ollama_port
+    return _ollama_port
+
+
+def test_kall_llm_feiler_tydelig_naar_ollama_ikke_er_klar(monkeypatch):
+    """Kontraktstest: en død/manglende lokal Ollama skal gi en lesbar RuntimeError her,
+    ikke en stack trace fra httpx to nivåer ned — samme disiplin _ollama_port selv
+    krever av enhver konsument (se sjekk_dommer sin docstring)."""
     import pytest
-    with pytest.raises(NotImplementedError):
+    op = _importer_ollama_port()
+    monkeypatch.setattr(op, "sjekk_dommer", lambda model, **kw: "Ollama utilgjengelig (test)")
+    with pytest.raises(RuntimeError, match="ikke klar"):
         dossier.kall_llm("noe prompt")
+
+
+def test_kall_llm_returnerer_meldingsinnhold_ved_suksess(monkeypatch):
+    """kall_llm() skal plukke ut ["message"]["content"] fra _ollama_port sitt rå
+    JSON-svar — samme kontrakt evaluer.py::_hus_dommer allerede bruker."""
+    op = _importer_ollama_port()
+    monkeypatch.setattr(op, "sjekk_dommer", lambda model, **kw: None)
+    monkeypatch.setattr(
+        op, "kall_dommer",
+        lambda model, prompt, **kw: {"message": {"content": "et ekte dossier-svar"}},
+    )
+    assert dossier.kall_llm("noe prompt") == "et ekte dossier-svar"
 
 
 def test_hent_kandidater_slaar_sammen_emne_og_utstyr_uten_dubletter(tmp_path, monkeypatch):
@@ -87,6 +111,18 @@ def test_hent_kandidater_slaar_sammen_emne_og_utstyr_uten_dubletter(tmp_path, mo
     # ingen id dukker opp to ganger selv om begge søkene kunne truffet samme papir
     ider = [p["id"] for p in kandidater]
     assert len(ider) == len(set(ider))
+
+
+def test_hent_kandidater_kapper_ved_maks_kilder(tmp_path):
+    """Målt live 2026-09-11: et to-ords emne kan treffe hundrevis av løst relaterte
+    cachede papirer (hent_fra_cache gjør per-ord OR uten rangering) — uten en kapp
+    sprenger et LLM-kall konteksten stille. Se MAKS_KILDER sin egen kommentar."""
+    db_path = tmp_path / "cache.db"
+    for i in range(dossier.MAKS_KILDER + 10):
+        _lagre(db_path, tittel=f"Papir om laks {i}", doi=f"10.1/{i}")
+
+    kandidater = dossier.hent_kandidater("laks", db_path)
+    assert len(kandidater) == dossier.MAKS_KILDER
 
 
 def test_hent_kandidater_uten_sok_utstyr_i_profilen(tmp_path, monkeypatch):

@@ -43,12 +43,28 @@ SEKSJONER = ("Hard vitenskap", "Hull i forskningen", "Trygt og kjedelig", "Front
 _REF_MØNSTER = re.compile(r"\[#([\w./-]+)\]")
 
 
+# hent_fra_cache() gjør per-ORD OR-matching uten rangering (ai_assistent.py, delt kode) —
+# et to-ords emne kan derfor treffe hundrede av løst relaterte cachede papirer, IKKE bare
+# de faktisk relevante. Målt live 2026-09-11 (samme dag): «nephrocalcinosis salmon» alene
+# ga 205 treff i en cache fylt av en hel økts live-søk; pluss sok_utstyr ga 612 totalt. Et
+# ukappet dossier-kall sendte 612 kilder til lokal Ollama (num_ctx=16384) — konteksten
+# sprengte stille, og gpt-oss brukte HELE num_predict-budsjettet på sin egen "thinking"-
+# kanal (bekreftet: /api/chat returnerer et eget message.thinking-felt), null tegn igjen
+# til selve svaret. Kappingen under er derfor ikke en optimalisering, den er det som gjør
+# et dossier-kall mulig i det hele tatt med en lokal modell.
+MAKS_KILDER = 25
+
+
 def hent_kandidater(emne: str, db_path: Path = DB) -> list[dict]:
     """Ekte kilder for emnet, PLUSS utstyrs-/teknisk-litteratur hvis profilen definerer
     et eget søk for det (PROFIL["sok_utstyr"] — valgfritt felt, ikke et påkrevd som
     sok_standard, fordi ikke alle fagfelt har et eget utstyrsspor). Samme cache, ingen
     egen database — et dossier om f.eks. øye-skanning skal kunne trekke på BÅDE
-    biologi-treff og avbildningsutstyr-treff samtidig."""
+    biologi-treff og avbildningsutstyr-treff samtidig.
+
+    Kappet til MAKS_KILDER (se konstantens egen kommentar for hvorfor) — emne-treff
+    beholder prioritet over utstyr-treff fordi de settes inn FØRST i unike-dicten under,
+    og et Python-dict bevarer innsettingsrekkefølge."""
     papirer = list(hent_fra_cache(emne, db_path))
 
     utstyr_query = domeneprofil.PROFIL.get("sok_utstyr")
@@ -58,7 +74,7 @@ def hent_kandidater(emne: str, db_path: Path = DB) -> list[dict]:
     unike: dict = {}
     for p in papirer:
         unike[p["id"]] = p
-    return list(unike.values())
+    return list(unike.values())[:MAKS_KILDER]
 
 
 def bygg_prompt(emne: str, papirer: list[dict]) -> str:
@@ -118,15 +134,48 @@ def verifiser_kilder(dossier_tekst: str, papirer: list[dict]) -> tuple[str, list
     return renset, avvist
 
 
-def kall_llm(prompt: str) -> str:
-    """Det ENESTE stedet i denne fila som snakker med en ekstern modell. Bevisst
-    NotImplementedError til leverandør/nøkkel er valgt (2026-09-10) — bytt ut kroppen
-    med et ekte API-kall når det skjer. Alt annet i denne fila (henting, prompt,
-    etterkontroll) er allerede ferdig og testet uavhengig av HVA som står her."""
-    raise NotImplementedError(
-        "Ingen LLM-nøkkel er koblet til ennå — se dossier.py sin modul-docstring. "
-        "Sett inn et ekte API-kall i kall_llm() når leverandør er valgt."
-    )
+# 2026-09-11 (Anders: "gøy å prøve med noen lokalt kjørende llm"): lokal Ollama, gratis,
+# ingen abonnement — samme dommer-modell-familie evaluer.py bruker (DEFAULT_MODELL i den
+# fila). Dette er en EKSPERIMENT-vei for dev/Anders' egen Mac, ikke prod-syntesen for Ulven
+# — roadmap-siden (prosjekt/forskningssok-smartsyntese-for-ulven §Fase 2) sier eksplisitt at
+# prod skal gå via ai-proxy/Mistral, siden Dokploy ikke har lokal Ollama. Bytt OLLAMA_MODELL
+# til f.eks. "devstral:agent" for å sammenligne kvalitet — begge er allerede pullet.
+OLLAMA_MODELL = "gpt-oss:agent"
+
+
+def kall_llm(prompt: str, model: str = OLLAMA_MODELL) -> str:
+    """Det ENESTE stedet i denne fila som snakker med en modell. Lokal Ollama via husets
+    delte port (`silverbullet/ops/_ollama_port.py`) — samme mønster som
+    evaluer.py::_hus_dommer, lat sys.path-import fordi porten kun er nåbar på Anders' Mac.
+
+    sjekk_dommer() FØR selve kallet, samme disiplin porten selv krever: en død/manglende
+    Ollama skal gi en tydelig feilmelding her, ikke en stack trace to nivåer ned i httpx."""
+    import sys
+    sys.path.insert(0, str(Path.home() / "prosjekter" / "silverbullet" / "ops"))
+    import _ollama_port
+
+    feil = _ollama_port.sjekk_dommer(model)
+    if feil:
+        raise RuntimeError(f"Lokal Ollama ({model}) ikke klar: {feil}")
+
+    # num_ctx=16384: et dossier med mange kilder (hver med tittel+abstract) kan fort
+    # passere Ollamas 4096-standard, som trunkerer STILLE (se _ollama_port sin egen
+    # advarsel om nettopp dette). Fortsatt ikke ubegrenset — mange nok kilder kan
+    # fortsatt trunkere; ikke antatt trygt for et vilkårlig stort korpus.
+    #
+    # num_predict=6000, ikke 2500: gpt-oss (og enhver "thinking"-modell, se _ollama_port-
+    # svarets eget message.thinking-felt) bruker en STOR, variabel andel av num_predict på
+    # skjult resonnering FØR den skriver selve svaret — samme budsjett, delt kanal. Målt
+    # live 2026-09-11 med 2500: en 25-kilders MAKS_KILDER-prompt ga fire ekte, kildekoblede
+    # setninger og stoppet midt i ordet «magnesium». Ikke en prompt-lengde-feil (den var
+    # innenfor num_ctx) — ren token-budsjett-sult i tenke-kanalen.
+    # timeout=600 (ikke portens 180s-default): et 6000-tokens generation-budsjett på lokal
+    # maskinvare uten dedikert GPU-akselerasjon overskrider ofte 180s — målt live
+    # 2026-09-11 (httpcore.ReadTimeout ved default). Et dossier er en bakgrunnsjobb, ikke
+    # et live UI-kall som må svare raskt.
+    svar = _ollama_port.kall_dommer(model, prompt, temperature=0.2, num_ctx=16384,
+                                     num_predict=6000, timeout=600)
+    return svar["message"]["content"]
 
 
 def lag_referanseliste(papirer: list[dict]) -> str:
