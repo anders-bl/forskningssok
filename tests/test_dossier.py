@@ -5,6 +5,7 @@ som strengliteraler og sjekker at verifiser_kilder() gjør jobben mekanisk, uten
 ekte API-kall (suiten er nettverksfri, se CLAUDE.md § Testing).
 """
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -67,13 +68,20 @@ def test_bygg_prompt_baerer_id_for_hvert_papir():
 
 
 def _importer_ollama_port():
-    """Samme lat sys.path-import som dossier.kall_llm() selv gjør — importert her KUN
-    for å monkeypatche modulen FØR kall_llm() henter den samme (cachede) modulen fra
-    sys.modules. Ingen nettverkskall skjer ved selve importen (kun ved sjekk_dommer/
-    kall_dommer, som testene under erstatter)."""
-    sys.path.insert(0, str(Path.home() / "prosjekter" / "silverbullet" / "ops"))
-    import _ollama_port
-    return _ollama_port
+    """Injiserer en fake `_ollama_port`-modul i sys.modules FØR dossier.kall_llm() gjør sin
+    egen lazy `import _ollama_port` — samme sys.modules-cache-mekanisme som den opprinnelige
+    sys.path-varianten mot silverbullet/ops/ stolte på, men uten avhengighet til at
+    silverbullet-repoet faktisk er checket ut ved siden av. Ekte fil finnes kun på Anders'
+    Mac; CI checker bare ut DETTE repoet, derfor ModuleNotFoundError der (2026-09-11, fanget
+    av CI selv — samme bug-klasse som _hus_embed i test_ai_assistent.py, se den kommentaren).
+    Testene bryr seg uansett kun om at kall_llm() kaller riktige funksjonsnavn på modulen den
+    importerer, ikke om ekte Ollama-oppførsel — sjekk_dommer/kall_dommer erstattes uansett."""
+    if "_ollama_port" not in sys.modules:
+        modul = types.ModuleType("_ollama_port")
+        modul.sjekk_dommer = lambda *a, **kw: None
+        modul.kall_dommer = lambda *a, **kw: {"message": {"content": ""}}
+        sys.modules["_ollama_port"] = modul
+    return sys.modules["_ollama_port"]
 
 
 def test_kall_llm_ruter_til_lokal_ollama_uten_ai_proxy_url(monkeypatch):
