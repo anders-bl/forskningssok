@@ -25,6 +25,7 @@ import dokumenter
 import versjon
 import verifiser as verifiser_modul
 import dossier as dossier_modul
+import syntese_fortelling as syntese_modul
 import sti as sti_modul
 import rapport
 import scoping
@@ -776,6 +777,29 @@ def api_dossier(body: dict):
         raise HTTPException(400, "tomt emne")
     try:
         return {"dossier": dossier_modul.lag_dossier(emne)}
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
+@app.get("/api/syntese/tilgjengelig")
+def api_syntese_tilgjengelig():
+    """Flaten spør FØR den viser knappen — samme mønster som /api/dossier/tilgjengelig.
+    Se syntese_fortelling.tilgjengelig() for hvorfor «tilgjengelig for en web-bruker»
+    betyr «AI_PROXY_URL er satt» (prod-vei), ikke «Ollama virker lokalt»."""
+    return {"tilgjengelig": syntese_modul.tilgjengelig()}
+
+
+@app.post("/api/syntese")
+def api_syntese(body: dict):
+    """Emne → kildetro LLM-syntese-fortelling (ÉN sammenhengende fortelling som vever
+    kildene sammen: "slik henger disse funnene sammen"), se syntese_fortelling.py.
+    Brukerinitiert-only (samme FDR-057-ånd) — kalles kun ved et eksplisitt klikk, aldri
+    automatisk, fordi dette er et ekte, kostbart LLM-kall (ai-proxy/Mistral i prod)."""
+    emne = (body.get("emne") or "").strip()
+    if not emne:
+        raise HTTPException(400, "tomt emne")
+    try:
+        return {"syntese": syntese_modul.lag_syntese_fortelling(emne)}
     except RuntimeError as e:
         raise HTTPException(502, str(e))
 

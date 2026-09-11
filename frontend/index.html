@@ -533,6 +533,9 @@ svg text{ font-family:system-ui,sans-serif; }
           <span class="rapport-eksport-gruppe i-meta" id="eksport-dossier" hidden title="Sammenhengende dossier: hard vitenskap, hull, trygt-kjedelig, frontier, gammel akseptert tro — hver setning kildekoblet">
             <button class="rapport-btn rapport-btn-primar" id="btn-dossier">Lag dossier</button>
           </span>
+          <span class="rapport-eksport-gruppe i-meta" id="eksport-syntese" hidden title="Én sammenhengende fortelling som vever kildene sammen: «slik henger disse funnene sammen» — Ulvens formvalg 2026-09-11">
+            <button class="rapport-btn rapport-btn-primar" id="btn-syntese">Lag syntese-fortelling</button>
+          </span>
         </div>
         <div class="revisjon" id="revisjon" hidden></div>
         <button class="utforsk-forslag" id="utforsk-forslag"><span id="utforsk-forslag-navn"></span></button>
@@ -651,13 +654,21 @@ svg text{ font-family:system-ui,sans-serif; }
      websøk — se dossier.py. Hver setning i svaret bærer [#id]-kildehenvisninger som er
      mekanisk verifisert mot det faktiske kildesettet FØR de når hit (verifiser_kilder()). -->
 <div class="verifiser-overlay" id="dossier-overlay" hidden>
-  <div class="verifiser-kort dossier-kort">
-    <button class="verifiser-lukk" id="dossier-lukk" aria-label="Lukk">x</button>
-    <div class="verifiser-merke">LLM-syntese over dine hentede kilder — ikke rå litteratur</div>
-    <div class="verifiser-paastand" id="dossier-emne"></div>
-    <div id="dossier-kropp" class="dossier-kropp"></div>
-  </div>
-</div>
+   <div class="verifiser-kort dossier-kort">
+     <button class="verifiser-lukk" id="dossier-lukk" aria-label="Lukk">x</button>
+     <div class="verifiser-merke">LLM-syntese over dine hentede kilder — ikke rå litteratur</div>
+     <div class="verifiser-paastand" id="dossier-emne"></div>
+     <div id="dossier-kropp" class="dossier-kropp"></div>
+   </div>
+ </div>
+ <div class="verifiser-overlay" id="syntese-overlay" hidden>
+   <div class="verifiser-kort dossier-kort">
+     <button class="verifiser-lukk" id="syntese-lukk" aria-label="Lukk">x</button>
+     <div class="verifiser-merke">LLM-syntese-fortelling over dine hentede kilder — ikke rå litteratur</div>
+     <div class="verifiser-paastand" id="syntese-emne"></div>
+     <div id="syntese-kropp" class="dossier-kropp"></div>
+   </div>
+ </div>
 
 <div class="varsel" id="varsel" hidden></div>
 
@@ -1557,9 +1568,19 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#verif
 let dossierPaa = false;
 api('/api/dossier/tilgjengelig').then(d => { dossierPaa = !!d.tilgjengelig; oppdaterDossierSynlighet(); }).catch(()=>{});
 
+// Syntese-fortelling-knappen dukker opp kun der ai-proxy finnes (Dokploy), samme logikk
+// som dossier: AI_PROXY_URL må være satt (prod-vei). Lokalt (Anders' Mac) forblir den skjult.
+let syntesePaa = false;
+api('/api/syntese/tilgjengelig').then(d => { syntesePaa = !!d.tilgjengelig; oppdaterSynteseSynlighet(); }).catch(()=>{});
+
 function oppdaterDossierSynlighet() {
   const r = state.sisteResultat;
   $('#eksport-dossier').hidden = !dossierPaa || !r || !r.query || r.ids.length === 0;
+}
+
+function oppdaterSynteseSynlighet() {
+  const r = state.sisteResultat;
+  $('#eksport-syntese').hidden = !syntesePaa || !r || !r.query || r.ids.length === 0;
 }
 
 // Dossieret er LLM-prosa (## Hard vitenskap / Hull / Trygt og kjedelig / Frontier /
@@ -1614,10 +1635,30 @@ $('#btn-dossier').addEventListener('click', async () => {
   }
 });
 
+$('#btn-syntese').addEventListener('click', async () => {
+  const r = state.sisteResultat;
+  if (!r || !r.query) return;
+  $('#syntese-emne').textContent = '«' + r.query + '»';
+  $('#syntese-kropp').innerHTML = '<div class="hint">Genererer syntese-fortelling over dine hentede kilder (kan ta ett minutt eller mer) …</div>';
+  $('#syntese-overlay').hidden = false;
+  try {
+    const s = await api('/api/syntese', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({emne: r.query})});
+    $('#syntese-kropp').innerHTML = renderDossier(s.syntese);  // gjenbruker dossier-prosa-rendering
+  } catch (err) {
+    $('#syntese-kropp').innerHTML = `<div class="hint">Kunne ikke lage syntese-fortelling: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
 function lukkDossier() { $('#dossier-overlay').hidden = true; }
 $('#dossier-lukk').addEventListener('click', lukkDossier);
 $('#dossier-overlay').addEventListener('click', e => { if (e.target.id === 'dossier-overlay') lukkDossier(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dossier-overlay').hidden) lukkDossier(); });
+
+function lukkSyntese() { $('#syntese-overlay').hidden = true; }
+$('#syntese-lukk').addEventListener('click', lukkSyntese);
+$('#syntese-overlay').addEventListener('click', e => { if (e.target.id === 'syntese-overlay') lukkSyntese(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#syntese-overlay').hidden) lukkSyntese(); });
 
 $('#btn-siter').addEventListener('click', async () => {
   const tekst = toolbar.dataset.tekst;
