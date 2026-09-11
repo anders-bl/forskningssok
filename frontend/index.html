@@ -241,6 +241,15 @@ button{ font:inherit; }
 .verifiser-kilder h4{ margin:0 0 .5rem; font-size:.75rem; color:var(--muted); }
 .verifiser-kilder a{ display:block; color:var(--accent); font-size:.8125rem; text-decoration:none; margin-bottom:.35rem; }
 .verifiser-kilder a:hover{ text-decoration:underline; }
+.dossier-kort{ max-width:44rem; }
+.dossier-kropp h4{ font-size:.8125rem; text-transform:uppercase; letter-spacing:.03em; color:var(--accent); margin:1.1rem 0 .4rem; }
+.dossier-kropp h4:first-child{ margin-top:0; }
+.dossier-kropp p{ font-size:.875rem; line-height:1.65; white-space:pre-wrap; margin:0 0 .6rem; }
+.dossier-kilder{ margin-top:1.2rem; border-top:1px solid var(--border); padding-top:.8rem; }
+.dossier-kilder h4{ margin:0 0 .5rem; font-size:.75rem; color:var(--muted); text-transform:none; letter-spacing:normal; }
+.dossier-kilder a{ display:block; color:var(--accent); font-size:.8125rem; text-decoration:none; margin-bottom:.35rem; }
+.dossier-kilder a:hover{ text-decoration:underline; }
+.dossier-advarsel{ font-size:.75rem; color:var(--warn,#a86); border:1px solid var(--warn,#a86); border-radius:6px; padding:.4rem .6rem; margin:.8rem 0; }
 .slippsone{ position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 12%, transparent); border:2px dashed var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.9375rem; color:var(--accent); font-weight:600; pointer-events:none; z-index:20; }
 .slippsone[hidden]{ display:none; }
 #empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; min-height:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:center; }
@@ -521,6 +530,9 @@ svg text{ font-family:system-ui,sans-serif; }
           <span class="rapport-eksport-gruppe i-meta" id="eksport-konvergens" hidden title="Én rapport for dette søket: kilder, citation-gap på topptreffet, omfang per akse, proveniens og formaterte referanser">
             Forskningsrapport: <button class="rapport-btn rapport-btn-primar" id="rapport-i-appen" title="Se hele det grundige søket satt sammen i kontekst — uten å laste ned">Vis i appen</button><button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
           </span>
+          <span class="rapport-eksport-gruppe i-meta" id="eksport-dossier" hidden title="Sammenhengende dossier: hard vitenskap, hull, trygt-kjedelig, frontier, gammel akseptert tro — hver setning kildekoblet">
+            <button class="rapport-btn rapport-btn-primar" id="btn-dossier">Lag dossier</button>
+          </span>
         </div>
         <div class="revisjon" id="revisjon" hidden></div>
         <button class="utforsk-forslag" id="utforsk-forslag"><span id="utforsk-forslag-navn"></span></button>
@@ -631,6 +643,19 @@ svg text{ font-family:system-ui,sans-serif; }
     <div class="verifiser-merke">LLM-syntese mot web-kilder — ikke rå litteratur</div>
     <div class="verifiser-paastand" id="verifiser-paastand"></div>
     <div id="verifiser-kropp"></div>
+  </div>
+</div>
+
+<!-- Dossier-kort. Samme «tydelig merket LLM-syntese»-disiplin som Verifiser-kortet over
+     (FDR-028-ånden), men bygget på FLERE hentede kilder samtidig i stedet for ett friskt
+     websøk — se dossier.py. Hver setning i svaret bærer [#id]-kildehenvisninger som er
+     mekanisk verifisert mot det faktiske kildesettet FØR de når hit (verifiser_kilder()). -->
+<div class="verifiser-overlay" id="dossier-overlay" hidden>
+  <div class="verifiser-kort dossier-kort">
+    <button class="verifiser-lukk" id="dossier-lukk" aria-label="Lukk">x</button>
+    <div class="verifiser-merke">LLM-syntese over dine hentede kilder — ikke rå litteratur</div>
+    <div class="verifiser-paastand" id="dossier-emne"></div>
+    <div id="dossier-kropp" class="dossier-kropp"></div>
   </div>
 </div>
 
@@ -846,6 +871,7 @@ function settResultatForEksport(papirer, tittel, query = null) {
   // Konvergens-rapporten regner selv (søk + gap + omfang) ut fra SPØRRINGEN, ikke fra
   // id-lista. Derfor finnes den bare for et tekstsøk, ikke for en Utforskning av et emne.
   $('#eksport-konvergens').hidden = papirer.length === 0 || !query;
+  oppdaterDossierSynlighet();
 }
 // Forskningsrapporten rendret INNE i appen (smartsyntese fase 1: sy sammen til én flate).
 // Rapporten er alt sammensyingen — kilder + citation-gap + omfang + tverrfaglig + verifiser
@@ -1524,6 +1550,74 @@ function lukkVerifiser() { $('#verifiser-overlay').hidden = true; }
 $('#verifiser-lukk').addEventListener('click', lukkVerifiser);
 $('#verifiser-overlay').addEventListener('click', e => { if (e.target.id === 'verifiser-overlay') lukkVerifiser(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#verifiser-overlay').hidden) lukkVerifiser(); });
+
+// Dossier-knappen dukker opp kun der ai-proxy finnes (Dokploy), samme «si det, ikke feil
+// stygt»-linje som Verifiser-knappen over. Lokalt (Anders' Mac) forblir den skjult selv om
+// dossier.py teknisk sett fungerer der via Ollama — det hjelper aldri en web-bruker.
+let dossierPaa = false;
+api('/api/dossier/tilgjengelig').then(d => { dossierPaa = !!d.tilgjengelig; oppdaterDossierSynlighet(); }).catch(()=>{});
+
+function oppdaterDossierSynlighet() {
+  const r = state.sisteResultat;
+  $('#eksport-dossier').hidden = !dossierPaa || !r || !r.query || r.ids.length === 0;
+}
+
+// Dossieret er LLM-prosa (## Hard vitenskap / Hull / Trygt og kjedelig / Frontier /
+// Gammel akseptert tro) + en kildeliste, adskilt av "\n---\n" — se dossier.py::lag_dossier().
+// Rendres linje-for-linje, ALDRI via innerHTML på rå tekst (samme «vis aldri utillitsverdig
+// tekst som markup»-disiplin som resten av flaten, se batch_skann.html-slekningen i huset).
+function dossierProsaHtml(tekst) {
+  return tekst.split('\n').map(linje => {
+    linje = linje.trim();
+    if (!linje) return '';
+    const overskrift = linje.match(/^##\s+(.+)$/);
+    return overskrift ? `<h4>${escapeHtml(overskrift[1])}</h4>` : `<p>${escapeHtml(linje)}</p>`;
+  }).join('');
+}
+
+function dossierKilderHtml(blokk) {
+  const linjer = blokk.split('\n');
+  const overskrift = (linjer.shift() || '').replace(/^##\s+/, '');
+  const rader = linjer.filter(l => l.trim()).map(l => {
+    const doi = l.match(/DOI:\s*(\S+)/);
+    const tekstHtml = escapeHtml(l);
+    return doi && doi[1] !== '—'
+      ? `<a href="https://doi.org/${encodeURIComponent(doi[1])}" target="_blank" rel="noopener">${tekstHtml}</a>`
+      : `<p>${tekstHtml}</p>`;
+  }).join('');
+  return `<div class="dossier-kilder"><h4>${escapeHtml(overskrift)}</h4>${rader}</div>`;
+}
+
+function renderDossier(tekst) {
+  const deler = (tekst || '').split(/\n---\n/);
+  let html = dossierProsaHtml(deler[0] || '');
+  for (let i = 1; i < deler.length; i++) {
+    const del = deler[i];
+    if (del.startsWith('[ADVARSEL')) html += `<div class="dossier-advarsel">${escapeHtml(del)}</div>`;
+    else if (del.startsWith('## Kildeliste')) html += dossierKilderHtml(del);
+  }
+  return html || '<div class="hint">(tomt svar)</div>';
+}
+
+$('#btn-dossier').addEventListener('click', async () => {
+  const r = state.sisteResultat;
+  if (!r || !r.query) return;
+  $('#dossier-emne').textContent = '«' + r.query + '»';
+  $('#dossier-kropp').innerHTML = '<div class="hint">Genererer dossier over dine hentede kilder (kan ta ett minutt eller mer) …</div>';
+  $('#dossier-overlay').hidden = false;
+  try {
+    const d = await api('/api/dossier', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({emne: r.query})});
+    $('#dossier-kropp').innerHTML = renderDossier(d.dossier);
+  } catch (err) {
+    $('#dossier-kropp').innerHTML = `<div class="hint">Kunne ikke lage dossier: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
+function lukkDossier() { $('#dossier-overlay').hidden = true; }
+$('#dossier-lukk').addEventListener('click', lukkDossier);
+$('#dossier-overlay').addEventListener('click', e => { if (e.target.id === 'dossier-overlay') lukkDossier(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dossier-overlay').hidden) lukkDossier(); });
 
 $('#btn-siter').addEventListener('click', async () => {
   const tekst = toolbar.dataset.tekst;

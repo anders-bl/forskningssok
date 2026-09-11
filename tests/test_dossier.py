@@ -7,6 +7,8 @@ ekte API-kall (suiten er nettverksfri, se CLAUDE.md § Testing).
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bank  # noqa: E402
 import dossier  # noqa: E402
@@ -74,11 +76,24 @@ def _importer_ollama_port():
     return _ollama_port
 
 
+def test_kall_llm_ruter_til_lokal_ollama_uten_ai_proxy_url(monkeypatch):
+    """kall_llm() sin dispatcher: AI_PROXY_URL usatt → dev-veien (Anders' Mac). Eksplisitt
+    delenv, ikke stole på at testmiljøet tilfeldigvis mangler variabelen."""
+    monkeypatch.delenv("AI_PROXY_URL", raising=False)
+    op = _importer_ollama_port()
+    monkeypatch.setattr(op, "sjekk_dommer", lambda model, **kw: None)
+    monkeypatch.setattr(
+        op, "kall_dommer",
+        lambda model, prompt, **kw: {"message": {"content": "lokalt svar"}},
+    )
+    assert dossier.kall_llm("noe prompt") == "lokalt svar"
+
+
 def test_kall_llm_feiler_tydelig_naar_ollama_ikke_er_klar(monkeypatch):
     """Kontraktstest: en død/manglende lokal Ollama skal gi en lesbar RuntimeError her,
     ikke en stack trace fra httpx to nivåer ned — samme disiplin _ollama_port selv
     krever av enhver konsument (se sjekk_dommer sin docstring)."""
-    import pytest
+    monkeypatch.delenv("AI_PROXY_URL", raising=False)
     op = _importer_ollama_port()
     monkeypatch.setattr(op, "sjekk_dommer", lambda model, **kw: "Ollama utilgjengelig (test)")
     with pytest.raises(RuntimeError, match="ikke klar"):
@@ -88,6 +103,7 @@ def test_kall_llm_feiler_tydelig_naar_ollama_ikke_er_klar(monkeypatch):
 def test_kall_llm_returnerer_meldingsinnhold_ved_suksess(monkeypatch):
     """kall_llm() skal plukke ut ["message"]["content"] fra _ollama_port sitt rå
     JSON-svar — samme kontrakt evaluer.py::_hus_dommer allerede bruker."""
+    monkeypatch.delenv("AI_PROXY_URL", raising=False)
     op = _importer_ollama_port()
     monkeypatch.setattr(op, "sjekk_dommer", lambda model, **kw: None)
     monkeypatch.setattr(
@@ -95,6 +111,43 @@ def test_kall_llm_returnerer_meldingsinnhold_ved_suksess(monkeypatch):
         lambda model, prompt, **kw: {"message": {"content": "et ekte dossier-svar"}},
     )
     assert dossier.kall_llm("noe prompt") == "et ekte dossier-svar"
+
+
+class _FalskSvar:
+    """Samme fake-respons-mønster som test_verifiser.py — dossier.py sin ai-proxy-vei
+    gjenbruker verifiser.py sin kall-stil, så testen gjenbruker samme teststil."""
+
+    def __init__(self, status=200, data=None, tekst=""):
+        self.status_code = status
+        self._data = data if data is not None else {}
+        self.text = tekst
+
+    def json(self):
+        return self._data
+
+
+def test_kall_llm_ruter_til_ai_proxy_naar_url_er_satt(monkeypatch):
+    """kall_llm() sin dispatcher: AI_PROXY_URL satt → prod-veien, ALDRI lokal Ollama —
+    samme "hvilket miljø er vi i"-signal som verifiser.py::tilgjengelig()."""
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+
+    def falsk_post(url, json, timeout):
+        assert url == "http://ai-proxy:8000/complete"
+        assert json["role"] == dossier.AI_PROXY_ROLLE
+        assert json["wiki_id"] == dossier.AI_PROXY_WIKI_ID
+        assert json["messages"] == [{"role": "user", "content": "noe prompt"}]
+        return _FalskSvar(data={"content": "prod-svar fra ai-proxy"})
+
+    assert dossier._kall_llm_ai_proxy("noe prompt", post_fn=falsk_post) == "prod-svar fra ai-proxy"
+
+
+def test_kall_llm_ai_proxy_feil_status_gir_lesbar_runtimeerror(monkeypatch):
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+    with pytest.raises(RuntimeError, match=r"feilet \(503\)"):
+        dossier._kall_llm_ai_proxy(
+            "noe prompt",
+            post_fn=lambda *a, **k: _FalskSvar(status=503, tekst="ai-proxy nede"),
+        )
 
 
 def test_hent_kandidater_slaar_sammen_emne_og_utstyr_uten_dubletter(tmp_path, monkeypatch):

@@ -134,19 +134,73 @@ def verifiser_kilder(dossier_tekst: str, papirer: list[dict]) -> tuple[str, list
     return renset, avvist
 
 
-# 2026-09-11 (Anders: "gøy å prøve med noen lokalt kjørende llm"): lokal Ollama, gratis,
-# ingen abonnement — samme dommer-modell-familie evaluer.py bruker (DEFAULT_MODELL i den
-# fila). Dette er en EKSPERIMENT-vei for dev/Anders' egen Mac, ikke prod-syntesen for Ulven
-# — roadmap-siden (prosjekt/forskningssok-smartsyntese-for-ulven §Fase 2) sier eksplisitt at
-# prod skal gå via ai-proxy/Mistral, siden Dokploy ikke har lokal Ollama. Bytt OLLAMA_MODELL
-# til f.eks. "devstral:agent" for å sammenligne kvalitet — begge er allerede pullet.
 OLLAMA_MODELL = "gpt-oss:agent"
 
+# Prod-modell — kun brukt via ai-proxy (se _kall_llm_ai_proxy). Rollen er registrert i
+# ai-proxy sin ROLE_ROUTE (magistral-medium-latest, EU-direkte Mistral, 2026-09-11).
+AI_PROXY_ROLLE = "dossier-syntese"
+AI_PROXY_WIKI_ID = "forskningssok"
 
-def kall_llm(prompt: str, model: str = OLLAMA_MODELL) -> str:
-    """Det ENESTE stedet i denne fila som snakker med en modell. Lokal Ollama via husets
-    delte port (`silverbullet/ops/_ollama_port.py`) — samme mønster som
-    evaluer.py::_hus_dommer, lat sys.path-import fordi porten kun er nåbar på Anders' Mac.
+
+def tilgjengelig() -> bool:
+    """Er dossier-generering tilgjengelig for en WEB-bruker (Ulven)? Samme spørsmål og
+    samme svar som verifiser.py::tilgjengelig() — Ulven når kun forskningssok gjennom den
+    deployede flaten, aldri Anders' Mac, så «tilgjengelig for ham» betyr «AI_PROXY_URL er
+    satt» selv om kall_llm() TEKNISK sett også fungerer lokalt via Ollama. Flaten spør
+    FØR den viser knappen, samme mønster."""
+    import os
+    return bool(os.environ.get("AI_PROXY_URL"))
+
+
+def kall_llm(prompt: str) -> str:
+    """Det ENESTE stedet i denne fila som avgjør HVOR en modell nås. Ruten speiler
+    embedder-splitten husets øvrige kode allerede bruker (bank._hus_embed,
+    verifiser.py::tilgjengelig) — samme "AI_PROXY_URL satt → Dokploy-prod, usatt →
+    Anders' Mac"-gate, ikke funnet opp her: prod har ingen lokal Ollama, Anders' Mac har
+    ingen ai-proxy-nettverkstilgang (dokploy-network-isolert, se ai-proxy sin egen
+    modul-docstring). AI_PROXY_URL er dermed IKKE bare en konfigurasjonsdetalj, den ER
+    signalet om hvilket miljø vi kjører i."""
+    import os
+    if os.environ.get("AI_PROXY_URL"):
+        return _kall_llm_ai_proxy(prompt)
+    return _kall_llm_lokal_ollama(prompt)
+
+
+def _kall_llm_ai_proxy(prompt: str, *, post_fn=None) -> str:
+    """Prod-veien: ai-proxy sitt generiske /complete (FDR-019 byttbar-upstream), samme
+    kall-mønster som verifiser.py (synkron httpx, forskningssok-disiplinen — CLAUDE.md).
+    `post_fn` injiseres i test, samme grunn som verifiser.py sin (suiten er nettverksfri)."""
+    import os
+    import httpx
+
+    url = os.environ["AI_PROXY_URL"]
+    post = post_fn or httpx.post
+    try:
+        # 600s: dossier-syntese over MAKS_KILDER kilder er ikke et live UI-kall som må
+        # svare raskt — samme begrunnelse som den lokale Ollama-veiens timeout.
+        r = post(url.rstrip("/") + "/complete", json={
+            "wiki_id": AI_PROXY_WIKI_ID,
+            "role": AI_PROXY_ROLLE,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 4000,
+        }, timeout=600)
+    except httpx.HTTPError as e:
+        raise RuntimeError(f"ai-proxy utilgjengelig: {e}") from e
+    if r.status_code != 200:
+        raise RuntimeError(f"ai-proxy /complete feilet ({r.status_code}): {r.text[:200]}")
+    try:
+        data = r.json()
+    except ValueError as e:
+        raise RuntimeError(f"ai-proxy returnerte ugyldig JSON: {e}") from e
+    return data["content"]
+
+
+def _kall_llm_lokal_ollama(prompt: str, model: str = OLLAMA_MODELL) -> str:
+    """Dev-veien (Anders' Mac, "gøy å prøve med noen lokalt kjørende llm", 2026-09-11):
+    lokal Ollama via husets delte port (`silverbullet/ops/_ollama_port.py`) — samme
+    mønster som evaluer.py::_hus_dommer, lat sys.path-import fordi porten kun er nåbar
+    på Anders' Mac. Gratis, ingen abonnement. Bytt OLLAMA_MODELL til f.eks.
+    "devstral:agent" for å sammenligne kvalitet — begge er allerede pullet.
 
     sjekk_dommer() FØR selve kallet, samme disiplin porten selv krever: en død/manglende
     Ollama skal gi en tydelig feilmelding her, ikke en stack trace to nivåer ned i httpx."""

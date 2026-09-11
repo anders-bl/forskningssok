@@ -24,6 +24,7 @@ import bank
 import dokumenter
 import versjon
 import verifiser as verifiser_modul
+import dossier as dossier_modul
 import sti as sti_modul
 import rapport
 import scoping
@@ -751,6 +752,30 @@ def api_verifiser(body: dict):
     aldri som en bekreftelse."""
     try:
         return verifiser_modul.verifiser(body.get("paastand", ""))
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
+@app.get("/api/dossier/tilgjengelig")
+def api_dossier_tilgjengelig():
+    """Flaten spør FØR den viser knappen — samme mønster som /api/verifiser/tilgjengelig.
+    Se dossier.tilgjengelig() for hvorfor «tilgjengelig for en web-bruker» IKKE er det
+    samme spørsmålet som «virker kall_llm() akkurat nå» (den virker også lokalt via
+    Ollama, men det hjelper aldri Ulven)."""
+    return {"tilgjengelig": dossier_modul.tilgjengelig()}
+
+
+@app.post("/api/dossier")
+def api_dossier(body: dict):
+    """Emne → kildetro LLM-dossier i fem seksjoner (hard vitenskap/hull/trygt-kjedelig/
+    frontier/gammel tro), se dossier.py. Brukerinitiert-only (samme FDR-057-ånd som
+    modulens egen docstring) — kalles kun ved et eksplisitt klikk, aldri automatisk,
+    fordi dette er et ekte, kostbart LLM-kall (ai-proxy/Mistral i prod)."""
+    emne = (body.get("emne") or "").strip()
+    if not emne:
+        raise HTTPException(400, "tomt emne")
+    try:
+        return {"dossier": dossier_modul.lag_dossier(emne)}
     except RuntimeError as e:
         raise HTTPException(502, str(e))
 
