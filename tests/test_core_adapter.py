@@ -92,3 +92,23 @@ def test_ingen_nokkel_gir_ingen_authorization_header(tmp_path, monkeypatch):
     with patch("adapters.core.httpx.get", return_value=_mock_get()) as m:
         core.sok("nephrocalcinosis salmon", db_path=db)
     assert "Authorization" not in m.call_args.kwargs["headers"]
+
+
+def test_ikke_ascii_nokkel_faller_tilbake_til_anonym_ikke_krasj(tmp_path, monkeypatch):
+    """RETTET 2026-09-14: en CORE_API_KEY med et ikke-ASCII tegn ('Ø', funnet i faktisk
+    kjørende miljø) krasjet hele /api/sok med en ufanget UnicodeEncodeError inne i
+    httpx sin egen header-bygging — FØR httpx.get() i det hele tatt sender noe, så en
+    mocket httpx.get (som resten av denne fila bruker) aldri ville sett feilen uansett.
+    Fiksen sitter i _headers(): en ugyldig nøkkel faller tilbake til anonym tilgang
+    (dokumentert over som gyldig, bare hardere rate-limitert), ikke krasj — Europe PMC-
+    treffene var alt hentet på det tidspunktet krasjet skjedde i cli.py, så den gamle
+    oppførselen kastet bort et ellers fungerende søk for én kildes skyld."""
+    monkeypatch.setenv("CORE_API_KEY", "n\xf8kkel-med-ikke-ascii-tegn")
+    h = core._headers()
+    assert "Authorization" not in h
+    assert h["User-Agent"] == core.UA
+    db = tmp_path / "cache.db"
+    with patch("adapters.core.httpx.get", return_value=_mock_get()) as m:
+        resultat = core.sok("nephrocalcinosis salmon", db_path=db)
+    assert resultat  # ekte treff, ikke et unntak
+    assert "Authorization" not in m.call_args.kwargs["headers"]

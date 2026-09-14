@@ -48,6 +48,19 @@ def _headers() -> dict:
     h = {"User-Agent": UA}
     nokkel = os.environ.get("CORE_API_KEY")
     if nokkel:
+        try:
+            nokkel.encode("ascii")
+        except UnicodeEncodeError:
+            # RETTET 2026-09-14: en CORE_API_KEY med et ikke-ASCII tegn (funnet lokalt:
+            # 'Ø') krasjet HELE /api/sok med en ufanget UnicodeEncodeError inne i httpx
+            # sin header-bygging — FØR selve HTTP-kallet gjøres, så verken denne modulens
+            # egen RuntimeError-kontrakt (se sok()) eller cli.py sin except RuntimeError
+            # fikk sjansen til å fange den. Docstringen over sier allerede at anonym
+            # tilgang er en gyldig fallback (hardere rate-limitert, ikke fraværende) —
+            # en ugyldig nøkkel skal derfor falle DIT, ikke ta ned et ellers fungerende
+            # søk (Europe PMC-treffene var alt hentet da krasjet skjedde). Samme
+            # feilklasse som husets kjente HTTP-header-er-ASCII-ikke-Latin1-mønster.
+            return h
         h["Authorization"] = f"Bearer {nokkel}"
     return h
 
@@ -81,7 +94,11 @@ def sok(query: str, limit: int = 10, *, tving_fersk: bool = False,
         r = httpx.get(BASE, params={"q": query, "limit": limit},
                        headers=_headers(), timeout=30, follow_redirects=True)
         r.raise_for_status()
-    except (httpx.HTTPError, httpx.TimeoutException) as e:
+    except (httpx.HTTPError, httpx.TimeoutException, UnicodeError) as e:
+        # UnicodeError lagt til 2026-09-14: dekker enhver FRAMTIDIG header-bygging-feil
+        # av samme klasse som _headers() nå forsvarer proaktivt — belte-og-bukseseler,
+        # ikke duplikat: _headers() unngår feilen for DEN kjente kilden (nøkkelen),
+        # dette fanger den for enhver annen som måtte dukke opp senere.
         db.close()
         raise RuntimeError(f"CORE utilgjengelig: {e}") from e
     data = r.json()
