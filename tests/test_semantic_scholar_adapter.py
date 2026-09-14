@@ -71,15 +71,17 @@ SOK_RESPONS = {
 # testenes forrige fixture) antok.
 CITATIONS_RESPONS = {
     "data": [
-        {"citingPaper": {"title": "A follow-up study", "year": 2024},
+        {"citingPaper": {"title": "A follow-up study", "year": 2024,
+                          "externalIds": {"DOI": "10.1111/jfd.11111"}},
          "contexts": ["We build on [1]"], "intents": ["methodology"], "isInfluential": True},
-        {"citingPaper": {"title": "A passing mention", "year": 2024},
+        {"citingPaper": {"title": "A passing mention", "year": 2024, "externalIds": {}},
          "contexts": [], "intents": ["background"], "isInfluential": False},
     ],
 }
 REFERENCES_RESPONS = {
     "data": [
-        {"citedPaper": {"title": "Earlier foundational work", "year": 2019},
+        {"citedPaper": {"title": "Earlier foundational work", "year": 2019,
+                         "externalIds": {"DOI": "10.1111/jfd.22222"}},
          "contexts": [], "intents": ["background"], "isInfluential": False},
     ],
 }
@@ -126,6 +128,8 @@ def test_siteringsgraf_skiller_innflytelsesrik_fra_forbifarten(tmp_path):
     assert any(u.endswith("/references") for u in kalt_urls)
     assert len(graf["siteringer"]) == 2
     assert graf["siteringer"][0]["tittel"] == "A follow-up study"
+    assert graf["siteringer"][0]["doi"] == "10.1111/jfd.11111"
+    assert graf["siteringer"][1]["doi"] is None  # tom externalIds -- aerlig fravaer
     assert graf["siteringer"][0]["innflytelsesrik"] is True
     assert graf["siteringer"][0]["intents"] == ("methodology",)
     assert graf["siteringer"][1]["innflytelsesrik"] is False

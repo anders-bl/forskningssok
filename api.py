@@ -26,6 +26,7 @@ import versjon
 import verifiser as verifiser_modul
 import dossier as dossier_modul
 import dossier_innsikt as dossier_innsikt_modul
+import dossier_siteringsgraf as dossier_siteringsgraf_modul
 import syntese_fortelling as syntese_modul
 import sti as sti_modul
 import rapport
@@ -796,6 +797,24 @@ def api_dossier_innsikt(emne: str):
     if not emne:
         raise HTTPException(400, "tomt emne")
     return dossier_innsikt_modul.innsikt(emne)
+
+
+@app.get("/api/dossier/siteringsgraf")
+def api_dossier_siteringsgraf(emne: str):
+    """M4 fra prosjekt/forskningssok-dossier-scivis: sitasjonsgraf mellom dossierets
+    egne kandidater, adaptert fra silverbullet/ops/hage_lenkegraf.py sitt Graf-mønster
+    (noder/kanter/inn_grad), men rendret klientside i frontend, ikke server-generert
+    SVG — forskningssok deployer i egen Docker-container og kan aldri importere
+    silverbullet-koden i prod, og har alt sin egen SVG-node-link-renderer i Kart-fanen.
+
+    EKTE, KOSTBARE eksterne kall (opptil ett Semantic Scholar-oppslag per kandidat med
+    DOI — målt live 2026-09-14: ~37s for 25 kandidater). Bevisst en egen, TREG endpoint
+    kalt kun ved eksplisitt klikk, aldri synkront med /api/dossier eller
+    /api/dossier/innsikt."""
+    emne = (emne or "").strip()
+    if not emne:
+        raise HTTPException(400, "tomt emne")
+    return dossier_siteringsgraf_modul.siteringsgraf_for_emne(emne)
 
 
 @app.get("/api/syntese/tilgjengelig")

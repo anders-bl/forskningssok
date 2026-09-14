@@ -197,9 +197,18 @@ def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
     tvers av identifikator-typer) eller et rått Semantic Scholar paperId.
 
     Returnerer {"siteringer": [...], "referanser": [...]} — hver oppføring har
-    {tittel, aar, intents, innflytelsesrik} slik at api.py kan vise «denne artikkelen
-    ble sitert som METODOLOGI av 4 senere arbeider, hvorav 1 innflytelsesrikt» i
-    stedet for et rått tall.
+    {tittel, aar, doi, intents, innflytelsesrik} slik at api.py kan vise «denne
+    artikkelen ble sitert som METODOLOGI av 4 senere arbeider, hvorav 1
+    innflytelsesrikt» i stedet for et rått tall.
+
+    `doi` (lagt til 2026-09-14, se prosjekt/forskningssok-dossier-scivis M4) er
+    NØKKELEN en sitasjonsgraf trenger for å matche siterende/siterte papirer TILBAKE
+    mot forskningssøks EGNE cachede papirer (samme `doi`-felt som papers-tabellen) —
+    tittel-matching ville vært skjørt (stavevarianter, undertekster). Verifisert live:
+    `citingPaper.externalIds.DOI` er faktisk feltnøstingen (uppercase "DOI"), ikke
+    gjettet — hentet fra et EKTE fylt svar (100 siteringer, DOI: 10.1016/s0044-
+    8486(02)00048-0), i motsetning til resten av felt-skjemaet som fortsatt kun
+    hviler på dokumentasjonen (§RETTET-notatet under).
 
     RETTET 2026-09-14 (Anders' spørsmål om Semantic Scholars ELLERS-verdi avdekket at
     denne funksjonen aldri hadde vært live-verifisert, egen docstring sa det rett ut —
@@ -219,10 +228,10 @@ def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
 
     felter = "contexts,intents,isInfluential"
     sitering_data = _hent(f"{BASE}/paper/{pid}/citations",
-                           {"fields": f"{felter},citingPaper.title,citingPaper.year"},
+                           {"fields": f"{felter},citingPaper.title,citingPaper.year,citingPaper.externalIds"},
                            cache_key=f"graf-sit::{pid}", db_path=db_path)
     referanse_data = _hent(f"{BASE}/paper/{pid}/references",
-                            {"fields": f"{felter},citedPaper.title,citedPaper.year"},
+                            {"fields": f"{felter},citedPaper.title,citedPaper.year,citedPaper.externalIds"},
                             cache_key=f"graf-ref::{pid}", db_path=db_path)
 
     def _rens(rader, papir_noekkel):
@@ -232,6 +241,7 @@ def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
             ut.append({
                 "tittel": papir.get("title") or "",
                 "aar": papir.get("year"),
+                "doi": (papir.get("externalIds") or {}).get("DOI"),
                 "intents": tuple(r.get("intents") or ()),
                 "innflytelsesrik": bool(r.get("isInfluential")),
             })
