@@ -260,6 +260,20 @@ button{ font:inherit; }
 .dossier-kilder a{ display:block; color:var(--accent); font-size:.8125rem; text-decoration:none; margin-bottom:.35rem; }
 .dossier-kilder a:hover{ text-decoration:underline; }
 .dossier-advarsel{ font-size:.75rem; color:var(--warn,#a86); border:1px solid var(--warn,#a86); border-radius:6px; padding:.4rem .6rem; margin:.8rem 0; }
+/* Mekanisk innsikt PÅ BAKENDEN av dossieret (prosjekt/forskningssok-dossier-scivis
+   M1-M3) -- ingen AI, hentes uavhengig av det trege LLM-kallet over, derfor egen
+   seksjon under kildelisten, ikke inni .dossier-kropp som overskrives av den. */
+.dossier-innsikt:empty{ display:none; }
+.dossier-innsikt{ margin-top:1.2rem; border-top:1px solid var(--border); padding-top:.8rem; }
+.dossier-innsikt h4{ font-size:.75rem; color:var(--muted); text-transform:none; letter-spacing:normal; margin:0 0 .5rem; }
+.dossier-innsikt h4:not(:first-child){ margin-top:.9rem; }
+.innsikt-graf{ display:flex; flex-direction:column; gap:.3rem; }
+.innsikt-rad{ display:grid; grid-template-columns:7.5rem 1fr 2.5rem; align-items:center; gap:.5rem; font-size:.75rem; }
+.innsikt-label{ color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.innsikt-bar{ display:block; height:.6rem; min-width:2px; background:var(--accent); border-radius:3px; opacity:.75; }
+.innsikt-bar-god{ background:var(--accent); }
+.innsikt-bar-usikker{ background:var(--warn,#a86); }
+.innsikt-tall{ color:var(--muted); text-align:right; font-variant-numeric:tabular-nums; }
 .slippsone{ position:absolute; inset:0; background:color-mix(in srgb, var(--accent) 12%, transparent); border:2px dashed var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.9375rem; color:var(--accent); font-weight:600; pointer-events:none; z-index:20; }
 .slippsone[hidden]{ display:none; }
 #empty-reader{ padding:3rem 2rem; color:var(--muted); font-size:.875rem; text-align:center; min-height:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:center; }
@@ -669,6 +683,7 @@ svg text{ font-family:system-ui,sans-serif; }
      <div class="verifiser-merke">LLM-syntese over dine hentede kilder — ikke rå litteratur</div>
      <div class="verifiser-paastand" id="dossier-emne"></div>
      <div id="dossier-kropp" class="dossier-kropp"></div>
+     <div id="dossier-innsikt" class="dossier-innsikt"></div>
    </div>
  </div>
  <div class="verifiser-overlay" id="syntese-overlay" hidden>
@@ -1619,6 +1634,44 @@ function dossierKilderHtml(blokk) {
   return `<div class="dossier-kilder"><h4>${escapeHtml(overskrift)}</h4>${rader}</div>`;
 }
 
+// Mekanisk innsikt (M1-M3, /api/dossier/innsikt) -- INGEN AI. Enkle CSS-stolper, ingen
+// grafbibliotek (huset sin "vanilla stdlib"-disiplin, se hage_lenkegraf.py sin egen
+// begrunnelse for ren SVG fremfor en avhengighet). Bredde er RELATIV til maks/total i
+// samme graf -- absolutte tall står alltid ved siden av, aldri kun en stolpe alene.
+function innsiktRad(label, n, maks) {
+  const bredde = maks > 0 ? Math.max(2, Math.round(n / maks * 100)) : 0;
+  return `<div class="innsikt-rad"><span class="innsikt-label" title="${escapeHtml(label)}">${escapeHtml(label)}</span>` +
+    `<span class="innsikt-bar" style="width:${bredde}%"></span><span class="innsikt-tall">${n}</span></div>`;
+}
+
+function renderInnsikt(d) {
+  const total = d.antall_kandidater || 0;
+  if (!total) return '';
+
+  const tidAar = Object.keys(d.tidslinje || {});
+  const maksTid = Math.max(1, ...Object.values(d.tidslinje || {}));
+  const tidslinjeHtml = tidAar.length
+    ? tidAar.map(aar => innsiktRad(aar, d.tidslinje[aar], maksTid)).join('')
+    : '<div class="hint">Ingen kandidater med kjent årstall</div>';
+
+  const akseParStigende = Object.entries(d.akse_fordeling || {}).sort((a, b) => b[1] - a[1]);
+  const akseHtml = akseParStigende.map(([akse, n]) => innsiktRad(akse, n, total)).join('');
+
+  const ak = d.art_konfidens || {bekreftet: 0, usikker: 0};
+  const artMerkeBetyr = (state.profil && state.profil.art_merke_betyr) || 'nevner ikke målobjektet';
+  const artHtml =
+    `<div class="innsikt-rad"><span class="innsikt-label">Bekreftet</span>` +
+    `<span class="innsikt-bar innsikt-bar-god" style="width:${total ? Math.round(ak.bekreftet/total*100) : 0}%"></span>` +
+    `<span class="innsikt-tall">${ak.bekreftet}</span></div>` +
+    `<div class="innsikt-rad"><span class="innsikt-label" title="${escapeHtml(artMerkeBetyr)}">Usikker</span>` +
+    `<span class="innsikt-bar innsikt-bar-usikker" style="width:${total ? Math.round(ak.usikker/total*100) : 0}%"></span>` +
+    `<span class="innsikt-tall">${ak.usikker}</span></div>`;
+
+  return `<h4>Publikasjonstidslinje (${total} kandidater)</h4><div class="innsikt-graf">${tidslinjeHtml}</div>` +
+    `<h4>Dekning på tvers av akser</h4><div class="innsikt-graf">${akseHtml}</div>` +
+    `<h4>Art-konfidens</h4><div class="innsikt-graf">${artHtml}</div>`;
+}
+
 function renderDossier(tekst) {
   const deler = (tekst || '').split(/\n---\n/);
   let html = dossierProsaHtml(deler[0] || '');
@@ -1635,7 +1688,15 @@ $('#btn-dossier').addEventListener('click', async () => {
   if (!r || !r.query) return;
   $('#dossier-emne').textContent = '«' + r.query + '»';
   $('#dossier-kropp').innerHTML = '<div class="hint">Genererer dossier over dine hentede kilder (kan ta ett minutt eller mer) …</div>';
+  $('#dossier-innsikt').innerHTML = '';
   $('#dossier-overlay').hidden = false;
+
+  // Innsikt (M1-M3) er mekanisk og rask -- hentes UAVHENGIG av det trege LLM-kallet
+  // under, og vises selv om selve dossier-genereringen feiler (Ollama/ai-proxy nede).
+  api('/api/dossier/innsikt?' + new URLSearchParams({emne: r.query}))
+    .then(d => { $('#dossier-innsikt').innerHTML = renderInnsikt(d); })
+    .catch(() => {});  // ærlig stille -- innsikt er et tillegg, ikke hoveddossieret
+
   try {
     const d = await api('/api/dossier', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({emne: r.query})});
