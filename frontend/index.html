@@ -182,14 +182,20 @@ button{ font:inherit; }
 }
 .result:hover{ background:var(--surface-2); }
 .result.active{ background:var(--surface-2); border-color:var(--accent); }
-.result-row1{ display:flex; align-items:baseline; gap:.4rem; font-size:.6875rem; color:var(--muted); margin-bottom:.3rem; font-variant-numeric:tabular-nums; flex-wrap:wrap; }
+/* Font-size lest opp 2026-09-14 (Anders: "vanskelig å lese søkeresultater") --
+   malte forst: kontrastforholdene var alt WCAG AA-godkjente (5.8-15.6), sa det
+   reelle problemet var STORRELSE, ikke farge -- 10-13px over en tett liste med
+   dato/siteringstall/merker. En jevn ~1px lofting pa tvers bevarer det relative
+   hierarkiet (tittel > rad1/journal > piller) uten a garantere kollisjon i den
+   smale venstre-panelen (verifisert visuelt etter endringen). */
+.result-row1{ display:flex; align-items:baseline; gap:.4rem; font-size:.75rem; color:var(--muted); margin-bottom:.3rem; font-variant-numeric:tabular-nums; flex-wrap:wrap; }
 .star{ color:var(--accent); }
 .merkeikon{ width:.8em; height:.8em; fill:currentColor; vertical-align:-.08em; margin-right:.15em; }
-.pill-oa{ background:var(--surface-2); color:var(--accent); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
-.pill-species{ background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
-.pill-evidens{ background:var(--surface-2); color:var(--muted); border-radius:5px; padding:1px 5px; font-size:.625rem; font-weight:700; }
-.result-title{ font-size:.8125rem; line-height:1.35; margin-bottom:.25rem; }
-.result-journal{ font-size:.6875rem; color:var(--muted); font-style:italic; }
+.pill-oa{ background:var(--surface-2); color:var(--accent); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; }
+.pill-species{ background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; }
+.pill-evidens{ background:var(--surface-2); color:var(--muted); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; }
+.result-title{ font-size:.875rem; line-height:1.4; margin-bottom:.25rem; }
+.result-journal{ font-size:.75rem; color:var(--muted); font-style:italic; }
 
 /* ---------- Midten: leseflaten ---------- */
 .reader-head{ flex:none; padding:1.1rem 2rem .8rem; border-bottom:1px solid var(--border); }
