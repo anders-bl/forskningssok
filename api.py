@@ -25,6 +25,7 @@ import dokumenter
 import versjon
 import verifiser as verifiser_modul
 import dossier as dossier_modul
+import dossier_innsikt as dossier_innsikt_modul
 import syntese_fortelling as syntese_modul
 import sti as sti_modul
 import rapport
@@ -779,6 +780,22 @@ def api_dossier(body: dict):
         return {"dossier": dossier_modul.lag_dossier(emne)}
     except RuntimeError as e:
         raise HTTPException(502, str(e))
+
+
+@app.get("/api/dossier/innsikt")
+def api_dossier_innsikt(emne: str):
+    """M1-M3 fra prosjekt/forskningssok-dossier-scivis: tidslinje, akse-fordeling,
+    art-konfidens — mekanisk aggregering over dossier.hent_kandidater(), INGEN LLM-kall.
+
+    Bevisst en egen, synkron GET, ikke en del av /api/dossier sitt svar: denne skal
+    fungere UAVHENGIG av om ai-proxy/Ollama er tilgjengelig (verifisert 2026-09-14 mot
+    en faktisk wedget lokal Ollama — mekanikken under er upåvirket av det), og skal
+    ikke gjøre et dossier-generering-klikk tregere enn det allerede kostbare LLM-kallet
+    trenger å være."""
+    emne = (emne or "").strip()
+    if not emne:
+        raise HTTPException(400, "tomt emne")
+    return dossier_innsikt_modul.innsikt(emne)
 
 
 @app.get("/api/syntese/tilgjengelig")
