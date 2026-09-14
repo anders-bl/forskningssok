@@ -1,8 +1,13 @@
 """Verifiserer Semantic Scholar-adapteren: felt-mapping, TTL-cache, ærlig feil ved
-nedetid — samme disiplin som test_unpaywall_adapter.py. Skjemaet er IKKE live-
-verifisert i denne økten (se adapters/semantic_scholar.py sin docstring for hvorfor)
-— disse testene låser koden mot DOKUMENTASJONENS skjema, ikke et bekreftet ekte svar.
-"""
+nedetid — samme disiplin som test_unpaywall_adapter.py.
+
+siteringsgraf()s endepunkt-VALG (to sub-endepunkter, ikke nøstede felt på /paper/{id})
+og topp-nivå felt-navn (contexts/intents/isInfluential) ER live-verifisert 2026-09-14
+(se funksjonens egen docstring — den forrige, aldri-testede versjonen feilet faktisk
+med 400 ved første ekte forsøk). citingPaper/citedPaper-nøstingen for tittel/år under
+er FORTSATT kun dokumentasjonens skjema, ikke bekreftet mot et FYLT svar (anonym
+rate-limit-pool var mettet samme kveld) — disse testene låser koden mot det skjemaet,
+ikke et fullt bekreftet ekte svar."""
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -58,16 +63,24 @@ SOK_RESPONS = {
         }
     ]
 }
-GRAF_RESPONS = {
-    "citations": [
-        {"title": "A follow-up study", "year": 2024, "contexts": ["We build on [1]"],
-         "intents": ["methodology"], "isInfluential": True},
-        {"title": "A passing mention", "year": 2024, "contexts": [], "intents": ["background"],
-         "isInfluential": False},
+# Skjema RETTET 2026-09-14 etter live 400-feil (se adapters/semantic_scholar.py sin
+# siteringsgraf()-docstring): contexts/intents/isInfluential finnes KUN på de
+# dedikerte /paper/{id}/citations og /paper/{id}/references sub-endepunktene, hver
+# med {"data": [...]} og et nøstet citingPaper/citedPaper for tittel/år — ikke som
+# citations.*/references.*-felt på selve /paper/{id}, slik original koden (og disse
+# testenes forrige fixture) antok.
+CITATIONS_RESPONS = {
+    "data": [
+        {"citingPaper": {"title": "A follow-up study", "year": 2024},
+         "contexts": ["We build on [1]"], "intents": ["methodology"], "isInfluential": True},
+        {"citingPaper": {"title": "A passing mention", "year": 2024},
+         "contexts": [], "intents": ["background"], "isInfluential": False},
     ],
-    "references": [
-        {"title": "Earlier foundational work", "year": 2019, "contexts": [], "intents": ["background"],
-         "isInfluential": False},
+}
+REFERENCES_RESPONS = {
+    "data": [
+        {"citedPaper": {"title": "Earlier foundational work", "year": 2019},
+         "contexts": [], "intents": ["background"], "isInfluential": False},
     ],
 }
 
@@ -104,14 +117,21 @@ def test_sok_uten_treff_gir_tom_liste_ikke_feil(tmp_path):
 
 def test_siteringsgraf_skiller_innflytelsesrik_fra_forbifarten(tmp_path):
     db = tmp_path / "cache.db"
-    with patch("adapters.semantic_scholar.httpx.get", return_value=_mock_get(json_data=GRAF_RESPONS)):
+    svar = [_mock_get(json_data=CITATIONS_RESPONS), _mock_get(json_data=REFERENCES_RESPONS)]
+    with patch("adapters.semantic_scholar.httpx.get", side_effect=svar) as m:
         graf = semantic_scholar.siteringsgraf("10.1111/jfd.99999", db_path=db)
+    assert m.call_count == 2
+    kalt_urls = [c.args[0] if c.args else c.kwargs.get("url") for c in m.call_args_list]
+    assert any(u.endswith("/citations") for u in kalt_urls)
+    assert any(u.endswith("/references") for u in kalt_urls)
     assert len(graf["siteringer"]) == 2
+    assert graf["siteringer"][0]["tittel"] == "A follow-up study"
     assert graf["siteringer"][0]["innflytelsesrik"] is True
     assert graf["siteringer"][0]["intents"] == ("methodology",)
     assert graf["siteringer"][1]["innflytelsesrik"] is False
     assert len(graf["referanser"]) == 1
     assert graf["referanser"][0]["tittel"] == "Earlier foundational work"
+    assert graf["referanser"][0]["aar"] == 2019
 
 
 def test_ttl_cache_unngaar_nytt_kall(tmp_path):

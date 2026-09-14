@@ -199,26 +199,44 @@ def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
     Returnerer {"siteringer": [...], "referanser": [...]} — hver oppføring har
     {tittel, aar, intents, innflytelsesrik} slik at api.py kan vise «denne artikkelen
     ble sitert som METODOLOGI av 4 senere arbeider, hvorav 1 innflytelsesrikt» i
-    stedet for et rått tall."""
+    stedet for et rått tall.
+
+    RETTET 2026-09-14 (Anders' spørsmål om Semantic Scholars ELLERS-verdi avdekket at
+    denne funksjonen aldri hadde vært live-verifisert, egen docstring sa det rett ut —
+    og feilet FAKTISK live, første ekte forsøk). Original kode ba om
+    `citations.contexts`/`citations.intents`/`citations.isInfluential` som NØSTEDE felt
+    på selve `/paper/{id}`-endepunktet — API-en svarer 400 "Unrecognized or unsupported
+    fields" på akkurat de tre, verifisert live per felt enkeltvis. Disse tre feltene
+    finnes KUN på de dedikerte sub-endepunktene `/paper/{id}/citations` og
+    `/paper/{id}/references`, verifisert live: samme felt-navn flatt (uten
+    "citations."-prefiks) ga 200 der. citingPaper/citedPaper-nøstingen for tittel/år er
+    Semantic Scholar sin egen dokumenterte konvensjon for disse to endepunktene (ikke
+    egen-verifisert mot et FYLT svar ennå — anonym rate-limit-pool var mettet samme
+    kveld, se moduldocstring — neste reelle kall bør bekrefte feltnøstingen)."""
     pid = doi_eller_id if doi_eller_id.upper().startswith("DOI:") else f"DOI:{doi_eller_id}"
     if not doi_eller_id.startswith("10."):
         pid = doi_eller_id  # allerede et rått Semantic Scholar paperId
-    felter = "citations.title,citations.year,citations.contexts,citations.intents,citations.isInfluential," \
-             "references.title,references.year,references.contexts,references.intents,references.isInfluential"
-    key = f"graf::{pid}"
-    data = _hent(f"{BASE}/paper/{pid}", {"fields": felter}, cache_key=key, db_path=db_path)
 
-    def _rens(rader):
+    felter = "contexts,intents,isInfluential"
+    sitering_data = _hent(f"{BASE}/paper/{pid}/citations",
+                           {"fields": f"{felter},citingPaper.title,citingPaper.year"},
+                           cache_key=f"graf-sit::{pid}", db_path=db_path)
+    referanse_data = _hent(f"{BASE}/paper/{pid}/references",
+                            {"fields": f"{felter},citedPaper.title,citedPaper.year"},
+                            cache_key=f"graf-ref::{pid}", db_path=db_path)
+
+    def _rens(rader, papir_noekkel):
         ut = []
         for r in rader or []:
+            papir = r.get(papir_noekkel) or {}
             ut.append({
-                "tittel": r.get("title") or "",
-                "aar": r.get("year"),
+                "tittel": papir.get("title") or "",
+                "aar": papir.get("year"),
                 "intents": tuple(r.get("intents") or ()),
                 "innflytelsesrik": bool(r.get("isInfluential")),
             })
         return ut
     return {
-        "siteringer": _rens(data.get("citations")),
-        "referanser": _rens(data.get("references")),
+        "siteringer": _rens(sitering_data.get("data"), "citingPaper"),
+        "referanser": _rens(referanse_data.get("data"), "citedPaper"),
     }
