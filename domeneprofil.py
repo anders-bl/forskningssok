@@ -84,6 +84,33 @@ EVAL_KONTROLL: dict = dict(PROFIL.get("evaluering", {}))
 NORSKE_FAGMILJOER = FAGMILJOER
 
 
+def forankre_lucene(kjerneord: str, ankerord: tuple[str, ...] = ARTSTERMER) -> str:
+    """Bygger en Lucene AND/OR-forankret spørring: (kjerneord) AND (anker1 OR anker2 OR ...).
+    For kilder som gjør STRENG implisitt-AND på romskilte ord (Europe PMC, verifisert
+    2026-09-14) — der et bart, fagfelt-tvetydig kjerneord alene ga 0/20 art-relevante
+    treff (100 % annet fagfelts litteratur, samme species-trap `arts_naer_tekst()`
+    dokumenterte 2026-09-02, men der DENNE funksjonen løser et annet ledd: hvilke
+    kandidater som i det hele tatt HENTES innenfor et begrenset page_size-budsjett, ikke
+    hvordan alt hentede RANGERES etterpå — de to er komplementære, ikke overlappende).
+
+    Ren OR uten det påkrevde kjerneordet ble også testet og forkastet: vannet ut
+    presisjonen (matchet ETT generisk ord, ikke emnet). Et påkrevd emne-ledd PLUSS et
+    påkrevd (men internt valgfritt) artsanker-ledd ga presise treff i alle mål."""
+    gruppe = " OR ".join(f'"{a}"' if " " in a else a for a in ankerord)
+    return f"({kjerneord}) AND ({gruppe})"
+
+
+def forankre_vedheng(kjerneord: str, ankerord: tuple[str, ...] = ARTSTERMER) -> str:
+    """Enkel mellomroms-vedheng av ankerord, for kilder med relevans-RANGERT (ikke streng-
+    AND) matching (OpenAlex, CORE; også brukt for bank.lignende_tekst()s embedding-tekst
+    i api.py). Ingen boolsk syntaks — verifisert 2026-09-14 at det er unødvendig her:
+    et bart "nephrocalcinosis" løftet fra 0/20 til 18/20 (OpenAlex) og fra 1/20 til 20/20
+    (CORE) art-relevante treff med kun denne enkle vedhengingen. Lucene-syntaks
+    (forankre_lucene) på disse kildene er UPRØVD og skal ikke antas å virke likt — deres
+    query-DSL er ikke bekreftet Lucene-kompatibel, i motsetning til Europe PMC sin."""
+    return f"{kjerneord} {' '.join(ankerord)}"
+
+
 def domene_naer_tekst(tekst: str) -> bool:
     """Substreng-match mot forfatter-affiliasjon + tidsskriftnavn — se ranking.py:domene_naer
     for hvorfor (forfatter-affiliasjon/tidsskrift, ikke generisk siteringstall)."""

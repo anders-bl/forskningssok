@@ -54,22 +54,34 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     caching-bivirkning ingen bruker faktisk trengte for å se resultatet sitt — reell
     årsak til at søk så ut som de hang, og til at overlappende (reload-utløste) søk
     kappløp mot samme cache-rader (se bank.py sin lagre()-fiks samme kveld)."""
+    # Artsforankring FØR noe sendes ut: et bart, fagfelt-tvetydig kjerneord (målt live
+    # 2026-09-14, prosjekt/forskningssok-smartsyntese-for-ulven) gir 0/20 (Europe PMC),
+    # 1/20 (CORE) og 0/20 (OpenAlex) art-relevante treff UTEN forankring — "nephrocalcinosis"
+    # er et etablert humanmedisinsk begrep, ikke fiske-spesifikt, og ren embedding-/
+    # tekstavstand har intet artsfilter. Komplementært til (ikke erstatning for)
+    # ranking.py sin arts_naer()-flagging: DEN styrer presentasjonsrekkefølge på alt som
+    # ble hentet og filtrerer aldri bort et alt-hentet papir; forankringen her styrer
+    # hvilke kandidater som i det hele tatt BLIR hentet innenfor page_size-budsjettet.
+    epmc_query = domeneprofil.forankre_lucene(query)
+    vedheng_query = domeneprofil.forankre_vedheng(query)
+
     # Cache-alderen leses FØR søket, ellers ville sok() alt ha skrevet en fersk rad og
     # svaret blitt «0 sekunder gammel» for hvert eneste søk — et tall som alltid ser likt
-    # ut måler ingenting.
-    alder = europe_pmc_cache_alder(query, page_size)
+    # ut måler ingenting. Må måles mot SAMME spørringsstreng som faktisk cachelagres
+    # (epmc_query), ellers leses alderen på feil/manglende cache-rad.
+    alder = europe_pmc_cache_alder(epmc_query, page_size)
     start = time.perf_counter()
 
-    epmc = sok(query, page_size=page_size)
+    epmc = sok(epmc_query, page_size=page_size)
     kilder = {"europe_pmc": True, "core": True, "openalex": True}
     kjerne = []
     try:
-        kjerne = core_adapter.sok(query, limit=page_size)
+        kjerne = core_adapter.sok(vedheng_query, limit=page_size)
     except RuntimeError:
         kilder["core"] = False
     alex = []
     try:
-        alex = openalex_adapter.sok(query, limit=page_size)
+        alex = openalex_adapter.sok(vedheng_query, limit=page_size)
     except RuntimeError:
         kilder["openalex"] = False
     kandidater = dedupliser(epmc + kjerne + alex)

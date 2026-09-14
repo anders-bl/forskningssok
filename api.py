@@ -1105,13 +1105,17 @@ def api_rapport_omfang(tekst: str, tittel: str = "Omfang-rapport", format: str =
     hunde-leverhistologi (avstand 0.93-1.02) — ingen av dem laks. Med ARTSTERMER
     tilført samme synonym_tekst falt avstanden til 0.92-0.94 og alle tre ble ekte
     laks-litteratur. Ikke en kosmetisk endring; uten den kan Omfang-panelet vise
-    Ulven en «relevant kandidat» som handler om bavian."""
+    Ulven en «relevant kandidat» som handler om bavian.
+
+    Bruker domeneprofil.forankre_vedheng() (samme delte forankrings-mekanikk som
+    cli.py::sok_og_ranger() sin CORE/OpenAlex-vei, 2026-09-14) i stedet for egen inline
+    strengbygging — ett sted som eier "hvordan et artsanker henges på", ikke to."""
     akser = scoping.akse_dekning(tekst)
     forslag = {}
     for akse, dekning in akser.items():
         if dekning >= 1.0:
             continue
-        synonym_tekst = akse + " " + " ".join(scoping.AKSER[akse]) + " " + " ".join(domeneprofil.ARTSTERMER)
+        synonym_tekst = domeneprofil.forankre_vedheng(akse + " " + " ".join(scoping.AKSER[akse]))
         kandidater = bank.lignende_tekst(synonym_tekst, k=3)
         if kandidater:
             forslag[akse] = kandidater

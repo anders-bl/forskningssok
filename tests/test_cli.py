@@ -64,6 +64,42 @@ def test_core_treff_slaas_sammen_med_europe_pmc(tmp_path):
     assert revisjon["kilder"] == {"europe_pmc": True, "core": True, "openalex": True}
 
 
+def test_soek_forankres_med_artstermer_for_hver_kilde(tmp_path):
+    """Regresjon for species-trap-retrieval-funnet 2026-09-14: et bart, fagfelt-tvetydig
+    kjerneord ga 0/20 (Europe PMC), 1/20 (CORE), 0/20 (OpenAlex) art-relevante treff UTEN
+    forankring. sok_og_ranger() skal sende en artsforankret spørring til alle tre kildene,
+    ikke det rå brukerordet ordrett."""
+    kalt = {}
+
+    def fangst_epmc(q, page_size=20):
+        kalt["epmc"] = q
+        return []
+
+    def fangst_core(q, limit=20):
+        kalt["core"] = q
+        return []
+
+    def fangst_openalex(q, limit=20):
+        kalt["openalex"] = q
+        return []
+
+    with patch("cli.sok", side_effect=fangst_epmc), \
+         patch("cli.core_adapter.sok", side_effect=fangst_core), \
+         patch("cli.openalex_adapter.sok", side_effect=fangst_openalex), \
+         patch("cli.lagre"):
+        sok_og_ranger("nephrocalcinosis")
+
+    # Europe PMC: Lucene AND/OR-struktur, kjerneordet fortsatt ordrett til stede
+    assert "nephrocalcinosis" in kalt["epmc"]
+    assert " AND (" in kalt["epmc"]
+    # CORE/OpenAlex: enkel mellomromsvedheng, ingen boolsk syntaks
+    for kilde in ("core", "openalex"):
+        assert kalt[kilde].startswith("nephrocalcinosis ")
+        assert "AND" not in kalt[kilde] and "OR" not in kalt[kilde]
+    # Samme artsterm skal faktisk finnes i alle tre (stikkprøve: "salmon")
+    assert "salmon" in kalt["epmc"] and "salmon" in kalt["core"] and "salmon" in kalt["openalex"]
+
+
 def test_core_feiler_degraderer_synlig_uten_aa_ta_ned_soeket(tmp_path):
     pmc_treff = [_p("1", "Europe PMC-funn")]
     with patch("cli.sok", return_value=pmc_treff), \

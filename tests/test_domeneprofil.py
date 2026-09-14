@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from domeneprofil import AKSER, arts_naer_tekst, domene_naer_tekst  # noqa: E402
+from domeneprofil import (  # noqa: E402
+    AKSER, ARTSTERMER, arts_naer_tekst, domene_naer_tekst, forankre_lucene, forankre_vedheng,
+)
 
 
 def test_domene_naer_tekst_matcher_norsk_fagmiljoe():
@@ -27,6 +29,38 @@ def test_domene_naer_tekst_tom_streng_gir_false_ikke_feil():
 
 def test_akser_har_forventede_navn():
     assert set(AKSER.keys()) == {"Faser", "Miljøfaktorer", "Regenerasjon", "Lever", "Ultralyd-validering"}
+
+
+# ---------- forankre_lucene / forankre_vedheng (2026-09-14, species-trap-retrieval-fiks) ----------
+
+def test_forankre_lucene_krever_kjerneord_og_minst_ett_ankerord():
+    q = forankre_lucene("nephrocalcinosis", ankerord=("salmon", "trout"))
+    assert q == "(nephrocalcinosis) AND (salmon OR trout)"
+
+
+def test_forankre_lucene_siterer_flerords_ankerord():
+    q = forankre_lucene("x", ankerord=("salmo salar", "smolt"))
+    assert '"salmo salar"' in q
+    assert "smolt" in q
+    assert '"smolt"' not in q  # kun flerords-termer siteres, ikke enkeltord
+
+
+def test_forankre_lucene_default_bruker_artstermer():
+    q = forankre_lucene("nephrocalcinosis")
+    for term in ARTSTERMER:
+        assert (f'"{term}"' if " " in term else term) in q
+
+
+def test_forankre_vedheng_er_enkel_mellomromsvedheng_ingen_boolsk_syntaks():
+    q = forankre_vedheng("nephrocalcinosis", ankerord=("salmon", "smolt"))
+    assert q == "nephrocalcinosis salmon smolt"
+    assert "AND" not in q and "OR" not in q
+
+
+def test_forankre_vedheng_default_bruker_artstermer():
+    q = forankre_vedheng("nephrocalcinosis")
+    for term in ARTSTERMER:
+        assert term in q
 
 
 def test_arts_naer_tekst_finner_maalart():
