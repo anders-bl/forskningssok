@@ -1,0 +1,10 @@
+# FDR-098 repo-domenemetadata. Leses av repo_status.py (bs2).
+# MAALT 2026-09-14 (prosjekter-35): kvalitetsregime=ci-tester (.github/workflows/tester.yml).
+# deploy_kobling=ingen: kjores lokalt (uvicorn api:app) per prosjekt/idebank/29 -
+#   "Dokploy-deploy er et separat steg om den skal leve videre", ikke wiret naa.
+# FORSLAG til Anders' dom: domene/status/kort - korriger fritt.
+domene: prototype
+status: aktiv
+kort: "entitet-sentrisk litteratursoek (vertikal #4 paa vertikal-sok-mal); live prototype for ekstern bruker Ulven"
+deploy_kobling: ingen
+kvalitetsregime: ci-tester
