@@ -1094,13 +1094,24 @@ def api_rapport_gap(paper_id: str, format: str = "md", k: int = 10):
 def api_rapport_omfang(tekst: str, tittel: str = "Omfang-rapport", format: str = "md"):
     """Akse-dekning + kandidater FRA EGEN CACHE for tynt dekkede akser (ingen nye
     eksterne kall — samme ADR-004-disiplin, gjenbruker bank.lignende_tekst() på et
-    syntetisk søk bygget av aksens eget nøkkelordsett)."""
+    syntetisk søk bygget av aksens eget nøkkelordsett).
+
+    ARTSTERMER er PÅKREVD i synonym_teksten, ikke pynt: målt 2026-09-14 (fase 2b-
+    scoping, prosjekt/forskningssok-smartsyntese-for-ulven) at en akse som "Lever" UTEN
+    artskontekst gir k-NN-naboer fra HELE cachen uten artsfilter — dagens sqlite-vec-søk
+    har ingen avstand-terskel (bank._naboer_fra_rader: "banding fjerner INGEN kandidat"),
+    så nærmeste nabo blir returnert uansett hvor langt unna den faktisk er. Uten
+    artstermer var de tre nærmeste for "Lever" bokstavelig talt bavian-, hest- og
+    hunde-leverhistologi (avstand 0.93-1.02) — ingen av dem laks. Med ARTSTERMER
+    tilført samme synonym_tekst falt avstanden til 0.92-0.94 og alle tre ble ekte
+    laks-litteratur. Ikke en kosmetisk endring; uten den kan Omfang-panelet vise
+    Ulven en «relevant kandidat» som handler om bavian."""
     akser = scoping.akse_dekning(tekst)
     forslag = {}
     for akse, dekning in akser.items():
         if dekning >= 1.0:
             continue
-        synonym_tekst = akse + " " + " ".join(scoping.AKSER[akse])
+        synonym_tekst = akse + " " + " ".join(scoping.AKSER[akse]) + " " + " ".join(domeneprofil.ARTSTERMER)
         kandidater = bank.lignende_tekst(synonym_tekst, k=3)
         if kandidater:
             forslag[akse] = kandidater
