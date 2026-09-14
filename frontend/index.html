@@ -684,6 +684,10 @@ svg text{ font-family:system-ui,sans-serif; }
      <div class="verifiser-paastand" id="dossier-emne"></div>
      <div id="dossier-kropp" class="dossier-kropp"></div>
      <div id="dossier-innsikt" class="dossier-innsikt"></div>
+     <div class="dossier-innsikt">
+       <button class="rapport-btn" id="btn-siteringsgraf">Sitasjonsgraf (kan ta ca. 30s)</button>
+       <div id="dossier-siteringsgraf"></div>
+     </div>
    </div>
  </div>
  <div class="verifiser-overlay" id="syntese-overlay" hidden>
@@ -1672,6 +1676,55 @@ function renderInnsikt(d) {
     `<h4>Art-konfidens</h4><div class="innsikt-graf">${artHtml}</div>`;
 }
 
+// Sitasjonsgraf mellom dossierets EGNE kandidater (M4, prosjekt/forskningssok-dossier-
+// scivis) -- sirkulær layout (ikke kraftlayout, se roadmap-siden B1/adapsjonsplan for
+// hvorfor: hage_lenkegraf.py sin Fruchterman-Reingold lever i et annet repo som ALDRI
+// er del av forskningssok sin egen Docker-image). Gjenbruker Kart-fanens fargekode
+// (KILDE_FARGE/kildeGruppe) og .kart-node-klikk-mønster for konsistens.
+function renderSiteringsgraf(g) {
+  const noder = g.noder || [];
+  if (!noder.length) return '<div class="hint">Ingen kandidater å tegne.</div>';
+  const meta = g.noder_meta || {};
+  const cx = 200, cy = 200, rad_sirkel = 165;
+  const maksGrad = Math.max(1, ...noder.map(n => g.inn_grad[n] || 0));
+  const pos = {};
+  noder.forEach((id, i) => {
+    const ang = (i / noder.length) * 2 * Math.PI - Math.PI / 2;
+    pos[id] = {x: cx + rad_sirkel * Math.cos(ang), y: cy + rad_sirkel * Math.sin(ang)};
+  });
+
+  let svg = '<svg viewBox="-20 -20 440 440" style="width:100%">';
+  for (const [fra, til] of (g.kanter || [])) {
+    if (!pos[fra] || !pos[til]) continue;
+    const a = pos[fra], b = pos[til];
+    svg += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" stroke="var(--muted)" stroke-width="0.8" opacity=".35"/>`;
+  }
+  for (const id of noder) {
+    const {x, y} = pos[id];
+    const m = meta[id] || {};
+    const grad = g.inn_grad[id] || 0;
+    const r = 4 + Math.sqrt(grad / maksGrad) * 9;
+    const farge = KILDE_FARGE[kildeGruppe(m.kilde)] || 'var(--muted)';
+    const ringAttr = m.art_bekreftet === false ? 'stroke="var(--warn,#a86)" stroke-width="1.6"' : 'stroke="none"';
+    svg += `<g data-id="${escapeHtml(id)}" class="kart-node" style="cursor:pointer">` +
+      `<title>${escapeHtml(m.tittel || id)}${m.aar ? ' (' + m.aar + ')' : ''} — ${grad} sitering(er) internt i dossieret</title>` +
+      `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${farge}" ${ringAttr} opacity=".85"/></g>`;
+  }
+  svg += '</svg>';
+
+  const legend = Object.keys(KILDE_NAVN).map(k =>
+    `<span style="display:inline-flex;align-items:center;gap:.3rem;margin-right:.9rem">` +
+    `<span style="width:8px;height:8px;border-radius:50%;background:${KILDE_FARGE[k]};display:inline-block"></span>` +
+    `${escapeHtml(KILDE_NAVN[k])}</span>`).join('');
+  const artMerke = (state.profil && state.profil.art_merke) || '[art?]';
+  const feilNotat = (g.feilede_oppslag || []).length
+    ? `<div class="hint" style="margin-top:.4rem">${g.feilede_oppslag.length} oppslag feilet (rate-limit/nettverk) — de kandidatene mangler utgående kanter, ikke fjernet fra grafen.</div>`
+    : '';
+  return svg +
+    `<div class="hint" style="margin-top:.5rem">${legend}<span style="color:var(--muted)">· størrelse = siteringer internt i dossieret · ring = ${escapeHtml(artMerke)}</span></div>` +
+    feilNotat;
+}
+
 function renderDossier(tekst) {
   const deler = (tekst || '').split(/\n---\n/);
   let html = dossierProsaHtml(deler[0] || '');
@@ -1718,6 +1771,24 @@ $('#btn-syntese').addEventListener('click', async () => {
     $('#syntese-kropp').innerHTML = renderDossier(s.syntese);  // gjenbruker dossier-prosa-rendering
   } catch (err) {
     $('#syntese-kropp').innerHTML = `<div class="hint">Kunne ikke lage syntese-fortelling: ${escapeHtml(err.message)}</div>`;
+  }
+});
+
+$('#btn-siteringsgraf').addEventListener('click', async () => {
+  const r = state.sisteResultat;
+  if (!r || !r.query) return;
+  const btn = $('#btn-siteringsgraf');
+  const el = $('#dossier-siteringsgraf');
+  btn.disabled = true;
+  el.innerHTML = '<div class="hint">Bygger sitasjonsgraf — ekte oppslag per kandidat, kan ta 30-60s …</div>';
+  try {
+    const g = await api('/api/dossier/siteringsgraf?' + new URLSearchParams({emne: r.query}));
+    el.innerHTML = renderSiteringsgraf(g);
+    $$('.kart-node', el).forEach(c => c.addEventListener('click', () => openPaper(c.dataset.id)));
+  } catch (err) {
+    el.innerHTML = `<div class="hint">Kunne ikke bygge sitasjonsgraf: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
   }
 });
 
