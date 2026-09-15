@@ -696,6 +696,59 @@ def api_utkast_slett(utkast_id: int):
     return {"ok": True}
 
 
+_PDF_HENT_UA = "Mozilla/5.0 (research; lauvasdata; kontakt@lauvasdata.no)"  # samme identifiserende
+# UA-konvensjon som adapters/europe_pmc.py, gjenbrukt her fordi dette OGSÅ er et
+# automatisert forskningskall mot en ekstern tjeneste — samme etikette-prinsipp.
+
+
+@app.post("/api/dokument/hent-automatisk")
+def api_dokument_hent_automatisk(paper_id: str = Form(...)):
+    """Anders 2026-09-15 ('dykk inn i full-text lesing'): dokumenter.py sin
+    opplastings-pipeline (PDF -> ekte tekst -> festet på riktig papir-rad -> siterbar
+    som alt annet) var alt komplett — den KREVDE bare at Ulven manuelt lastet ned og
+    lastet opp fila selv. Nå som /api/tilgang/batch (samme kveld) gir et pålitelig
+    fri_pdf_url-signal, kobles de to sammen: hent PDF-en SERVERSIDE fra den kjente
+    URL-en, gjenbruk dokumenter.lagre() uendret.
+
+    `paper_id` sendes eksplisitt til lagre() (høyeste prioritet i dens egen
+    matche-rekkefølge, se modulens docstring) — vi VET allerede hvilket papir dette
+    er, siden vi hentet URL-en FOR akkurat den DOI-en. Ingen avhengighet av
+    DOI-gjenkjenning fra PDF-ens forside slik manuell opplasting må gjøre.
+
+    Bevisst en EGEN, eksplisitt-utløst endpoint (knapp, ikke automatisk ved åpning) —
+    et vilkårlig utgiver-nettsted kan være tregt, blokkere bot-aksess, eller levere noe
+    som ikke er en ekte PDF i det hele tatt; samme "ekte, kostbar handling krever et
+    klikk"-disiplin som /api/dossier og /api/dossier/siteringsgraf."""
+    if not paper_id.startswith("10."):
+        raise HTTPException(400, "krever en DOI")
+    oa = up = None
+    try:
+        oa = openalex.tilgang(paper_id)
+    except RuntimeError:
+        pass
+    try:
+        up = unpaywall.tilgang(paper_id)
+    except RuntimeError:
+        pass
+    url = (oa or {}).get("fri_pdf_url") or (up or {}).get("fri_pdf_url")
+    if not url:
+        raise HTTPException(404, "ingen kjent fri PDF-URL for dette papiret")
+    try:
+        r = httpx.get(url, headers={"User-Agent": _PDF_HENT_UA}, timeout=30, follow_redirects=True)
+        r.raise_for_status()
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"kunne ikke hente PDF-en fra {url}: {e}") from e
+    try:
+        d = dokumenter.lagre(f"{paper_id.replace('/', '_')}.pdf", r.content,
+                             paper_id=paper_id, db_path=CACHE_DB)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+    _varm_stille(d["paper_id"], "dokument")
+    return d
+
+
 @app.post("/api/dokument")
 async def api_dokument_last_opp(fil: UploadFile = File(...), paper_id: str = Form("")):
     """Ulvens egen PDF inn i korpuset. Se dokumenter.py for hvorfor den blir et ekte

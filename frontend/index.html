@@ -1061,7 +1061,10 @@ async function openPaper(id) {
 
   $('#reader-tilgang').innerHTML = '';
   if (id.startsWith('10.')) {
-    api(`/api/tilgang/${encodeURIComponent(id)}`).then(t => {
+    Promise.all([
+      api(`/api/tilgang/${encodeURIComponent(id)}`),
+      api(`/api/dokumenter?paper_id=${encodeURIComponent(id)}`).catch(() => ({dokumenter: []})),
+    ]).then(([t, dok]) => {
       const deler = [];
       if (t.fri_pdf_url) {
         // Vis HVEM som fant den åpne kopien når det er Unpaywall — det er nettopp
@@ -1072,7 +1075,31 @@ async function openPaper(id) {
       if (t.lisens) deler.push(`Lisens: ${escapeHtml(t.lisens)}`);
       if (t.utgiver) deler.push(escapeHtml(t.utgiver));
       if (!deler.length) deler.push(`<a href="https://doi.org/${escapeHtml(id)}" target="_blank" rel="noopener">Sjekk hos utgiver ↗</a> — ingen åpen kopi funnet, ingen prisdata tilgjengelig her`);
+      // Fulltekst-henting tilbys KUN når vi har en kjent fri PDF-URL OG ingen fulltekst
+      // alt henger på papiret — knappen forsvinner av seg selv når den ikke lenger
+      // trengs, i stedet for å stå der og tilby en overflødig re-henting.
+      if (t.fri_pdf_url && !(dok.dokumenter || []).length) {
+        deler.push('<button class="minibtn" id="btn-hent-fulltekst">Hent fulltekst automatisk</button>');
+      }
       $('#reader-tilgang').innerHTML = deler.join(' · ');
+      const knapp = $('#btn-hent-fulltekst');
+      if (knapp) knapp.addEventListener('click', async () => {
+        knapp.disabled = true;
+        knapp.textContent = 'Henter og leser PDF …';
+        try {
+          const fd = new FormData();
+          fd.set('paper_id', id);
+          await api('/api/dokument/hent-automatisk', {method: 'POST', body: fd});
+          await visVedlegg(id);
+          knapp.remove();
+        } catch (err) {
+          // Publisist-avhengig -- mange blokkerer automatiserte kall selv på ekte
+          // OA-lenker (målt live 2026-09-15: Wiley/MDPI 403, Frontiers 200). Ærlig
+          // feilmelding, ikke stille — brukeren kan fortsatt åpne "Fri PDF" manuelt.
+          knapp.disabled = false;
+          knapp.textContent = 'Feilet — prøv "Fri PDF" over i stedet';
+        }
+      });
     }).catch(()=>{}); // tilgang-info er en bonus, aldri blokkerende
   }
 
