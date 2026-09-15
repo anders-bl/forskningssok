@@ -549,6 +549,10 @@ svg text{ font-family:system-ui,sans-serif; }
           <input id="search-input" placeholder="søk i litteraturen">
           <button type="submit">Søk</button>
         </form>
+        <button class="rapport-btn" id="btn-retningssamtale" hidden
+                title="Skriv inn tanker/funderinger — få en rapport om retninger verdt å undersøke, uavhengig av om du alt har søkt">
+          Retningssamtale
+        </button>
         <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
           <button class="rapport-btn" id="revisjon-toggle" hidden title="Hva som faktisk kjørte for dette søket">revisjon</button>
           <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
@@ -699,6 +703,24 @@ svg text{ font-family:system-ui,sans-serif; }
      <div class="verifiser-merke">LLM-syntese-fortelling over dine hentede kilder — ikke rå litteratur</div>
      <div class="verifiser-paastand" id="syntese-emne"></div>
      <div id="syntese-kropp" class="dossier-kropp"></div>
+   </div>
+ </div>
+ <!-- Fase 2b (prosjekt/forskningssok-smartsyntese-for-ulven): fritekst inn, IKKE
+      avledet fra siste søk slik dossier-/syntese-overlayene er — derfor egen
+      textarea, ikke bare et emne fra state.sisteResultat. -->
+ <div class="verifiser-overlay" id="retningssamtale-overlay" hidden>
+   <div class="verifiser-kort dossier-kort">
+     <button class="verifiser-lukk" id="retningssamtale-lukk" aria-label="Lukk">x</button>
+     <div class="verifiser-merke">LLM-syntese over ekte, live-hentede kilder — ikke rå litteratur</div>
+     <p class="hint" style="margin:0 0 .6rem">Skriv inn dine tanker, funderinger eller ønsker om
+       et tema. Henter mekanisk ekte kilder — norsk OG engelsk søk, live mot kildene, ikke bare
+       det du alt har søkt på før — og peker ut hva som er aktuelt, hva som kan være oversett,
+       og hvor forskningen har hull.</p>
+     <textarea id="retningssamtale-input" rows="5" style="width:100%; font:inherit; padding:.5rem;
+       background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:6px;"
+       placeholder="F.eks: Har lurt litt på om nefrokalsinose hos smolt henger sammen med stress under sjøvannsoverføring …"></textarea>
+     <button class="rapport-btn rapport-btn-primar" id="btn-retningssamtale-send" style="margin-top:.6rem">Få retningsrapport</button>
+     <div id="retningssamtale-kropp" class="dossier-kropp"></div>
    </div>
  </div>
 
@@ -1675,6 +1697,14 @@ function oppdaterSynteseSynlighet() {
   $('#eksport-syntese').hidden = !syntesePaa || !r || !r.query || r.ids.length === 0;
 }
 
+// Retningssamtale (fase 2b) avhenger IKKE av state.sisteResultat -- knappen vises så
+// snart tilgjengelig() er sann, uansett om noe søk er kjørt ennå.
+let retningssamtalePaa = false;
+api('/api/retningssamtale/tilgjengelig').then(d => {
+  retningssamtalePaa = !!d.tilgjengelig;
+  $('#btn-retningssamtale').hidden = !retningssamtalePaa;
+}).catch(()=>{});
+
 // Dossieret er LLM-prosa (## Hard vitenskap / Hull / Trygt og kjedelig / Frontier /
 // Gammel akseptert tro) + en kildeliste, adskilt av "\n---\n" — se dossier.py::lag_dossier().
 // Rendres linje-for-linje, ALDRI via innerHTML på rå tekst (samme «vis aldri utillitsverdig
@@ -1854,6 +1884,34 @@ $('#btn-siteringsgraf').addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+$('#btn-retningssamtale').addEventListener('click', () => {
+  $('#retningssamtale-overlay').hidden = false;
+  $('#retningssamtale-input').focus();
+});
+
+$('#btn-retningssamtale-send').addEventListener('click', async () => {
+  const fritekst = $('#retningssamtale-input').value.trim();
+  if (!fritekst) return;
+  const btn = $('#btn-retningssamtale-send');
+  btn.disabled = true;
+  $('#retningssamtale-kropp').innerHTML = '<div class="hint">Søker på norsk og engelsk mot '
+    + 'ekte kilder (kan ta 10-30s), genererer deretter rapporten (kan ta ett minutt eller mer) …</div>';
+  try {
+    const d = await api('/api/retningssamtale', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({fritekst})});
+    $('#retningssamtale-kropp').innerHTML = renderDossier(d.rapport);  // gjenbruker dossier-prosa-rendering
+  } catch (err) {
+    $('#retningssamtale-kropp').innerHTML = `<div class="hint">Kunne ikke lage retningsrapport: ${escapeHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function lukkRetningssamtale() { $('#retningssamtale-overlay').hidden = true; }
+$('#retningssamtale-lukk').addEventListener('click', lukkRetningssamtale);
+$('#retningssamtale-overlay').addEventListener('click', e => { if (e.target.id === 'retningssamtale-overlay') lukkRetningssamtale(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#retningssamtale-overlay').hidden) lukkRetningssamtale(); });
 
 function lukkDossier() { $('#dossier-overlay').hidden = true; }
 $('#dossier-lukk').addEventListener('click', lukkDossier);

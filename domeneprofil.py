@@ -74,6 +74,12 @@ ARTSKOLLISJONER: tuple[str, ...] = tuple(PROFIL["art"].get("kollisjoner", []))
 MESH_TERMER: tuple[str, ...] = tuple(PROFIL["art"].get("mesh_termer", []))
 AKSER: dict[str, tuple[str, ...]] = {k: tuple(v) for k, v in PROFIL["akser"].items()}
 
+# Valgfritt felt (ikke i last_profil()s påkrevde liste) — retningssamtale.py sin
+# språk-segregering (fase 2b) blir mer presis med disse, men fungerer på generisk
+# norsk vokabular alene uten dem. Se profiler/fiskehelse.toml §sprak for hvorfor
+# dette bor her og ikke som strengliteraler i retningssamtale.py.
+NORSKE_DOMENEORD: tuple[str, ...] = tuple(PROFIL.get("sprak", {}).get("norske_ord", []))
+
 # Evaluerings-kontroll (evaluer.py): den positive kontrollens spørring + de to papir-id-ene.
 # Domenekunnskap, lest herfra så evaluer.py forblir fagfelt-agnostisk. Tom dict hvis profilen
 # ikke definerer den — da kjører evaluer uten kontroll (gyldig=None), ikke med en gjettet.

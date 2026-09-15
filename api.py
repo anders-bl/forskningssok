@@ -28,6 +28,7 @@ import dossier as dossier_modul
 import dossier_innsikt as dossier_innsikt_modul
 import dossier_siteringsgraf as dossier_siteringsgraf_modul
 import syntese_fortelling as syntese_modul
+import retningssamtale as retningssamtale_modul
 import sti as sti_modul
 import rapport
 import scoping
@@ -929,6 +930,31 @@ def api_syntese(body: dict):
         raise HTTPException(400, "tomt emne")
     try:
         return {"syntese": syntese_modul.lag_syntese_fortelling(emne)}
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
+@app.get("/api/retningssamtale/tilgjengelig")
+def api_retningssamtale_tilgjengelig():
+    """Samme spørsmål/mønster som /api/syntese/tilgjengelig — retningssamtale_modul
+    gjenbruker syntese_fortelling.tilgjengelig() uendret (samme AI_PROXY_URL-signal)."""
+    return {"tilgjengelig": retningssamtale_modul.tilgjengelig()}
+
+
+@app.post("/api/retningssamtale")
+def api_retningssamtale(body: dict):
+    """Fase 2b (prosjekt/forskningssok-smartsyntese-for-ulven): fritekst (tanker/
+    funderinger/ønsker) → mekanisk to-språks live-søk → tre mekaniske linser
+    (aktuell/glemt/hull) → ETT AI-kall for narrativ kontekstualisering. Se
+    retningssamtale.py sin moduldocstring for hele arkitekturen.
+
+    Ekte, kostbart kall (flere live multi-kilde-søk PLUSS ett LLM-kall) —
+    brukerinitiert-only, samme disiplin som /api/dossier og /api/syntese."""
+    fritekst = (body.get("fritekst") or "").strip()
+    if not fritekst:
+        raise HTTPException(400, "tom fritekst")
+    try:
+        return {"rapport": retningssamtale_modul.lag_retningsrapport(fritekst)}
     except RuntimeError as e:
         raise HTTPException(502, str(e))
 

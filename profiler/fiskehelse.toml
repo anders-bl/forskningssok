@@ -114,6 +114,25 @@ hentet fra profiler/fiskehelse.toml. Et [fag] betyr «norsk fagmiljø/fagtidsskr
 ikke en dom verktøyet feller.
 """
 
+[sprak]
+# Domene-nære, men ALMINNELIGE norske ord for retningssamtale.py sin språk-segregering
+# (fase 2b, prosjekt/forskningssok-smartsyntese-for-ulven, 2026-09-15) — hjelper
+# segreger_sprak() gjenkjenne at en forskers fritekst-musing om f.eks. "laksen i
+# merden" er norsk, ikke engelsk-kandidat. Valgfritt felt (ikke i last_profil()s
+# påkrevde liste) — modulen virker fint uten, bare med grovere presisjon.
+# Flyttet hit fra retningssamtale.py 2026-09-15: test_domeneprofil_generisk.py sin
+# AST-detektor fanget "laks"/"oppdrett"/"smolt" som strengliteraler i kjørende kode —
+# samme regel som resten av profilen (fagfeltet er DATA, ikke Python-konstanter).
+norske_ord = [
+  "fisk", "fisken", "fiske", "laks", "laksen", "smolt", "sjøvann", "ferskvann",
+  "vann", "vannet", "vannkvalitet", "oppdrett", "oppdretten", "oppdrettsfisk",
+  "sykdom", "sykdommen", "sykdommer", "sykt", "syk", "frisk", "helse", "helsen",
+  "dyr", "dyret", "dyrene", "art", "arten", "arter", "populasjon", "populasjonen",
+  "miljø", "miljøet", "temperatur", "temperaturen", "stress", "stresset",
+  "vekst", "veksten", "utvikling", "utviklingen", "overføring", "overføringen",
+  "anlegg", "anlegget", "merd", "merden", "kar", "karet", "tank", "tanken",
+]
+
 [evaluering]
 # Positiv kontroll for evaluer.py: dommeren MÅ gi det ekte fiskehelse-papiret høyere grad
 # enn species-trap-fella (samme ord «nephrocalcinosis», feil art) på denne spørringen.
