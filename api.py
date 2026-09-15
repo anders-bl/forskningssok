@@ -514,6 +514,46 @@ def _flett_tilgang(oa: dict | None, up: dict | None) -> dict:
     }
 
 
+MAKS_TILGANG_BATCH = 15
+
+
+@app.get("/api/tilgang/batch")
+def api_tilgang_batch(ids: str):
+    """Samme flett-logikk som /api/tilgang/{doi}, for FLERE DOI-er i ett kall.
+
+    Målt live 2026-09-15 (Anders' spørsmål "vi ser jo ikke hele papiret"): Europe PMC
+    sin egen `isOpenAccess`-flagg (det ENESTE fri-tekst-signalet søkeresultatene i dag
+    bærer) er mye snevrere enn OpenAlex+Unpaywall samlet — 9 av 10 testede papirer
+    hadde FAKTISK en fri PDF, men 4 av de 9 viste open_access=False i resultatlisten.
+    Ikke en bug i Europe PMC-adapteren (isOpenAccess betyr nøyaktig det den sier —
+    "i PMCs egen OA-delmengde", ikke "finnes et sted"), men et ekte hull i hva
+    RESULTATLISTEN viser før man åpner hvert papir enkeltvis.
+
+    Bevisst begrenset til `MAKS_TILGANG_BATCH` DOI-er (ikke en ubegrenset fan-out mot
+    to eksterne tjenester per søk) — flaten kaller dette EN gang etter at resultatene
+    alt er vist, ikke som del av selve /api/sok-responsen, samme "vis fort, berik
+    etterpå"-mønster som /api/dossier/innsikt.
+
+    REGISTRERT FØR /api/tilgang/{paper_id:path} under, ikke tilfeldig plassert:
+    :path-konverteren der matcher "batch" som en paper_id og ville stjålet denne
+    ruta hvis rekkefølgen var omvendt (verifisert live — første forsøk traff
+    api_tilgang("batch") i stedet, ga KeyError på klientsiden)."""
+    doi_liste = [d.strip() for d in ids.split(",") if d.strip().startswith("10.")][:MAKS_TILGANG_BATCH]
+    ut = {}
+    for doi in doi_liste:
+        oa = up = None
+        try:
+            oa = openalex.tilgang(doi)
+        except RuntimeError:
+            pass
+        try:
+            up = unpaywall.tilgang(doi)
+        except RuntimeError:
+            pass
+        ut[doi] = _flett_tilgang(oa, up)
+    return {"tilgang": ut}
+
+
 @app.get("/api/tilgang/{paper_id:path}")
 def api_tilgang(paper_id: str):
     """Lisens/fri-PDF/utgiver — erstatter det opprinnelig foreslåtte "koble til

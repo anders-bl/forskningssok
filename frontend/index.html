@@ -196,6 +196,9 @@ button{ font:inherit; }
 .star{ color:var(--accent); }
 .merkeikon{ width:.8em; height:.8em; fill:currentColor; vertical-align:-.08em; margin-right:.15em; }
 .pill-oa{ background:var(--surface-2); color:var(--accent); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; }
+.pill-pdf-slot{ display:none; }
+.pill-pdf{ background:var(--accent); color:var(--bg); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; cursor:pointer; }
+.pill-pdf:hover{ opacity:.85; }
 .pill-species{ background:var(--warn-soft); color:var(--warn); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; }
 .pill-evidens{ background:var(--surface-2); color:var(--muted); border-radius:5px; padding:1px 5px; font-size:.6875rem; font-weight:700; }
 .result-title{ font-size:.875rem; line-height:1.4; margin-bottom:.25rem; color:var(--text); }
@@ -848,6 +851,7 @@ function renderResults(papirer) {
       <div class="result-row1">
         ${domeneMerke(p)}<span>${p.aar || '?'} · ${p.siteringstall ?? '?'} sit.</span>
         ${p.open_access ? '<span class="pill-oa" title="open access">OA</span>' : ''}
+        <span class="pill-pdf-slot"></span>
         ${artMerke(p)}
         ${evidensBadge(p.evidensniva)}
       </div>
@@ -855,6 +859,38 @@ function renderResults(papirer) {
       <div class="result-journal">${escapeHtml(p.tidsskrift || '')}</div>`;
     btn.addEventListener('click', () => openPaper(p.id));
     list.appendChild(btn);
+  }
+  beriktMedFriTilgang(list, papirer);
+}
+
+// Anders 2026-09-15: "vi ser jo ikke hele papiret" -- målt at Europe PMC sin egen
+// open_access-flagg (det eneste fri-tekst-signalet resultatlisten hadde) er mye
+// snevrere enn OpenAlex+Unpaywall samlet (9/10 testede papirer hadde faktisk en fri
+// PDF, 4 av dem viste open_access=false). Beriker resultatlisten EN gang, i bakgrunnen,
+// ETTER at den alt er vist -- blokkerer aldri selve søket, samme mønster som
+// /api/dossier/innsikt. Bevisst kappet (se api.py::MAKS_TILGANG_BATCH), ikke ett
+// kall per synlig resultat.
+async function beriktMedFriTilgang(list, papirer) {
+  const doier = papirer.filter(p => (p.id || '').startsWith('10.')).map(p => p.id);
+  if (!doier.length) return;
+  let d;
+  try {
+    d = await api('/api/tilgang/batch?' + new URLSearchParams({ids: doier.join(',')}));
+  } catch { return; } // berikelse er en bonus, aldri blokkerende — stille feil er OK KUN her
+  for (const [doi, t] of Object.entries(d.tilgang || {})) {
+    if (!t.fri_pdf_url) continue;
+    const slot = list.querySelector(`.result[data-id="${CSS.escape(doi)}"] .pill-pdf-slot`);
+    if (!slot) continue;
+    // <a> inne i <button> er ugyldig HTML (knapper kan ikke inneholde interaktivt
+    // innhold) — bruker en <span> med egen klikk-lytter i stedet, samme mønster som
+    // resten av flaten (addEventListener, ikke inline onclick-attributter).
+    const via = t.kilde_tilgang === 'unpaywall' ? ' (via Unpaywall)' : '';
+    slot.outerHTML = `<span class="pill-pdf" title="Fri PDF${escapeHtml(via)}">PDF</span>`;
+    const nyttSpan = list.querySelector(`.result[data-id="${CSS.escape(doi)}"] .pill-pdf`);
+    nyttSpan.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.open(t.fri_pdf_url, '_blank', 'noopener');
+    });
   }
 }
 
