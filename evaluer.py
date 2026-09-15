@@ -35,7 +35,10 @@ SKALA = {0: "irrelevant", 1: "perifer", 2: "relevant", 3: "sentral"}
 # 0.50 fordi det er ren tilfeldighet. Tallet skal IKKE justeres etter å ha sett resultatet.
 KONKORDANS_TERSKEL = 0.70
 
-DEFAULT_MODELL = "gpt-oss:20b"  # samme dommer-modell huset bruker (firkant-kalibreringen)
+DEFAULT_MODELL = "gpt-oss:agent"  # RETTET 2026-09-15: "gpt-oss:20b" var ikke pullet på denne
+# maskinen (kun "gpt-oss:agent" er det, verifisert med `ollama list`) -- --evaluer var derfor
+# silent 404 for enhver som ikke visste å overstyre modellen selv. Samme dommer-INTENSJON
+# (huset sin lokale gpt-oss-dom, firkant-kalibreringen), bare riktig tag.
 
 _PROMPT = """Du vurderer hvor relevant et vitenskapelig papir er for et litteratursøk.
 
