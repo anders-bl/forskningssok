@@ -157,8 +157,15 @@ button{ font:inherit; }
 .search-meta{ font-size:.6875rem; color:var(--muted); display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
 .rapport-eksport-gruppe{ display:inline-flex; align-items:center; gap:.3rem; font-size:.6875rem; color:var(--muted); flex-wrap:wrap; }
 .rapport-eksport-gruppe.i-meta{ margin-left:auto; }
-.rapport-eksport-gruppe.blokk{ display:flex; margin-bottom:.7rem; }
+.rapport-eksport-gruppe.blokk{ display:flex; margin-bottom:.5rem; }
 .rapport-eksport-gruppe[hidden]{ display:none; }
+/* Konsolidert eksport-klynge, se HTML (2026-09-16). Rammet inn som ÉN synlig gruppe i
+   stedet for fire løse knapperader — tittelen vises kun når minst én rad faktisk er
+   synlig, :has() over den generelle [hidden]-selektoren over. */
+.eksport-samlet{ border:1px solid var(--border); border-radius:8px; padding:.6rem .7rem .1rem; margin-top:.5rem; }
+.eksport-samlet:not(:has(.rapport-eksport-gruppe:not([hidden]))){ display:none; }
+.eksport-samlet-tittel{ font-size:.6875rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:.5rem; }
+.eksport-label{ font-size:.6875rem; font-weight:600; color:var(--text); min-width:6.5rem; flex:none; }
 .rapport-btn{
   border:1px solid var(--border); background:none; color:var(--muted);
   border-radius:99px; padding:.2rem .55rem; font-size:.6875rem; cursor:pointer;
@@ -307,6 +314,13 @@ button{ font:inherit; }
 .tab{ border:0; background:none; color:var(--muted); font-weight:600; font-size:.75rem; padding:.55rem .7rem; border-radius:8px 8px 0 0; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
 .tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
 .tab .count{ font-size:.625rem; margin-left:3px; color:var(--muted); }
+/* Fane-klynge (2026-09-16, se .tabs over): visuelt skiller "Varmt" (krever ingenting)
+   fra de fire som krever et åpent papir, i stedet for fem likestilte faner på rad. */
+.tab-klynge{ display:inline-flex; align-items:center; gap:2px; margin-left:.5rem; padding-left:.7rem; border-left:1px solid var(--border); }
+.tab-klynge-label{ font-size:.625rem; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-right:.25rem; white-space:nowrap; }
+/* Alltid synlig ett-linjes forklaring av fanen du står i — flyttet UT av "Om"-panelet
+   (som forklarer KILDENE, ikke ARBEIDSFLYTEN) og inn der du faktisk trenger den. */
+.tab-caption{ font-size:.75rem; color:var(--muted); line-height:1.4; padding:.5rem .8rem; border-bottom:1px solid var(--border); flex:none; }
 .tabpanel{ display:none; padding:.85rem; }
 .tabpanel.active{ display:block; }
 
@@ -555,16 +569,29 @@ svg text{ font-family:system-ui,sans-serif; }
         </button>
         <div class="search-meta"><span id="result-count"></span><span id="result-status"></span>
           <button class="rapport-btn" id="revisjon-toggle" hidden title="Hva som faktisk kjørte for dette søket">revisjon</button>
-          <span class="rapport-eksport-gruppe i-meta" id="eksport-kildesamling" hidden>
+        </div>
+        <!-- Konsolidert 2026-09-16 (var: fire spredte "Markdown/PDF"-knappepar, identisk
+             utseende, ulikt omfang — lett å eksportere feil ting uten å merke det). Samlet
+             under ÉN synlig tittel, hver rad merket med HVA den eksporterer. Tittelen vises
+             KUN når minst én rad faktisk er synlig (:has(), se CSS) — ingen tom overskrift
+             før et søk er kjørt. Samme element-id-er og skjul/vis-logikk som før, ren
+             visuell omgruppering, ingen JS-atferd endret. -->
+        <div class="eksport-samlet" id="eksport-samlet">
+          <div class="eksport-samlet-tittel">Lag rapport / eksporter</div>
+          <span class="rapport-eksport-gruppe blokk" id="eksport-kildesamling" hidden>
+            <span class="eksport-label">Disse treffene</span>
             <button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button><button class="rapport-btn" data-format="ris" title="Importer direkte i Zotero eller EndNote">RIS</button><button class="rapport-btn" data-format="bib" title="BibTeX for LaTeX">BibTeX</button>
           </span>
-          <span class="rapport-eksport-gruppe i-meta" id="eksport-konvergens" hidden title="Én rapport for dette søket: kilder, citation-gap på topptreffet, omfang per akse, proveniens og formaterte referanser">
-            Forskningsrapport: <button class="rapport-btn rapport-btn-primar" id="rapport-i-appen" title="Se hele det grundige søket satt sammen i kontekst — uten å laste ned">Vis i appen</button><button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
+          <span class="rapport-eksport-gruppe blokk" id="eksport-konvergens" hidden title="Én rapport for dette søket: kilder, citation-gap på topptreffet, omfang per akse, proveniens og formaterte referanser">
+            <span class="eksport-label">Forskningsrapport</span>
+            <button class="rapport-btn rapport-btn-primar" id="rapport-i-appen" title="Se hele det grundige søket satt sammen i kontekst — uten å laste ned">Vis i appen</button><button class="rapport-btn" data-format="md">Markdown</button><button class="rapport-btn" data-format="pdf">PDF</button>
           </span>
-          <span class="rapport-eksport-gruppe i-meta" id="eksport-dossier" hidden title="Sammenhengende dossier: hard vitenskap, hull, trygt-kjedelig, frontier, gammel akseptert tro — hver setning kildekoblet">
+          <span class="rapport-eksport-gruppe blokk" id="eksport-dossier" hidden title="Sammenhengende dossier: hard vitenskap, hull, trygt-kjedelig, frontier, gammel akseptert tro — hver setning kildekoblet">
+            <span class="eksport-label">Dossier</span>
             <button class="rapport-btn rapport-btn-primar" id="btn-dossier">Lag dossier</button>
           </span>
-          <span class="rapport-eksport-gruppe i-meta" id="eksport-syntese" hidden title="Én sammenhengende fortelling som vever kildene sammen: «slik henger disse funnene sammen» — Ulvens formvalg 2026-09-11">
+          <span class="rapport-eksport-gruppe blokk" id="eksport-syntese" hidden title="Én sammenhengende fortelling som vever kildene sammen: «slik henger disse funnene sammen» — Ulvens formvalg 2026-09-11">
+            <span class="eksport-label">Syntese-fortelling</span>
             <button class="rapport-btn rapport-btn-primar" id="btn-syntese">Lag syntese-fortelling</button>
           </span>
         </div>
@@ -604,11 +631,19 @@ svg text{ font-family:system-ui,sans-serif; }
     <div class="pane">
       <div class="tabs">
         <button class="tab active" data-tab="varmt">Varmt<span class="count" id="c-varmt"></span></button>
-        <button class="tab" data-tab="lignende">Lignende<span class="count" id="c-lignende"></span></button>
-        <button class="tab" data-tab="kart">Kart</button>
-        <button class="tab" data-tab="gap">Gap</button>
-        <button class="tab" data-tab="sti">Sti</button>
+        <!-- Fire av fem faner krever et åpent papir (se hver fanes tomt-tilstand-hint under) --
+             gruppert visuelt fra "Varmt" (som IKKE krever det) med en delelinje + etikett,
+             se prosjekt/forskningssok-veikart "hvorfor er dette vanskelig å begripe"-runden
+             2026-09-16: åtte likestilte destinasjoner uten rangering var kjernefunnet. -->
+        <div class="tab-klynge" title="Disse fire tar utgangspunkt i papiret du har åpent i leseflaten">
+          <span class="tab-klynge-label">om papiret</span>
+          <button class="tab" data-tab="lignende">Lignende<span class="count" id="c-lignende"></span></button>
+          <button class="tab" data-tab="kart">Kart</button>
+          <button class="tab" data-tab="gap">Gap</button>
+          <button class="tab" data-tab="sti">Sti</button>
+        </div>
       </div>
+      <div class="tab-caption" id="tab-caption">Søkeresultatene dine, rangert etter relevans og ferskhet.</div>
       <div class="pane-scroll">
         <div class="tabpanel active" id="tab-varmt">
           <div class="hint">Samler seg mens du jobber.</div>
@@ -1155,12 +1190,23 @@ async function openPaper(id) {
 // helst annet .tab-sett på siden. Fanget som ekte bug under bygging av Fjordlys-mockupen
 // (feil id-prefiks kastet en stille TypeError og lot et panel stå tomt).
 let loadGapLazy = false;
+// Ett-linjes forklaring per fane (se .tab-caption i HTML+CSS) — bygget fordi "Om"-panelet
+// forklarer kildene/metodikken, aldri hva EN GITT fane faktisk viser deg. Teksten er bevisst
+// kort (én setning): et sted å orientere seg, ikke en ny dokumentasjonsside å lese.
+const TAB_CAPTIONS = {
+  varmt: 'Søkeresultatene dine, rangert etter relevans og ferskhet.',
+  lignende: 'Semantiske naboer til papiret du har åpent, hentet fra din egen cache — andre ord, samme betydning.',
+  kart: 'Begrepene i papirets naboskap, og hvordan de henger sammen.',
+  gap: 'Siterer papiret det burde? Sjekker referanselisten mot dine cachede naboer — kandidater å vurdere, ikke en dom.',
+  sti: 'Kjeden av siteringer mellom papiret du har åpent og et annet papir du velger.',
+};
 $$('.shell .tab').forEach(t => t.addEventListener('click', () => {
   toolbar.hidden = true;
   $$('.shell .tab').forEach(x => x.classList.remove('active'));
   $$('.shell .tabpanel').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   $('#tab-' + t.dataset.tab).classList.add('active');
+  $('#tab-caption').textContent = TAB_CAPTIONS[t.dataset.tab] || '';
   if (t.dataset.tab === 'varmt') lastVarme();
   if (t.dataset.tab === 'gap' && loadGapLazy && state.paperId) { loadGapLazy = false; loadGap(state.paperId); }
   if (t.dataset.tab === 'kart' && state.paperId) loadKart(state.paperId);
