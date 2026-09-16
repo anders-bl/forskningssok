@@ -111,6 +111,18 @@ atskilt — lokal fil er gitignored, prod starter tomt). Prod-deploy koster små
 ekte Mistral-API-bruk (mistral-embed er billig — se `ai-proxy/main.py`s prisliste),
 ikke lenger gratis som lokal Ollama.
 
+**Teste `AI_PROXY_URL`-gatede flater (dossier, embed) lokalt uten Dokploy-tilgang**
+(lagt til 2026-09-16): Anders' Mac har ingen nettverkstilgang til den EKTE ai-proxyen —
+den er bevisst nettverksisolert til `dokploy-network` (`ai-proxy/docker-compose.yml`:
+`expose: ["8000"]  # KUN internt`), ikke en Mac-begrensning. `silverbullet/ops/lokal_ai_proxy.py`
+erstatter kontraktens FORM lokalt (`/complete` + `/embed`) og forwarder til lokal Ollama:
+```bash
+python3 ~/prosjekter/silverbullet/ops/lokal_ai_proxy.py 8421   # egen terminal
+AI_PROXY_URL=http://127.0.0.1:8421 venv/bin/uvicorn api:app --port 8420
+```
+Verifisert ende-til-ende 2026-09-16: full 5-seksjons dossier-generering + embedding-
+basert søk mot en ekte kjørende instans. Se scriptets egen docstring for kontrakt-detaljer.
+
 ### Deploy — Dockerfile + docker-compose.yml (lagt til 2026-09-04)
 
 Samme mønster som `stromkontrol` (privat-pilot-app på Dokploy): `Dockerfile`
