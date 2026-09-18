@@ -1875,6 +1875,24 @@ function renderDossier(tekst) {
   return html || '<div class="hint">(tomt svar)</div>';
 }
 
+// Fremdriftsindikator (prosesser/standardisering §9): roterer gjennom omtrentlige
+// steg-labels + viser forløpt tid. IKKE synkronisert med ekte backend-fremdrift
+// (ett enkelt fetch-kall, backend rapporterer ingen delsteg) -- derfor "ca."-språk,
+// aldri påstå at et steg faktisk er nådd.
+function startFremdrift(container, steg) {
+  const t0 = Date.now();
+  let i = 0;
+  const tick = () => {
+    const sek = Math.round((Date.now() - t0) / 1000);
+    container.innerHTML = `<div class="hint">${escapeHtml(steg[i % steg.length])}`
+      + ` &middot; ${sek}s</div>`;
+    i += 1;
+  };
+  tick();
+  const id = setInterval(tick, 1400);
+  return () => clearInterval(id);
+}
+
 $('#btn-dossier').addEventListener('click', async () => {
   const r = state.sisteResultat;
   if (!r || !r.query) return;
@@ -1889,11 +1907,14 @@ $('#btn-dossier').addEventListener('click', async () => {
     .then(d => { $('#dossier-innsikt').innerHTML = renderInnsikt(d); })
     .catch(() => {});  // ærlig stille -- innsikt er et tillegg, ikke hoveddossieret
 
+  const stoppFremdrift = startFremdrift($('#dossier-kropp'), ['Henter kildene dine', 'Setter sammen dossieret', 'Sjekker kildehenvisninger']);
   try {
     const d = await api('/api/dossier', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({emne: r.query})});
+    stoppFremdrift();
     $('#dossier-kropp').innerHTML = renderDossier(d.dossier);
   } catch (err) {
+    stoppFremdrift();
     $('#dossier-kropp').innerHTML = `<div class="hint">Kunne ikke lage dossier: ${escapeHtml(err.message)}</div>`;
   }
 });
@@ -1904,11 +1925,14 @@ $('#btn-syntese').addEventListener('click', async () => {
   $('#syntese-emne').textContent = '«' + r.query + '»';
   $('#syntese-kropp').innerHTML = '<div class="hint">Genererer syntese-fortelling over dine hentede kilder (kan ta ett minutt eller mer) …</div>';
   $('#syntese-overlay').hidden = false;
+  const stoppFremdrift = startFremdrift($('#syntese-kropp'), ['Henter kildene dine', 'Vever fortellingen sammen', 'Sjekker kildehenvisninger']);
   try {
     const s = await api('/api/syntese', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({emne: r.query})});
+    stoppFremdrift();
     $('#syntese-kropp').innerHTML = renderDossier(s.syntese);  // gjenbruker dossier-prosa-rendering
   } catch (err) {
+    stoppFremdrift();
     $('#syntese-kropp').innerHTML = `<div class="hint">Kunne ikke lage syntese-fortelling: ${escapeHtml(err.message)}</div>`;
   }
 });
@@ -1941,13 +1965,14 @@ $('#btn-retningssamtale-send').addEventListener('click', async () => {
   if (!fritekst) return;
   const btn = $('#btn-retningssamtale-send');
   btn.disabled = true;
-  $('#retningssamtale-kropp').innerHTML = '<div class="hint">Søker på norsk og engelsk mot '
-    + 'ekte kilder (kan ta 10-30s), genererer deretter rapporten (kan ta ett minutt eller mer) …</div>';
+  const stoppFremdrift = startFremdrift($('#retningssamtale-kropp'), ['Renser og forenkler søketeksten', 'Søker på norsk og engelsk', 'Ser etter aktuelt, glemt og hull', 'Skriver rapporten']);
   try {
     const d = await api('/api/retningssamtale', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({fritekst})});
+    stoppFremdrift();
     $('#retningssamtale-kropp').innerHTML = renderDossier(d.rapport);  // gjenbruker dossier-prosa-rendering
   } catch (err) {
+    stoppFremdrift();
     $('#retningssamtale-kropp').innerHTML = `<div class="hint">Kunne ikke lage retningsrapport: ${escapeHtml(err.message)}</div>`;
   } finally {
     btn.disabled = false;
