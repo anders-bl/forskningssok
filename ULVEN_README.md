@@ -71,6 +71,41 @@ python3 ai_assistent.py --query "laks lever ultralyd" --svar
 
 ---
 
+### Dossier og syntese-fortelling (testet med deg 2026-09-11)
+
+Under et søkeresultat, ved siden av "Forskningsrapport": to knapper til.
+
+- **"Lag dossier"** — samler papirene du har funnet til ett strukturert dokument,
+  seksjonert etter type (hard vitenskap / hull / trygt-kjedelig / frontier / gammel tro).
+- **"Lag syntese-fortelling"** — i stedet for adskilte seksjoner, vever den flere kilder
+  til én sammenhengende fortelling: "slik henger disse funnene sammen". Formen ble valgt
+  etter din egen tilbakemelding samme kveld — du var mest interessert i sammenheng/
+  fortelling framfor en oppdelt tabell.
+
+**Samme prinsipp som Forskningsrapporten:** hver AI-satt-sammen setning siterer en
+[#id]-referanse til en ekte kilde. Klikk tallet for å åpne kilden direkte og sjekke selv.
+Fantes referansen ikke i det hentede materialet, fjernes setningen automatisk (en
+[ADVARSEL]-boks viser at dette skjedde — det er vakten som virker, ikke en feil).
+
+---
+
+### Utforsk et spørsmål (retningssamtale)
+
+Egen knapp ved siden av søkefeltet, krever ikke et søk først: skriv det du lurer på, kort
+eller langt — ikke bare nøkkelord. Verktøyet renser og deler opp spørsmålet ditt mekanisk
+(norsk OG engelsk søkes samtidig, ingen av dine ord går tapt uansett hvilket språk du
+blander dem i), henter kilder live fra CORE/Europe PMC/OpenAlex, og gir deg en rapport om:
+
+- **Aktuelt** — hva de nyeste hentede kildene sier
+- **Glemt** — eldre, fortsatt relevante kilder som er lite sitert i nyere litteratur (en
+  enkel aldersheuristikk, ikke en AI-vurdering — presentert som nettopp det)
+- **Hull** — temaer ingen av de hentede kildene dekker
+
+Er AI-sammenstillingen utilgjengelig, faller den tilbake til et mekanisk sammendrag i
+stedet for å feile — du får alltid noe å lese, aldri en tom feilmelding.
+
+---
+
 ### Kart-fanen
 
 Åpne et papir i leseren og velg **"Kart"**-fanen for å se relasjonskartet: de
@@ -167,6 +202,8 @@ Eller søk direkte i appen — samme hovedfunn og kilde-fordeling der, i Forskni
 
 Eksport av litteraturlister (BibTeX/RIS/CSL-JSON/PDF) sto lenge her som "under
 utvikling" — den er ferdig, se **Eksport av litteraturlister** i Funksjoner over.
+Samme gjelder nå dossier, syntese-fortelling og retningssamtale (se egne avsnitt over) —
+alle tre er bygget og testet i kode (679/679 tester grønne), ikke lenger planlagte.
 Det som faktisk gjenstår:
 
 ### 1. Samarbeid med kolleger
@@ -205,6 +242,8 @@ Se hoved-README.md for generell dokumentasjon om forskningssøk.
 
 **Profiler:** `profiler/ulven.py`  
 **AI-assistent / hovedfunn:** `ai_assistent.py`, `api.py:api_rapport_konvergens`  
+**Dossier / syntese-fortelling:** `dossier.py`, `syntese_fortelling.py`  
+**Retningssamtale:** `retningssamtale.py`  
 **Kart-fanen:** `frontend/index.html:renderKart`, `bank.py:lignende`  
 **Evidensnivå:** `adapters/evidensniva.py`  
 **Eksport:** `rapport.py` (`til_bibtex`/`til_ris`/`til_csl_json`/`til_pdf_bytes`), `api.py:api_rapport_kildesamling`
