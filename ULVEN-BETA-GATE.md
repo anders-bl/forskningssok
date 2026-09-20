@@ -19,6 +19,17 @@ Den delte databasen er en kjent v1-begrensning. Den blokkerer ikke en
 lesetest, men blokkerer bruk av personlige skrive- og delingsfunksjoner med
 arbeidsdata.
 
+## Preflight utført 2026-09-20
+
+- Forskningssøk: `679 passed` med nettverksfri testsuite.
+- Portalens smartsøk-forskningskanal: `12 passed` i
+  `lauvasdata/backend/tests/test_smartsok_forskning.py`.
+- Compose-konfigurasjonen har både auth-middleware, intern AI-proxy,
+  forskningsprofil og persistent datavolum.
+- Produksjonens autentiserte smoke-test og ekte AI-proxy-kall er ikke målt i
+  denne økten. Uautoriserte kall til domenet svarer `401`; det er forventet og
+  er ikke bevis på at den autentiserte banen virker.
+
 ## Må verifiseres før første lesetest
 
 - Ulven har en fungerende tilgangsvei til `forskningssok.lauvasdata.no`.
