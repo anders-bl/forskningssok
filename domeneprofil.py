@@ -167,6 +167,18 @@ def for_frontend() -> dict:
     matchingen i JS med subtilt andre regler."""
     art = PROFIL.get("art", {})
     domene = PROFIL.get("domene", {})
+    domenebanker = []
+    for bank in PROFIL.get("domenebanker", []):
+        if not isinstance(bank, dict):
+            continue
+        domenebanker.append({
+            "id": str(bank.get("id", "")),
+            "navn": str(bank.get("navn", "")),
+            "status": str(bank.get("status", "")),
+            "beskrivelse": str(bank.get("beskrivelse", "")),
+            "sok": str(bank.get("sok", "")),
+            "tilgjengelig": bool(bank.get("tilgjengelig", False)),
+        })
     return {
         "navn": NAVN,
         "kort": PROFIL["kort"],
@@ -179,4 +191,5 @@ def for_frontend() -> dict:
         "art_merke_utdypet": art.get("merke_utdypet", ""),
         "akser": list(AKSER),
         "om_domeneprofil": (PROFIL.get("om", {}).get("domeneprofil") or "").strip(),
+        "domenebanker": domenebanker,
     }

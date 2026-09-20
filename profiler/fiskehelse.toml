@@ -114,6 +114,16 @@ hentet fra profiler/fiskehelse.toml. Et [fag] betyr «norsk fagmiljø/fagtidsskr
 ikke en dom verktøyet feller.
 """
 
+# Synlig inngang til et kuratert domenespor. Banken er foreslått og har et målt
+# grunnlag, men er ikke innlastet som separat bank ennå.
+[[domenebanker]]
+id = "biologibank"
+navn = "Biologibank"
+status = "foreslått"
+beskrivelse = "Kurert spor for marinebiologi, fiskehelse, nefrokalsinose og osmoregulering. Grunnlaget er kartlagt, men Ulvens egne prioriteringer må fortsatt bekreftes før banken fylles separat."
+sok = "salmon fish health nephrocalcinosis osmoregulation"
+tilgjengelig = false
+
 [sprak]
 # Domene-nære, men ALMINNELIGE norske ord for retningssamtale.py sin språk-segregering
 # (fase 2b, prosjekt/forskningssok-smartsyntese-for-ulven, 2026-09-15) — hjelper

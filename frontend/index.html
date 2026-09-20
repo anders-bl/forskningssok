@@ -542,6 +542,8 @@ svg text{ font-family:system-ui,sans-serif; }
 
     <h3>Domeneprofil</h3>
     <p id="om-domeneprofil">Laster …</p>
+    <h3>Domenebanker</h3>
+    <div id="om-domenebanker"><p>Laster …</p></div>
     <p>Fagfeltet — fagmiljøer, fagtidsskrifter, artstermer og forskningsakser — er en
       datafil (<code>profiler/*.toml</code>), ikke kode. Å peke verktøyet mot et annet
       fagfelt er å bytte den fila, ikke å endre logikk.</p>
@@ -2347,6 +2349,7 @@ async function lastProfil() {
     $('#wordmark-fag').textContent = p.navn;
     $('#om-kort').textContent = `Forskningssøk bygget for ${p.kort} — ikke et generelt forskningsverktøy, se §Domeneprofil under.`;
     $('#om-domeneprofil').textContent = p.om_domeneprofil || `Denne instansen er scopet til ${p.navn}.`;
+    renderDomenebanker(p.domenebanker || []);
     // Kulepunktet navnga merkene statisk («[fag] og [OBS]»). Under en annen profil er de andre
     // tegn, og setningen ble da feil i det ene panelet som finnes for å forklare dem.
     $('#om-merker').textContent =
@@ -2355,7 +2358,30 @@ async function lastProfil() {
       `fortsatt være riktig, avgjørelsen er alltid din.`;
   } catch {
     $('#om-domeneprofil').textContent = 'Kunne ikke lese domeneprofilen akkurat nå.';
+    $('#om-domenebanker').innerHTML = '<p>Kunne ikke lese domenebankene akkurat nå.</p>';
   }
+}
+
+function renderDomenebanker(banker) {
+  const el = $('#om-domenebanker');
+  if (!banker.length) {
+    el.innerHTML = '<p>Ingen domenebanker er konfigurert for denne profilen.</p>';
+    return;
+  }
+  el.innerHTML = banker.map((bank) => {
+    const status = bank.status ? `<span class="pill">${escapeHtml(bank.status)}</span>` : '';
+    const knapp = bank.sok
+      ? `<button class="pilleknapp bank-sok" type="button" data-bank-sok="${escapeHtml(bank.sok)}">Søk i sporet</button>`
+      : '';
+    return `<div class="om-bank"><p><b>${escapeHtml(bank.navn || bank.id || 'Domenebank')}</b> ${status}</p>` +
+      `<p>${escapeHtml(bank.beskrivelse || '')}</p>${knapp}</div>`;
+  }).join('');
+  $$('.bank-sok', el).forEach((button) => button.addEventListener('click', () => {
+    const query = button.dataset.bankSok || '';
+    $('#search-input').value = query;
+    $('#om-overlay').hidden = true;
+    utforSok(query);
+  }));
 }
 
 // ---------- Dokument (fase 2, prosjekt/rapportmotor-veikart, 2026-09-06) ----------

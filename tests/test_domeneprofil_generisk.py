@@ -113,6 +113,17 @@ def test_frontend_kontrakten_baerer_merkene(akustikk):
     assert "bygg eller rom" in f["art_merke_betyr"]
     # Termlistene skal IKKE sendes til klienten — se for_frontend() sin docstring.
     assert "termer" not in f and "fagmiljoer" not in f
+    assert f["domenebanker"] == []
+
+
+def test_standardprofilen_eksponerer_aerlig_biologibank_inngang():
+    import domeneprofil
+    importlib.reload(domeneprofil)
+    banker = domeneprofil.for_frontend()["domenebanker"]
+    assert len(banker) == 1
+    assert banker[0]["id"] == "biologibank"
+    assert banker[0]["tilgjengelig"] is False
+    assert "nephrocalcinosis" in banker[0]["sok"]
 
 
 def test_manglende_profil_feiler_hoyt_ikke_stille(tmp_path):
