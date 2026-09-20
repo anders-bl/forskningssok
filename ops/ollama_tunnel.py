@@ -55,16 +55,32 @@ PID_FIL = Path.home() / ".config" / "lauvasdata" / "ollama_tunnel_fase1.pid"
 
 def linje_for_authorized_keys() -> str:
     """Den eksakte linja som må legges til på noden — printet, ALDRI skrevet dit av
-    dette scriptet. `restrict` slår av alt (pty/X11/agent-forwarding/port-forwarding);
-    `permitlisten` slår KUN reverse-forwarding mot nøyaktig denne porten på igjen.
-    `command=` gjør et vanlig SSH-login-forsøk med denne nøkkelen harmløst (echo, ikke
-    skall) i stedet for å stole på at ingen noensinne prøver."""
+    dette scriptet. `command=` gjør et vanlig SSH-login-forsøk med denne nøkkelen
+    harmløst (echo, ikke skall) i stedet for å stole på at ingen noensinne prøver —
+    dette ALENE er det som hindrer skall, uavhengig av forwarding-innstillingene.
+
+    RETTET 2026-09-20: `restrict,permitlisten="127.0.0.1:{PORT}"` (den opprinnelige,
+    "riktige ifølge sshd(8)"-varianten) ga `Warning: remote port forwarding failed`
+    + server-siden logget `Server has disabled port forwarding` — verifisert direkte
+    mot ekte noden (`ssh -vv`), ikke antatt. Isolerte variabelen: et HELT urestriktert
+    nøkkel-forsøk mot SAMME node fungerte (ekte HTTP 200 gjennom tunnelen), så noden
+    selv støtter reverse-forwarding fint — feilen sitter i selve `restrict`+
+    `permitlisten`-kombinasjonen på denne OpenSSH 9.6-builden, ikke i noden generelt.
+    Løsning: dropp `restrict`-snarveien, list de granulære flaggene eksplisitt UTEN
+    `no-port-forwarding` (den er nettopp den som kolliderte med permitlisten) og stol
+    på `permitlisten` alene til å begrense HVILKEN forwarding som er lov. `command=`
+    dekker skall-blokkeringen uavhengig av dette. IKKE fullt så smalt som den
+    opprinnelige planen (permitlisten kan i teorien ikke narrowes ned fra "ingen andre
+    port-forwarding-typer i det hele tatt" når no-port-forwarding er fraværende — se
+    kommentar i selve linja), men fortsatt ingen skall, ingen X11/agent-forwarding, og
+    `GatewayPorts no` på noden hindrer uansett at NOE forwardet blir eksternt nåbart."""
     pub = NOKKEL.with_suffix(".pub")
     innhold = pub.read_text().strip()
     felt = innhold.split()
     type_, key = felt[0], felt[1]
     return (
-        f'restrict,permitlisten="127.0.0.1:{TUNNEL_PORT_NODE}",'
+        f'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc,'
+        f'permitlisten="127.0.0.1:{TUNNEL_PORT_NODE}",'
         f'command="echo lauvasdata-ollama-tunnel-fase1: tunnel-only key, no shell access" '
         f'{type_} {key} lauvasdata-ollama-tunnel-fase1'
     )

@@ -77,6 +77,13 @@ services:
       # trafikk) — ALDRI en oppstartsblokkering. Samme Dokploy-felle som CORE_API_KEY
       # over: satt i UI-panelet ALENE gjør ingenting uten denne linja.
       SEMANTIC_SCHOLAR_API_KEY: ${SEMANTIC_SCHOLAR_API_KEY:-}
+      # FDR-106 fase 1 (2026-09-20): Ollama-tunnel-URL for en AVTALT Ulven-demo-økt —
+      # se syntese_fortelling.py::kall_llm. Usatt = uendret rute (AI_PROXY_URL avgjør,
+      # som før denne FDR-en). Lagt til HER FØR første forsøk på å bruke den, ikke
+      # etterpå — CORE_API_KEY/SEMANTIC_SCHOLAR_API_KEY over traff nøyaktig denne
+      # samme Dokploy-fella (satt i UI-panelet alene, container så den aldri) fordi
+      # linja manglet her. Ikke la denne bli den tredje.
+      OLLAMA_TUNNEL_URL: ${OLLAMA_TUNNEL_URL:-}
     volumes:
       - forskningssok_data:/data
     networks:
