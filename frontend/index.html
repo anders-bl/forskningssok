@@ -2371,7 +2371,7 @@ function renderDomenebanker(banker) {
   el.innerHTML = banker.map((bank) => {
     const status = bank.status ? `<span class="pill">${escapeHtml(bank.status)}</span>` : '';
     const knapp = bank.sok
-      ? `<button class="pilleknapp bank-sok" type="button" data-bank-sok="${escapeHtml(bank.sok)}">Søk i sporet</button>`
+      ? `<button class="pilleknapp bank-sok" type="button" data-bank-sok="${escapeHtml(bank.sok)}">${bank.tilgjengelig ? 'Åpne banken' : 'Søk i hovedkildene'}</button>`
       : '';
     return `<div class="om-bank"><p><b>${escapeHtml(bank.navn || bank.id || 'Domenebank')}</b> ${status}</p>` +
       `<p>${escapeHtml(bank.beskrivelse || '')}</p>${knapp}</div>`;
