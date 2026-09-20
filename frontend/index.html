@@ -430,6 +430,36 @@ button{ font:inherit; }
   .skuff-kropp{ grid-template-columns:minmax(0,1fr) 260px; }
 }
 
+/* Mobilflate: samme arbeidsflyt, men én lesbar kolonne. Desktopens tre paneler
+   krympet side ved side ble ubrukelige under 760px: søkefelt, lesing og varme
+   konkurrerte om samme horisontale plass. Denne første mobile kontrakten endrer
+   bare layouten; den introduserer ingen ny state eller en parallell datavei. */
+@media (max-width:760px){
+  html{ font-size:16px; }
+  body{ height:auto; min-height:100vh; overflow:auto; }
+  .topbar{ padding:.55rem .7rem; gap:.55rem; flex-wrap:wrap; }
+  .topbar-meta{ margin-left:auto; gap:.35rem; }
+  .topbar-meta #cache-meta{ display:none; }
+  .pilleknapp{ min-height:2.35rem; padding:.35rem .6rem; }
+  .arbeidsrom{ min-height:0; }
+  .shell{ display:flex; flex-direction:column; overflow:visible; }
+  .shell > .pane{ flex:none; min-height:0; border-left:0; border-bottom:1px solid var(--border); }
+  .shell > .pane:nth-child(1){ min-height:55vh; }
+  .shell > #lesepane{ min-height:65vh; }
+  .shell > .pane:nth-child(3){ min-height:48vh; }
+  .pane-head{ padding:.7rem .75rem .55rem; }
+  .reader-head{ padding:.85rem .9rem .7rem; }
+  .reader-title{ font-size:1.2rem; }
+  .tabs{ overflow-x:auto; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ min-height:2.35rem; white-space:nowrap; }
+  .skuff{ position:relative; }
+  .skuff.apen{ height:70vh; }
+  .skuff-kropp{ grid-template-columns:minmax(0,1fr); }
+  .bank-detalj{ border-left:0; border-top:1px solid var(--border); }
+  .skuff-verktoy{ width:100%; margin-left:0; }
+}
+
 svg text{ font-family:system-ui,sans-serif; }
 ::-webkit-scrollbar{ width:9px; }
 ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:99px; }
