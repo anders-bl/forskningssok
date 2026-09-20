@@ -3,7 +3,23 @@
 Dette er sjekklisten før Ulven får teste Forskningssøk. Den skiller en trygg
 lesetest fra funksjoner som krever arbeidsrom og bruker-eierskap.
 
-## Må være på plass før første lesetest
+## Status før beta
+
+Følgende er allerede bygget og dekket av den lokale, nettverksfrie testsuiten
+(679 tester): søk mot Europe PMC/CORE, rangering, kildehenvisninger,
+evidensnivå, eksport, dossier, dossierinnsikt, syntese-fortelling,
+retningssamtale, semantisk kart og smartsøk-ruting. Det er derfor ikke
+utviklingsarbeid som gjenstår for å starte en lesetest.
+
+Det som gjenstår før Ulvens faktiske økt er live-verifikasjon gjennom hennes
+tilgangsvei: autentisering, produksjonsendepunktets versjon/build, ekte
+AI-proxy for synteseflatene og én reell smoke-test med kilde- og feilstier.
+
+Den delte databasen er en kjent v1-begrensning. Den blokkerer ikke en
+lesetest, men blokkerer bruk av personlige skrive- og delingsfunksjoner med
+arbeidsdata.
+
+## Må verifiseres før første lesetest
 
 - Ulven har en fungerende tilgangsvei til `forskningssok.lauvasdata.no`.
   Velg én mekanisme og verifiser den med en ekte nettleserøkt: Basic Auth med
