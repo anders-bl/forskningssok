@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Litteratursøk — forskningssok</title>
+<title>Forskningssøk — Lauvasdata</title>
 <!-- Inline favicon (2026-09-04) — uten denne gjør nettleseren et IMPLISITT
      /favicon.ico-kall på hver sidelast, som treffer samme Traefik-auth-gate som
      resten av domenet og feiler (401/302, ikke et bilde). Firefox sin
@@ -438,7 +438,7 @@ svg text{ font-family:system-ui,sans-serif; }
 <body>
 
 <div class="topbar">
-  <div class="wordmark"><span class="wordmark-mark" aria-hidden="true"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><polygon points="16.0,29.4 19.2,28.8 21.0,28.1 22.5,27.4 23.7,26.7 24.8,26.0 25.7,25.3 26.5,24.6 27.2,23.9 27.7,23.2 28.2,22.5 28.6,21.9 28.9,21.2 29.1,20.5 29.3,19.8 29.4,19.1 29.4,18.4 29.4,17.7 29.3,17.0 29.2,16.3 29.0,15.7 28.7,15.0 28.4,14.3 28.1,13.6 27.6,12.9 27.2,12.2 26.7,11.5 26.1,10.8 25.5,10.1 24.9,9.5 24.2,8.8 23.4,8.1 22.6,7.4 21.8,6.7 21.0,6.0 20.0,5.3 19.1,4.6 18.1,3.9 17.1,3.2 16.0,2.6 16.0,2.6 14.9,3.2 13.9,3.9 12.9,4.6 12.0,5.3 11.0,6.0 10.2,6.7 9.4,7.4 8.6,8.1 7.8,8.8 7.1,9.5 6.5,10.1 5.9,10.8 5.3,11.5 4.8,12.2 4.4,12.9 3.9,13.6 3.6,14.3 3.3,15.0 3.0,15.7 2.8,16.3 2.7,17.0 2.6,17.7 2.6,18.4 2.6,19.1 2.7,19.8 2.9,20.5 3.1,21.2 3.4,21.9 3.8,22.5 4.3,23.2 4.8,23.9 5.5,24.6 6.3,25.3 7.2,26.0 8.3,26.7 9.5,27.4 11.0,28.1 12.8,28.8 16.0,29.4" fill="currentColor"/><line x1="16.0" y1="29.4" x2="16.0" y2="4.2" stroke="var(--bg)" stroke-width="1.12" stroke-linecap="round"/></svg></span>Litteratursøk <small id="wordmark-fag">av Lauvasdata · forskningssok</small></div>
+  <div class="wordmark"><span class="wordmark-mark" aria-hidden="true"><svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><polygon points="16.0,29.4 19.2,28.8 21.0,28.1 22.5,27.4 23.7,26.7 24.8,26.0 25.7,25.3 26.5,24.6 27.2,23.9 27.7,23.2 28.2,22.5 28.6,21.9 28.9,21.2 29.1,20.5 29.3,19.8 29.4,19.1 29.4,18.4 29.4,17.7 29.3,17.0 29.2,16.3 29.0,15.7 28.7,15.0 28.4,14.3 28.1,13.6 27.6,12.9 27.2,12.2 26.7,11.5 26.1,10.8 25.5,10.1 24.9,9.5 24.2,8.8 23.4,8.1 22.6,7.4 21.8,6.7 21.0,6.0 20.0,5.3 19.1,4.6 18.1,3.9 17.1,3.2 16.0,2.6 16.0,2.6 14.9,3.2 13.9,3.9 12.9,4.6 12.0,5.3 11.0,6.0 10.2,6.7 9.4,7.4 8.6,8.1 7.8,8.8 7.1,9.5 6.5,10.1 5.9,10.8 5.3,11.5 4.8,12.2 4.4,12.9 3.9,13.6 3.6,14.3 3.3,15.0 3.0,15.7 2.8,16.3 2.7,17.0 2.6,17.7 2.6,18.4 2.6,19.1 2.7,19.8 2.9,20.5 3.1,21.2 3.4,21.9 3.8,22.5 4.3,23.2 4.8,23.9 5.5,24.6 6.3,25.3 7.2,26.0 8.3,26.7 9.5,27.4 11.0,28.1 12.8,28.8 16.0,29.4" fill="currentColor"/><line x1="16.0" y1="29.4" x2="16.0" y2="4.2" stroke="var(--bg)" stroke-width="1.12" stroke-linecap="round"/></svg></span>Forskningssøk <small id="wordmark-fag">av Lauvasdata</small></div>
   <span class="tagline" id="tagline"></span>
   <div class="topbar-meta">
     <span id="versjon" class="versjonsbrikke" title="Laster …">—</span>
@@ -460,7 +460,7 @@ svg text{ font-family:system-ui,sans-serif; }
   <div class="om-panel" role="dialog" aria-labelledby="om-tittel">
     <button class="om-lukk" id="om-lukk" aria-label="Lukk">x</button>
     <h2 id="om-tittel">Om dette verktøyet</h2>
-    <p id="om-kort">Litteratursøk — se §Domeneprofil under for hvilket fagfelt denne
+    <p id="om-kort">Forskningssøk — se §Domeneprofil under for hvilket fagfelt denne
       instansen er scopet til.</p>
 
     <h3>Hvem er kildene, og hva gjør de for deg</h3>
@@ -2314,7 +2314,7 @@ async function lastProfil() {
     $('#search-input').placeholder = `f.eks. ${p.sok_eksempel}`;
     if (!$('#search-input').value) $('#search-input').value = p.sok_standard;
     $('#wordmark-fag').textContent = p.navn;
-    $('#om-kort').textContent = `Litteratursøk bygget for ${p.kort} — ikke et generelt forskningsverktøy, se §Domeneprofil under.`;
+    $('#om-kort').textContent = `Forskningssøk bygget for ${p.kort} — ikke et generelt forskningsverktøy, se §Domeneprofil under.`;
     $('#om-domeneprofil').textContent = p.om_domeneprofil || `Denne instansen er scopet til ${p.navn}.`;
     // Kulepunktet navnga merkene statisk («[fag] og [OBS]»). Under en annen profil er de andre
     // tegn, og setningen ble da feil i det ene panelet som finnes for å forklare dem.
