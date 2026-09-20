@@ -4,6 +4,9 @@ Dette dokumentet beskriver neste iterasjon etter `VERSJON = 1.0.0`. v1 er
 produksjonsversjonen og skal kunne stå stabilt mens v2 bygges trinnvis. Lokal
 testsuite består av 679 tester (`venv/bin/python -m pytest -q`, 2026-09-20).
 
+UIX-statusen med levert og utestående flatearbeid står samlet i
+[`UIX-STATUS.md`](UIX-STATUS.md).
+
 ## Hva v1 allerede leverer
 
 v1 har søk fra Europe PMC og CORE, domeneprofil, rangering, revisjonsspor,
