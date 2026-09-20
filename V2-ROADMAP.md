@@ -30,6 +30,60 @@ Smartsøk og dossier hører begge til i v2, men på ulike nivåer:
   kilder. Det skal beholde kildehenvisning, modellspor og status helt fram til
   eksport.
 
+## De to arbeidsmodusene
+
+### A. Arbeidsflate: søk, samle og arbeide videre
+
+Dette er Forskningssøkets hovedflate. Brukeren skriver et søk, ser rå treff,
+åpner og sammenligner papirene, legger sitater i banken, skriver selv og kan
+til slutt lage forskningsrapport, dossier eller syntese-fortelling.
+
+Arbeidsflyten skal være brukerens eierskap til materialet. AI brukes bare når
+brukeren ber om dossier, syntese eller verifisering, og resultatet er alltid
+sekundært til kildene og kan spores tilbake til dem.
+
+### B. Review: fri tanke inn, mekanisert forskningsoversikt ut
+
+Dette er den naturlige videreføringen av `retningssamtale` og Smartsøkets
+forskningsruting. Brukeren kan skrive én setning eller en lang fundering. Løpet
+skal gjøre mest mulig uten AI:
+
+1. stoppord fjernes og innholdsord bevares
+2. norsk og engelsk/fremmed språk skilles uten å oversette bort signal
+3. arts- og domeneprofilen forankrer søkene
+4. kilder hentes fra de valgte adapterne og dedupliseres
+5. mekaniske linser viser aktuelt, eldre/muligens oversett og tynt dekkede akser
+6. citation-gap, kilde-status, revisjon og dekningsforbehold legges ved
+7. en AI-agent på slutten kan skrive kontekst over dette materialet
+
+Den siste agenten får bare de hentede kildene og de mekaniske funnene. En
+verifikator fjerner setninger uten gyldig kildehenvisning, og ved AI-feil får
+brukeren fortsatt den mekaniske Review-rapporten.
+
+### Den mulige tidlige agenten
+
+En tidlig agent kan være nyttig som en **scout**, men den skal ikke få lov til å
+endre sannhetslaget direkte. Den kan:
+
+- foreslå forbindelser mellom brukerens begreper og nærliggende domener
+- foreslå alternative søkefraser eller manglende akser
+- peke på at to kilder ser ut til å bruke ulike ord for samme fenomen
+
+Hvert forslag må bli en eksplisitt, merket hypotese som enten måles gjennom de
+mekaniske adapterne eller forkastes. Agenten kan ikke sette inn en påstand i
+Review-teksten, rangere kilder eller late som den har hentet en kilde uten
+registrert kildeproveniens.
+
+Den robuste v2-kjeden blir dermed:
+
+`fri tekst → mekanisk baseline → scout-forslag → eksplisitte nye søk → mekanisk
+Review → kildebundet AI-kontekst`.
+
+I dagens kode finnes baseline- og sluttfasen i `retningssamtale.py`, mens
+Smartsøkets forskningskanal fortsatt deponerer rå treff. Scout-steget og en
+samlet Review-kontrakt er derfor reelt v2-arbeid, ikke noe som skal skjules som
+en ny knapp i v1.
+
 ## Arbeidspakker i rekkefølge
 
 ### 1. Arbeidsrom og eierskap
