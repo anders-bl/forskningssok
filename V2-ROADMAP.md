@@ -19,6 +19,14 @@ og mer AI kommer etter at identitet, sporbarhet og kvalitetsmåling er på plass
 Ingen v2-funksjon skal gjøre råkilder, AI-syntese og brukerens egne notater
 vanskeligere å skille.
 
+Smartsøk og dossier hører begge til i v2, men på ulike nivåer:
+
+- **Smartsøk** er husets inngang og ruter eksplisitte forskningsspørsmål til
+  Forskningssøk. Det skal ikke kopiere eller omskrive forskningsresultater.
+- **Dossier** er et brukerinitiert forskningsprodukt over et avgrenset sett
+  kilder. Det skal beholde kildehenvisning, modellspor og status helt fram til
+  eksport.
+
 ## Arbeidspakker i rekkefølge
 
 ### 1. Arbeidsrom og eierskap
@@ -70,7 +78,39 @@ Første leveranse:
 Port: ingen rangering eller prompt justeres etter én kjøring; terskler og
 kontroller registreres før målingen.
 
-### 4. Kilde- og tilgangsforbedringer
+### 4. Smartsøk som stabil forskningsruting
+
+Smartsøk i portalen har allerede en eksplisitt forskningskanal og holder
+forskning adskilt fra innover, utover og verifisering. V2 skal gjøre denne
+integrasjonen mer operasjonell:
+
+- felles request-id fra smartsøk til Forskningssøk og tilbake
+- synlig kilde-, cache- og oppstrømsstatus i seksjonen
+- tydelig skille mellom «ingen treff», «tjenesten svarte ikke» og «ikke
+  konfigurert»
+- revisjonsspor som peker på samme søk uten å deponere en ny kopi ved hver
+  forespørsel
+
+Port: en simulert feil i Forskningssøk skal gi en ærlig, avgrenset
+forskningsseksjon og aldri bli vist som «ingen treff» i smartsøk.
+
+### 5. Dossier som sporbar arbeidsprodukt
+
+Dossier, syntese-fortelling, retningssamtale og dossierinnsikt finnes allerede
+som brukerinitierte funksjoner. Dossier-endepunktet gjør i dag et kostbart kall
+og returnerer et ferdig svar; neste iterasjon bør gi det en egen livssyklus:
+
+- jobbstatus (`venter`, `kjører`, `ferdig`, `feilet`) med idempotent nøkkel
+- lagring av søk, kildesett, prompt-/modellversjon og verifikasjonsresultat
+- separat mekanisk innsikt (M1–M4) som kan lastes uten å kjøre syntesen på nytt
+- eksplisitt markering av påstander som ble fjernet fordi kildehenvisningen
+  ikke kunne verifiseres
+- eksport som peker på nøyaktig dossierutgave, ikke bare emnet
+
+Port: et dossier som feiler eller mangler kilder skal ikke kunne se ferdig og
+verifisert ut, og en ny visning skal ikke starte samme kostbare jobb på nytt.
+
+### 6. Kilde- og tilgangsforbedringer
 
 Når de tre første arbeidspakkene er stabile, kan vi prioritere neste kilde,
 betalte kilder og bedre fulltekst. DisCoCat-sitasjonsgraf og fulltekst-mining
@@ -94,8 +134,9 @@ avskrives eller få en ny kaller. De skal ikke få ny funksjonalitet i mellomtid
 1. Kartlegg tabeller og API-kall som bærer brukerdata.
 2. Skriv migreringsskisse for arbeidsrom og eksisterende delt database.
 3. Lag isolasjonstester før schemaendring.
-4. Registrer en fast evalueringspakke for rangering parallelt, uten å koble den
-   til produksjonsflyten.
+4. Registrer en fast evalueringspakke for rangering, smartsøk-ruting og dossier
+   parallelt, uten å koble den til produksjonsflyten.
+5. Skisser dossier-jobbkontrakten før vi gjør endepunktet asynkront.
 
 V2 får først egen versjonsbump når arbeidspakke 1 har en gjennomtestet
 migrering og produksjonsobservasjon. Fram til da er `1.0.0` den gjeldende
