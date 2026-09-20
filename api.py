@@ -959,6 +959,23 @@ def api_retningssamtale(body: dict):
         raise HTTPException(502, str(e))
 
 
+@app.post("/api/review")
+def api_review(body: dict):
+    """Felles, strukturert Review-kontrakt for Smartsøk og Forskningssøk.
+
+    Markdown-svaret fra /api/retningssamtale beholdes for v1-flaten. Dette
+    endepunktet eksponerer samme arbeid med søkeproveniens, mekaniske linser og
+    AI-status som felter, slik at konsumenter ikke trenger å tolke rapporttekst.
+    """
+    fritekst = (body.get("fritekst") or "").strip()
+    if not fritekst:
+        raise HTTPException(400, "tom fritekst")
+    try:
+        return retningssamtale_modul.lag_review(fritekst)
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
 @app.get("/api/relevans")
 def api_relevans(tekst: str, k: int = 4):
     """FDR-038 ambient-modus: teksten Ulven skriver akkurat nå → nærmeste papirer i

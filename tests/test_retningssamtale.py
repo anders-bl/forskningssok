@@ -213,6 +213,13 @@ def test_lag_retningsrapport_tom_tekst_gir_aerlig_beskjed():
     assert "Ingen tekst" in rs.lag_retningsrapport("   ")
 
 
+def test_lag_review_tomt_input_har_stabil_kontrakt():
+    review = rs.lag_review("   ")
+    assert review["kontrakt"] == "review.v1"
+    assert review["status"] == "tomt_input"
+    assert review["ai"]["brukt"] is False
+
+
 def test_lag_retningsrapport_ingen_treff_gir_aerlig_beskjed(monkeypatch):
     monkeypatch.setattr(rs, "sok_og_ranger",
                          lambda q, page_size=20: ([], None, {"kilder": {}, "treff_per_kilde": {}}))
@@ -237,6 +244,23 @@ def test_lag_retningsrapport_degraderer_til_mekanisk_naar_llm_feiler(monkeypatch
     assert "IKKE tilgjengelig" in ut
     assert "ekte-id" in ut  # den mekaniske kilden er fortsatt synlig
     assert "## Kildeliste" in ut  # kildelisten legges alltid til, selv ved degradering
+
+
+def test_lag_review_beholder_proveniens_og_ai_status(monkeypatch):
+    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="abstract")
+    monkeypatch.setattr(rs, "sok_og_ranger",
+                        lambda q, page_size=20: ([ekte], None, {"kilder": {"core": True},
+                                                                 "treff_per_kilde": {"core": 1}}))
+    monkeypatch.setattr(rs.syntese_fortelling, "kall_llm",
+                        lambda prompt: "Et kildebundet funn [#ekte-id].")
+    review = rs.lag_review("nefrokalsinose calcium")
+    assert review["kontrakt"] == "review.v1"
+    assert review["status"] == "fullfort"
+    assert review["ai"] == {"brukt": True, "avvist": []}
+    assert review["kilder"][0]["id"] == "ekte-id"
+    kjort = [d for d in review["sok"]["detaljer"].values() if d["kjort"]]
+    assert kjort and kjort[0]["revisjon"]["kilder"] == {"core": True}
+    assert "[#ekte-id]" in review["rapport"]
 
 
 def test_lag_retningsrapport_advarer_ved_konfabulert_referanse(monkeypatch):

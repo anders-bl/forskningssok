@@ -370,28 +370,61 @@ def lag_retningsrapport(fritekst: str) -> str:
     feiler (Ollama wedget/ai-proxy nede) — mekanisk henting + de tre linsene er
     UAVHENGIGE av lag 2 og skal aldri utebli fordi AI-et er nede, se
     _mekanisk_sammendrag() sin egen docstring for roadmap-kravet dette oppfyller."""
+    return lag_review(fritekst)["rapport"]
+
+
+def lag_review(fritekst: str) -> dict:
+    """Lag den delbare Review-kontrakten for både arbeidsflaten og Smartsøk.
+
+    Kontrakten holder søkeproveniens, mekaniske linser og eventuell AI-kontekst i
+    samme objekt. Det gjør at en konsument kan vise eller lagre Review uten å
+    tolke markdown, og at en senere scout kan legge til forslag uten å blande dem
+    inn i sannhetslaget.
+    """
     fritekst = (fritekst or "").strip()
     if not fritekst:
-        return "Ingen tekst å jobbe med."
+        return {
+            "kontrakt": "review.v1",
+            "status": "tomt_input",
+            "input": {"fritekst": ""},
+            "sok": {"fraser": {}, "detaljer": {}},
+            "kilder": [],
+            "linser": {"aktuell": [], "glemt": [], "hull": {}},
+            "ai": {"brukt": False, "avvist": []},
+            "rapport": "Ingen tekst å jobbe med.",
+        }
 
     papirer_obj, fraser, sok_detaljer = hent_kilder(fritekst)
     papirer_obj = papirer_obj[:MAKS_KILDER]
+    sok_meta = {"fraser": fraser, "detaljer": sok_detaljer}
     if not papirer_obj:
         sokt = ", ".join(f'{s}="{d["sokefrase"]}"' for s, d in sok_detaljer.items() if d["kjort"])
         if not sokt:
             sokt = "(ingen — fritekstet ga ingen innholdsord etter stoppord-stripping)"
-        return (f"Ingen kilder funnet for dine tanker rundt dette — verken norsk eller "
-                f"engelsk søk ga treff.\nSøkefraser prøvd: {sokt}")
+        return {
+            "kontrakt": "review.v1",
+            "status": "ingen_kilder",
+            "input": {"fritekst": fritekst},
+            "sok": sok_meta,
+            "kilder": [],
+            "linser": {"aktuell": [], "glemt": [], "hull": {}},
+            "ai": {"brukt": False, "avvist": []},
+            "rapport": (f"Ingen kilder funnet for dine tanker rundt dette — verken norsk eller "
+                         f"engelsk søk ga treff.\nSøkefraser prøvd: {sokt}"),
+        }
 
     papirer = [_til_dict(p) for p in papirer_obj]
     aktuelle = [_til_dict(p) for p in linse_aktuell(papirer_obj)]
     glemte = [_til_dict(p) for p in linse_glemt(papirer_obj)]
     hull = linse_hull(papirer_obj)
+    ai_brukt = False
+    avvist: list[str] = []
 
     try:
         prompt = bygg_prompt(fritekst, aktuelle, glemte, hull, len(papirer))
         rått_svar = syntese_fortelling.kall_llm(prompt)
         renset, avvist = syntese_fortelling.verifiser_kilder(rått_svar, papirer)
+        ai_brukt = True
         ut = [renset]
         if avvist:
             ut.append(f"\n---\n[ADVARSEL: {len(avvist)} kildehenvisning(er) fantes ikke i "
@@ -401,7 +434,16 @@ def lag_retningsrapport(fritekst: str) -> str:
 
     ut.append(f"\n---\n## Kildeliste ({len(papirer)} kilder)\n"
               f"{syntese_fortelling.lag_referanseliste(papirer)}")
-    return "\n".join(ut)
+    return {
+        "kontrakt": "review.v1",
+        "status": "fullfort" if ai_brukt else "mekanisk_fallback",
+        "input": {"fritekst": fritekst},
+        "sok": sok_meta,
+        "kilder": papirer,
+        "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull},
+        "ai": {"brukt": ai_brukt, "avvist": avvist},
+        "rapport": "\n".join(ut),
+    }
 
 
 def tilgjengelig() -> bool:

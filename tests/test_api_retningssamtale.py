@@ -45,3 +45,17 @@ def test_runtime_error_gir_502_ikke_500(monkeypatch):
     monkeypatch.setattr(api.retningssamtale_modul, "lag_retningsrapport", sprenger)
     r = _client().post("/api/retningssamtale", json={"fritekst": "noe"})
     assert r.status_code == 502
+
+
+def test_review_eksponerer_stabil_kontrakt(monkeypatch):
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review",
+                        lambda fritekst: {"kontrakt": "review.v1", "status": "fullfort",
+                                          "input": {"fritekst": fritekst}})
+    r = _client().post("/api/review", json={"fritekst": "noe"})
+    assert r.status_code == 200
+    assert r.json() == {"kontrakt": "review.v1", "status": "fullfort",
+                        "input": {"fritekst": "noe"}}
+
+
+def test_review_tom_fritekst_gir_400():
+    assert _client().post("/api/review", json={"fritekst": ""}).status_code == 400
