@@ -151,11 +151,60 @@ def kall_llm(prompt: str) -> str:
     Anders' Mac"-gate, ikke funnet opp her: prod har ingen lokal Ollama, Anders' Mac har
     ingen ai-proxy-nettverkstilgang (dokploy-network-isolert, se ai-proxy sin egen
     modul-docstring). AI_PROXY_URL er dermed IKKE bare en konfigurasjonsdetalj, den ER
-    signalet om hvilket miljø vi kjører i."""
+    signalet om hvilket miljø vi kjører i.
+
+    FDR-106 fase 1, lagt til 2026-09-20: en TREDJE, valgfri rute. `OLLAMA_TUNNEL_URL`
+    satt (KUN for en AVTALT demo-økt, aldri stående — svart hatt #1: Anders' Mac har
+    målt kritisk minnepress ved samtidig øktarbeid+modellast, se konsepter/lokal-ki-
+    hardware) rutes FØRST, selv i prod der AI_PROXY_URL alltid er satt — ellers ville
+    denne veien aldri blitt nådd der Ulven faktisk er. Feiler tunnelen, faller vi
+    AUTOMATISK videre til ai-proxy (obligatorisk fallback, FDR-106 §Foreslått funksjon)
+    — Ulven skal ALDRI se en feilmelding fordi Anders' Mac var av eller nett var nede."""
     import os
+    if os.environ.get("OLLAMA_TUNNEL_URL"):
+        try:
+            return _kall_llm_tunnel(prompt)
+        except RuntimeError as e:
+            import sys
+            print(f"[OBS] Ollama-tunnel feilet, faller til ai-proxy: {e}", file=sys.stderr)
     if os.environ.get("AI_PROXY_URL"):
         return _kall_llm_ai_proxy(prompt)
     return _kall_llm_lokal_ollama(prompt)
+
+
+def _kall_llm_tunnel(prompt: str, *, post_fn=None) -> str:
+    """FDR-106 fase 1: prod-noden når Anders' Mac sin Ollama via en UTGÅENDE-initiert
+    SSH reverse-tunnel — aldri en inngående port på hjemme-/kontornettverket i noen
+    fase (se selve FDR-en for hvorfor: Cloudflare/Tailscale/ngrok forkastet som
+    US-tunnelbroker, suverenitets-nedgradering på en flate som bærer Ulvens spørringer).
+
+    `OLLAMA_TUNNEL_URL` peker på den FORWARDEDE porten PÅ NODEN SELV
+    (`http://127.0.0.1:<port>`, aldri en ekstern adresse) — `GatewayPorts no` +
+    `permitlisten` på tunnel-nøkkelen sikrer at porten aldri er nåbar utenfra noden,
+    kun fra prosesser som allerede kjører der. Samme kall-form som _ollama_port.py sin
+    kall_dommer() (rå /api/chat, ikke ai-proxy sitt /complete-endepunkt — ingen ai-proxy
+    på den andre siden av denne tunnelen)."""
+    import os
+    import httpx
+
+    url = os.environ["OLLAMA_TUNNEL_URL"]
+    post = post_fn or httpx.post
+    try:
+        r = post(url.rstrip("/") + "/api/chat", json={
+            "model": OLLAMA_MODELL,
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": False,
+            "options": {"num_ctx": 16384, "num_predict": 6000, "temperature": 0.2},
+        }, timeout=600)
+    except httpx.HTTPError as e:
+        raise RuntimeError(f"Ollama-tunnel utilgjengelig: {e}") from e
+    if r.status_code != 200:
+        raise RuntimeError(f"Ollama-tunnel /api/chat feiler ({r.status_code}): {r.text[:200]}")
+    try:
+        data = r.json()
+    except ValueError as e:
+        raise RuntimeError(f"Ollama-tunnel returnerte ugyldig JSON: {e}") from e
+    return data["message"]["content"]
 
 
 def _kall_llm_ai_proxy(prompt: str, *, post_fn=None) -> str:

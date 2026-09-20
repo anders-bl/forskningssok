@@ -168,6 +168,74 @@ def test_kall_llm_ai_proxy_feil_status_gir_lesbar_runtimeerror(monkeypatch):
         )
 
 
+# ── FDR-106 fase 1: Ollama-tunnel (Ulvens egen maskin som LLM-backend, via tunnel) ──
+
+
+def test_kall_llm_tunnel_direkte_suksess(monkeypatch):
+    """_kall_llm_tunnel() i isolasjon — samme post_fn-injeksjonsmønster som ai-proxy-
+    testen over. Kaller rå /api/chat (Ollama sitt eget format), ikke ai-proxy sitt
+    /complete — ingen ai-proxy på den andre siden av denne tunnelen."""
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://127.0.0.1:18711")
+
+    def falsk_post(url, json, timeout):
+        assert url == "http://127.0.0.1:18711/api/chat"
+        assert json["model"] == syntese_fortelling.OLLAMA_MODELL
+        assert json["messages"] == [{"role": "user", "content": "noe prompt"}]
+        assert json["stream"] is False
+        return _FalskSvar(data={"message": {"content": "svar via tunnel"}})
+
+    assert syntese_fortelling._kall_llm_tunnel("noe prompt", post_fn=falsk_post) == "svar via tunnel"
+
+
+def test_kall_llm_tunnel_feil_status_gir_lesbar_runtimeerror(monkeypatch):
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://127.0.0.1:18711")
+    with pytest.raises(RuntimeError, match=r"feiler \(503\)"):
+        syntese_fortelling._kall_llm_tunnel(
+            "noe prompt",
+            post_fn=lambda *a, **k: _FalskSvar(status=503, tekst="tunnel nede"),
+        )
+
+
+def test_kall_llm_bruker_tunnel_foran_ai_proxy_naar_begge_er_satt(monkeypatch):
+    """FDR-106: OLLAMA_TUNNEL_URL (avtalt demo-økt) rutes FØRST, selv i prod der
+    AI_PROXY_URL alltid er satt — ellers ville tunnel-veien aldri blitt nådd der Ulven
+    faktisk er."""
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://127.0.0.1:18711")
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+    monkeypatch.setattr(syntese_fortelling, "_kall_llm_tunnel", lambda p: "svar via tunnel")
+
+    def skal_ikke_naas(_p):
+        raise AssertionError("ai-proxy skal ikke kalles når tunnelen svarer")
+
+    monkeypatch.setattr(syntese_fortelling, "_kall_llm_ai_proxy", skal_ikke_naas)
+    assert syntese_fortelling.kall_llm("noe prompt") == "svar via tunnel"
+
+
+def test_kall_llm_faller_til_ai_proxy_naar_tunnel_feiler(monkeypatch):
+    """Obligatorisk fallback (FDR-106 §Foreslått funksjon, "Ulven skal ALDRI se en
+    feilmelding fordi hans egen maskin var av"): en RuntimeError fra tunnelen skal
+    ALDRI nå brukeren — kall_llm() fanger den og prøver ai-proxy i stedet."""
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://127.0.0.1:18711")
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+
+    def sprekker(_p):
+        raise RuntimeError("Ollama-tunnel utilgjengelig (test)")
+
+    monkeypatch.setattr(syntese_fortelling, "_kall_llm_tunnel", sprekker)
+    monkeypatch.setattr(syntese_fortelling, "_kall_llm_ai_proxy", lambda p: "prod-svar via ai-proxy")
+    assert syntese_fortelling.kall_llm("noe prompt") == "prod-svar via ai-proxy"
+
+
+def test_kall_llm_uendret_rute_naar_tunnel_ikke_er_satt(monkeypatch):
+    """Uten OLLAMA_TUNNEL_URL (normaldrift, ingen avtalt demo-økt akkurat nå) er ruten
+    UENDRET fra før FDR-106: AI_PROXY_URL avgjør alt, akkurat som testene over denne
+    seksjonen alt dekker — denne testen fester bare at det IKKE har drevet."""
+    monkeypatch.delenv("OLLAMA_TUNNEL_URL", raising=False)
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+    monkeypatch.setattr(syntese_fortelling, "_kall_llm_ai_proxy", lambda p: "prod-svar")
+    assert syntese_fortelling.kall_llm("noe prompt") == "prod-svar"
+
+
 def test_hent_kandidater_slaar_sammen_emne_og_utstyr_uten_dubletter(tmp_path, monkeypatch):
     db_path = tmp_path / "cache.db"
     _lagre(db_path, tittel="Om laksens nyrer", doi="10.1/a")
