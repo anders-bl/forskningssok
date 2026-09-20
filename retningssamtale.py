@@ -268,7 +268,8 @@ def _til_dict(p) -> dict:
     """PaperDossier → dict-shapen syntese_fortelling.py sine gjenbrukte funksjoner
     (verifiser_kilder/lag_referanseliste) forventer."""
     return {"id": p.id, "tittel": p.tittel, "forfattere": p.forfattere, "aar": p.aar,
-            "doi": p.doi, "abstract": p.abstract, "kilde": p.kilde_kode}
+            "doi": p.doi, "abstract": p.abstract, "kilde": p.kilde_kode,
+            "tidsskrift": p.tidsskrift, "kilde_url": p.kilde_url}
 
 
 # ---------------------------------------------------------------------------------
