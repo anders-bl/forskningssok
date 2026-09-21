@@ -245,6 +245,8 @@ button{ font:inherit; }
 .revisjon{ font-size:.6875rem; color:var(--muted); background:var(--surface-2); border-radius:6px; padding:.45rem .6rem; margin-top:.1rem; line-height:1.6; }
 .revisjon b{ color:var(--text); font-weight:600; }
 .revisjon .nede{ color:var(--warn,#a86); }
+.revisjon-sammendrag{ font-size:.6875rem; color:var(--muted); line-height:1.4; margin-top:.25rem; }
+.revisjon-sammendrag .nede{ color:var(--warn,#a86); }
 .sti-velg{ width:100%; margin:.2rem 0 .5rem; font-size:.75rem; padding:.3rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:5px; }
 .fulltekst p{ grid-column:auto; }
 .verifiser-overlay[hidden]{ display:none; }
@@ -628,6 +630,7 @@ svg text{ font-family:system-ui,sans-serif; }
             <button class="rapport-btn rapport-btn-primar" id="btn-syntese">Lag syntese-fortelling</button>
           </span>
         </div>
+        <div class="revisjon-sammendrag" id="revisjon-sammendrag" hidden></div>
         <div class="revisjon" id="revisjon" hidden></div>
         <button class="utforsk-forslag" id="utforsk-forslag"><span id="utforsk-forslag-navn"></span></button>
       </div>
@@ -1524,13 +1527,21 @@ async function lastHistorikk() {
 // «20 kandidater» kan bety fire ulike ting, og forskjellen endrer hvordan lista leses.
 
 function visRevisjon(r) {
-  const el = $('#revisjon'), knapp = $('#revisjon-toggle');
-  if (!r) { el.hidden = true; knapp.hidden = true; return; }
+  const el = $('#revisjon'), knapp = $('#revisjon-toggle'), sammendrag = $('#revisjon-sammendrag');
+  if (!r) { el.hidden = true; knapp.hidden = true; sammendrag.hidden = true; return; }
   knapp.hidden = false;
   const tpk = r.treff_per_kilde || {};
   const fersk = r.cache_alder_s == null
     ? 'ekte kall til kilden nå'
     : `fra cache, ${Math.round(r.cache_alder_s / 60)} min gammel`;
+  const kildeNavn = { europe_pmc: 'Europe PMC', core: 'CORE', openalex: 'OpenAlex' };
+  const kildeStatus = Object.entries(kildeNavn).map(([id, navn]) => {
+    const treff = tpk[id] ?? 0;
+    const nede = r.kilder && r.kilder[id] === false;
+    return `${navn} ${treff}${nede ? ' <span class="nede">(nede)</span>' : ''}`;
+  }).join(' · ');
+  sammendrag.innerHTML = `Kilder: ${kildeStatus} · ${escapeHtml(fersk)}`;
+  sammendrag.hidden = false;
   el.innerHTML = `
     <div><b>Kilder:</b> Europe PMC ${tpk.europe_pmc ?? '?'} treff (${fersk}) ·
       CORE ${tpk.core ?? 0} treff${r.kilder && r.kilder.core === false
