@@ -1813,9 +1813,15 @@ function dossierKilderHtml(blokk) {
   const overskrift = (linjer.shift() || '').replace(/^##\s+/, '');
   const rader = linjer.filter(l => l.trim()).map(l => {
     const doi = l.match(/DOI:\s*(\S+)/);
+    const url = l.match(/URL:\s*(https?:\/\/\S+)/i);
     const tekstHtml = escapeHtml(l);
-    return doi && doi[1] !== '—'
-      ? `<a href="https://doi.org/${encodeURIComponent(doi[1])}" target="_blank" rel="noopener">${tekstHtml}</a>`
+    const href = url && url[1]
+      ? url[1]
+      : doi && doi[1] !== '—'
+        ? `https://doi.org/${encodeURIComponent(doi[1])}`
+        : null;
+    return href && /^https?:\/\//i.test(href)
+      ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${tekstHtml}</a>`
       : `<p>${tekstHtml}</p>`;
   }).join('');
   return `<div class="dossier-kilder"><h4>${escapeHtml(overskrift)}</h4>${rader}</div>`;

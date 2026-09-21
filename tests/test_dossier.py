@@ -67,6 +67,19 @@ def test_bygg_prompt_baerer_id_for_hvert_papir():
         assert seksjon in prompt
 
 
+def test_lag_referanseliste_gjor_kilde_url_synlig():
+    tekst = dossier.lag_referanseliste([{
+        "id": 7,
+        "forfattere": "Testesen T",
+        "aar": 2024,
+        "tittel": "Et papir",
+        "doi": None,
+        "kilde_url": "https://example.org/paper/7",
+    }])
+    assert "URL: https://example.org/paper/7" in tekst
+    assert "(ingen ekstern lenke)" not in tekst
+
+
 def _importer_ollama_port():
     """Injiserer en fake `_ollama_port`-modul i sys.modules FØR dossier.kall_llm() gjør sin
     egen lazy `import _ollama_port` — samme sys.modules-cache-mekanisme som den opprinnelige

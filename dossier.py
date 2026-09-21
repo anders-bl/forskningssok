@@ -236,7 +236,8 @@ def lag_referanseliste(papirer: list[dict]) -> str:
     return "\n".join(
         f"[#{p['id']}] {p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}). "
         f"{p.get('tittel', '(uten tittel)')}. "
-        + (f"DOI: {p['doi']}" if p.get("doi") else "(ingen DOI)")
+        + (f"DOI: {p['doi']}. " if p.get("doi") else "")
+        + (f"URL: {p['kilde_url']}" if p.get("kilde_url") else "(ingen ekstern lenke)")
         for p in papirer
     )
 
