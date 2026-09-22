@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from ranking import arts_naer, domene_naer, ranger  # noqa: E402
+from ranking import arts_naer, domene_naer, ranger, ranger_cachede  # noqa: E402
 from schemas import PaperDossier  # noqa: E402
 
 
@@ -78,6 +78,17 @@ def test_ekte_species_trap_caset_menneskefunn_rangeres_under_fiskefunn_utenfor_d
 def test_arts_naer_filtrerer_aldri_bort_kun_flagger():
     menneske = _p(tittel="Ukjent art-tittel", abstract="")
     assert ranger([menneske]) == [menneske]  # forblir i lista
+
+
+def test_ranger_cachede_legger_artsnaere_kilder_foran_analogi():
+    kilder = [
+        {"id": "human", "tittel": "Kidney stones in humans", "abstract": "human nephrocalcinosis",
+         "forfattere": "", "tidsskrift": "Clinical Medicine", "aar": 2025, "siteringstall": 100},
+        {"id": "fish", "tittel": "Nephrocalcinosis in Atlantic salmon", "abstract": "farmed salmon kidney",
+         "forfattere": "", "tidsskrift": "Journal of Fish Diseases", "aar": 2022, "siteringstall": 1},
+    ]
+
+    assert [p["id"] for p in ranger_cachede(kilder, "nephrocalcinosis salmon")] == ["fish", "human"]
 
 
 # ---------- Tittel-dekning innenfor båndet (målt svakhet 2026-09-05/06) ----------

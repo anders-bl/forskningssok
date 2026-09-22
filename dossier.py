@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import domeneprofil  # noqa: E402
 from ai_assistent import hent_fra_cache  # noqa: E402
 from paths import DB  # noqa: E402
+from ranking import ranger_cachede  # noqa: E402
 
 SEKSJONER = ("Hard vitenskap", "Hull i forskningen", "Trygt og kjedelig", "Frontier",
              "Gammel akseptert tro")
@@ -65,14 +66,13 @@ def hent_kandidater(emne: str, db_path: Path = DB) -> list[dict]:
     Kappet til MAKS_KILDER (se konstantens egen kommentar for hvorfor) — emne-treff
     beholder prioritet over utstyr-treff fordi de settes inn FØRST i unike-dicten under,
     og et Python-dict bevarer innsettingsrekkefølge."""
-    papirer = list(hent_fra_cache(emne, db_path))
+    emnepapirer = ranger_cachede(list(hent_fra_cache(emne, db_path)), emne)
 
     utstyr_query = domeneprofil.PROFIL.get("sok_utstyr")
-    if utstyr_query:
-        papirer += hent_fra_cache(utstyr_query, db_path)
+    utstyrpapirer = ranger_cachede(list(hent_fra_cache(utstyr_query, db_path)), utstyr_query) if utstyr_query else []
 
     unike: dict = {}
-    for p in papirer:
+    for p in emnepapirer + utstyrpapirer:
         unike[p["id"]] = p
     return list(unike.values())[:MAKS_KILDER]
 

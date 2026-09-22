@@ -19,7 +19,7 @@ from domeneprofil import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, arts_naer_tekst, do
 from rank import rank
 from schemas import PaperDossier
 
-__all__ = ["FAGTIDSSKRIFTER", "NORSKE_FAGMILJOER", "arts_naer", "domene_naer", "ranger", "tittel_dekning"]
+__all__ = ["FAGTIDSSKRIFTER", "NORSKE_FAGMILJOER", "arts_naer", "domene_naer", "ranger", "ranger_cachede", "tittel_dekning"]
 
 
 def domene_naer(p: PaperDossier) -> bool:
@@ -84,3 +84,24 @@ def ranger(papirer: list[PaperDossier], query: str | None = None) -> list[PaperD
     """`query` er valgfri med vilje: Utforskning (OpenAlex-emne) og andre kallere uten en
     tekstspørring får uendret (ferskhet, siteringer)-rekkefølge innenfor båndet."""
     return rank(papirer, band=_band, score=lambda p: _score(p, query))
+
+
+def ranger_cachede(papirer: list[dict], query: str | None = None) -> list[dict]:
+    """Samme art-/domene-bånd som ``ranger()``, for cache-dict før LLM-prompt.
+
+    Dette filtrerer aldri bort en kilde. Arts- og domenesignalet bestemmer bare
+    rekkefølgen, slik at MAKS_KILDER-kappingen beholder direkte relevante kilder først
+    mens analoge kilder fortsatt kan følge med som eksplisitt merket kontekst.
+    """
+    def nøkkel(p: dict) -> tuple:
+        tekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
+        domene = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
+        return (
+            not domene_naer_tekst(domene),
+            not arts_naer_tekst(tekst),
+            -(tittel_dekning(query, p.get("tittel") or "") if query else 0.0),
+            -(p.get("aar") or 0),
+            -(p.get("siteringstall") or 0),
+        )
+
+    return sorted(papirer, key=nøkkel)

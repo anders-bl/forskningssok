@@ -43,6 +43,14 @@ def test_verifiser_kilder_fjerner_ukjent_id():
     assert "KILDE IKKE VERIFISERT" in renset
 
 
+def test_verifiser_kilder_fanger_doi_eller_url_som_id():
+    renset, avvist = syntese_fortelling.verifiser_kilder(
+        "Påstand [#https://example.org/paper].", [{"id": 1}]
+    )
+    assert avvist == ["https://example.org/paper"]
+    assert "KILDE IKKE VERIFISERT" in renset
+
+
 def test_verifiser_kilder_beholder_alle_kjente_referanser():
     papirer = [{"id": 1}, {"id": 42}]
     tekst = "To funn [#1][#42] støtter dette."
@@ -55,6 +63,37 @@ def test_verifiser_kilder_ingen_referanser_gir_ingen_avvisning():
     renset, avvist = syntese_fortelling.verifiser_kilder("Ingen påstander her.", [{"id": 1}])
     assert avvist == []
     assert renset == "Ingen påstander her."
+
+
+def test_evaluer_kvalitet_skiller_kildehull_fra_dekket_setning():
+    papirer = [{"id": 1, "kilde_url": "https://example.org/1"},
+               {"id": 2, "kilde_url": ""}]
+    tekst = (
+        "Dette er dokumentert [#1]. "
+        "Dette mangler dekning. "
+        "Ingen kilder i utvalget dekker dette.\n"
+        "---\n## Kildeliste (2 kilder)\n[#1] Kilde"
+    )
+
+    måling = syntese_fortelling.evaluer_kvalitet(tekst, papirer)
+
+    assert måling["faktiske_enheter"] == 3
+    assert måling["dekket_enheter"] == 2
+    assert måling["mangler_kilde_enheter"] == 1
+    assert måling["eksplisitte_kildehull"] == 1
+    assert måling["sitatdekning"] == pytest.approx(2 / 3)
+    assert måling["brukte_kilder"] == 1
+    assert måling["ubrukte_kilder"] == 1
+    assert måling["lenkedekning"] == pytest.approx(1 / 2)
+
+
+def test_evaluer_kvalitet_fanger_ukjent_kilde_id():
+    måling = syntese_fortelling.evaluer_kvalitet(
+        "Påstand [#999].", [{"id": 1, "kilde_url": "https://example.org/1"}]
+    )
+
+    assert måling["ugyldige_kilde_ider"] == ["999"]
+    assert måling["sitatdekning"] == 0.0
 
 
 def test_bygg_prompt_baerer_id_for_hvert_papir_og_ber_om_fortelling():

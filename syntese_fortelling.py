@@ -31,11 +31,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import domeneprofil  # noqa: E402
 from ai_assistent import hent_fra_cache  # noqa: E402
 from paths import DB  # noqa: E402
+from domeneprofil import arts_naer_tekst, domene_naer_tekst  # noqa: E402
+from ranking import ranger_cachede  # noqa: E402
 
-# Matcher [#<id>] — id-en er alltid papers.id (sqlite radnøkkel), ALDRI DOI/tittel, fordi
-# det er det eneste feltet som er garantert unikt og til stede for hvert cachet papir
-# (DOI mangler for en god del CORE-treff).
-_REF_MØNSTER = re.compile(r"\[#([\w./-]+)\]")
+# Matcher [#<id>] — id-en er cachet papers.id. I praksis kan dette være DOI eller
+# kilde-URL for enkelte adaptere; den må alltid samsvare ordrett med cachet kilde-ID.
+# Fang hele innholdet mellom [# og ] slik at en modell som setter inn DOI/URL i
+# stedet for papers.id blir synlig og kan avvises, ikke stille overses.
+_REF_MØNSTER = re.compile(r"\[#([^\]]+)\]")
+_UTTRYKKELIG_KILDEHULL = "Ingen kilder i utvalget dekker dette"
 
 # Samme kapping som dossier.py — et to-ords emne kan treffe hundrede av løst relaterte
 # cachede papirer. Målt live 2026-09-11: «nephrocalcinosis salmon» alene ga 205 treff;
@@ -50,14 +54,13 @@ def hent_kandidater(emne: str, db_path: Path = DB) -> list[dict]:
 
     Kappet til MAKS_KILDER — emne-treff beholder prioritet over utstyr-treff fordi de
     settes inn FØRST i unike-dicten, og et Python-dict bevarer innsettingsrekkefølge."""
-    papirer = list(hent_fra_cache(emne, db_path))
+    emnepapirer = ranger_cachede(list(hent_fra_cache(emne, db_path)), emne)
 
     utstyr_query = domeneprofil.PROFIL.get("sok_utstyr")
-    if utstyr_query:
-        papirer += hent_fra_cache(utstyr_query, db_path)
+    utstyrpapirer = ranger_cachede(list(hent_fra_cache(utstyr_query, db_path)), utstyr_query) if utstyr_query else []
 
     unike: dict = {}
-    for p in papirer:
+    for p in emnepapirer + utstyrpapirer:
         unike[p["id"]] = p
     return list(unike.values())[:MAKS_KILDER]
 
@@ -73,13 +76,19 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
 
     Instruksen i punkt 1-4 er en avtale med modellen, ikke en garanti —
     verifiser_kilder() er garantien."""
-    kildeliste = "\n\n".join(
-        f"[#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
-        f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
-        f"kilde={p.get('kilde', '?')}\n"
-        f"Abstract: {p.get('abstract') or '(ingen abstract tilgjengelig)'}"
-        for p in papirer
-    )
+    def kildeblokk(p: dict) -> str:
+        artstekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
+        domenetekst = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
+        return (
+            f"[#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
+            f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
+            f"kilde={p.get('kilde', '?')}\n"
+            f"Artsnær={arts_naer_tekst(artstekst)} "
+            f"Domenenær={domene_naer_tekst(domenetekst)}\n"
+            f"Abstract: {p.get('abstract') or '(ingen abstract tilgjengelig)'}"
+        )
+
+    kildeliste = "\n\n".join(kildeblokk(p) for p in papirer)
 
     return f"""Du er en forskningsassistent som skal skrive en SAMMENHENG-FORTELLING om: "{emne}"
 
@@ -90,6 +99,10 @@ STRENGE REGLER (brudd gjør outputen ubrukelig og blir fjernet mekanisk etterpå
 3. Mangler god kildedekning for et poeng, skriv det ærlig
    ("Ingen kilder i utvalget dekker dette") — ikke fyll ut med antakelser.
 4. Dikt ALDRI opp en [#id] som ikke står i kildelisten. Den blir oppdaget og fjernet.
+5. En kilde med Artsnær=False er ikke direkte evidens for målarten. Bruk den bare
+   som eksplisitt merket analogi eller bakgrunn, og skriv hva som er overført og hva som
+   ikke er dokumentert hos målobjektet. Ikke bruk humanmedisin eller andre arter som om
+   de var forsøk på målobjektet.
 
 FORM: Skriv ÉN sammenhengende fortelling som vever disse kildene sammen. Ikke fem
 adskilte seksjoner. Fortellingen skal svare på:
@@ -122,6 +135,72 @@ def verifiser_kilder(fortelling_tekst: str, papirer: list[dict]) -> tuple[str, l
 
     renset = _REF_MØNSTER.sub(_sjekk, fortelling_tekst)
     return renset, avvist
+
+
+def evaluer_kvalitet(fortelling_tekst: str, papirer: list[dict]) -> dict:
+    """Mål mekanisk kvalitet i fortellingens narrativdel.
+
+    Dette er en gate- og observasjonsmåling, ikke en semantisk sannhetsdom. Den kan
+    oppdage manglende kildemerking, ukjente kilde-ID-er, ubrukt kildemateriale og
+    manglende eksterne lenker. Om en sitert kilde faktisk støtter hele påstanden,
+    krever fortsatt menneskelig eller modellbasert innholdsvurdering.
+
+    Kildelisten etter ``---`` tas ikke med i setningsmålingen. En eksplisitt
+    ``Ingen kilder ...``-setning telles som synlig kunnskapshull, ikke som en vanlig
+    kildebelagt påstand.
+    """
+    narrativ = fortelling_tekst.split("\n---", 1)[0]
+    enheter: list[str] = []
+    for avsnitt in narrativ.splitlines():
+        linje = avsnitt.strip()
+        if not linje or linje.startswith("#") or linje.startswith("["):
+            continue
+        enheter.extend(del_i_setninger(linje))
+
+    kjente = {str(p["id"]) for p in papirer}
+    brukte: set[str] = set()
+    ugyldige: list[str] = []
+    dekket = 0
+    eksplisitte_hull = 0
+    mangler = 0
+    for enhet in enheter:
+        refs = _REF_MØNSTER.findall(enhet)
+        if refs:
+            gyldige = [ref for ref in refs if ref in kjente]
+            if gyldige:
+                dekket += 1
+                brukte.update(gyldige)
+            for ref in refs:
+                if ref not in kjente and ref not in ugyldige:
+                    ugyldige.append(ref)
+        elif _UTTRYKKELIG_KILDEHULL.lower() in enhet.lower():
+            dekket += 1
+            eksplisitte_hull += 1
+        else:
+            mangler += 1
+
+    # lag_referanseliste viser DOI som ekstern peker når URL mangler, derfor teller
+    # begge som etterprøvbar kildehenvisning.
+    med_lenke = sum(bool(p.get("kilde_url") or p.get("doi")) for p in papirer)
+    antall = len(enheter)
+    return {
+        "faktiske_enheter": antall,
+        "dekket_enheter": dekket,
+        "mangler_kilde_enheter": mangler,
+        "eksplisitte_kildehull": eksplisitte_hull,
+        "sitatdekning": dekket / antall if antall else 1.0,
+        "ugyldige_kilde_ider": ugyldige,
+        "listede_kilder": len(papirer),
+        "brukte_kilder": len(brukte),
+        "ubrukte_kilder": len(kjente - brukte),
+        "kilder_med_ekstern_lenke": med_lenke,
+        "lenkedekning": med_lenke / len(papirer) if papirer else 1.0,
+    }
+
+
+def del_i_setninger(tekst: str) -> list[str]:
+    """Del en narrativ linje grovt i setninger for observasjonsmålingen."""
+    return [bit.strip() for bit in re.split(r"(?<=[.!?])\s+(?=[A-ZÆØÅ])", tekst) if bit.strip()]
 
 
 # Lokal Ollama-modell — samme som dossier.py bruker (gpt-oss:agent, num_ctx=16384)
