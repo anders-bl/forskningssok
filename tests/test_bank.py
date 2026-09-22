@@ -432,4 +432,8 @@ def test_gammel_cache_med_markup_migreres_en_gang(tmp_path):
     raw.execute("PRAGMA user_version = 0")
     raw.commit(); raw.close()
     assert hent("1", db_path=db)["tittel"] == "Skitten tittel"
-    assert sqlite3.connect(db).execute("PRAGMA user_version").fetchone()[0] == bank._INNHOLDSVERSJON
+    kontroll = sqlite3.connect(db)
+    try:
+        assert kontroll.execute("PRAGMA user_version").fetchone()[0] == bank._INNHOLDSVERSJON
+    finally:
+        kontroll.close()
