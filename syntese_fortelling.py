@@ -117,6 +117,8 @@ STRENGE REGLER (brudd gjør outputen ubrukelig og blir fjernet mekanisk etterpå
    er en hypotese eller et kunnskapshull; ikke presenter det som et funn.
 7. Når et poeng ikke har dekning, skal du skrive kun "Ingen kilder i utvalget dekker
    dette". Ikke skriv en udokumentert faktasetning først og legg kunnskapshullet etterpå.
+8. Hold hver faktapåstand i én kort setning. Avslutt hver slik setning med én eller
+   flere kildereferanser, eller bruk kunnskapshullet alene på egen linje.
 
 FORM: Skriv ÉN sammenhengende fortelling som vever disse kildene sammen. Ikke fem
 adskilte seksjoner. Fortellingen skal svare på:
@@ -130,6 +132,27 @@ klar begynnelse (hvem/hva), midt (mekanismer/sammenhenger), og slutt (hull/front
 
 KILDER:
 {kildeliste}
+"""
+
+
+def bygg_reparasjons_prompt(emne: str, papirer: list[dict], fortelling: str) -> str:
+    """Bygg ett avgrenset reparasjonskall for manglende sitatdekning.
+
+    Reparasjonen får samme kildeliste og artsregler som førstegenereringen, men skal
+    ikke utvide innholdet. Den kan bare sette inn en gyldig referanse når kilden faktisk
+    dekker setningen, eller fjerne/sette igjen et eksplisitt kunnskapshull.
+    """
+    return bygg_prompt(emne, papirer) + f"""
+
+REPARASJONSMODUS:
+Revider teksten under uten å legge til nye fakta eller nye kilder. Behold bare påstander
+som kan støttes av kildelisten. Hver faktapåstand skal stå i én kort setning med gyldig
+[#id] på slutten. Hvis en påstand ikke kan støttes, erstatt hele påstanden med nøyaktig:
+Ingen kilder i utvalget dekker dette
+Returner kun den reviderte fortellingen, uten kildeliste og uten forklaring på endringene.
+
+TEKST SOM SKAL REPARERES:
+{fortelling}
 """
 
 
@@ -381,6 +404,18 @@ def lag_syntese_fortelling(emne: str, db_path: Path = DB) -> str:
     rått_svar = kall_llm(prompt)
     renset, avvist = verifiser_kilder(rått_svar, papirer)
     kvalitetsmåling = evaluer_kvalitet(renset, papirer)
+
+    # Én brukerinitiert syntese kan få ett ekstra reparasjonskall. Det hindrer at en
+    # kjent sitatbrist bare blir en passiv advarsel, men unngår også retry-loop og beholder
+    # førsteutkastet dersom reparasjonen ikke faktisk forbedrer målingen.
+    if kvalitetsmåling["mangler_kilde_enheter"]:
+        reparert_rått = kall_llm(bygg_reparasjons_prompt(emne, papirer, renset))
+        reparert, reparert_avvist = verifiser_kilder(reparert_rått, papirer)
+        reparert_måling = evaluer_kvalitet(reparert, papirer)
+        if reparert_måling["mangler_kilde_enheter"] < kvalitetsmåling["mangler_kilde_enheter"]:
+            renset = reparert
+            avvist = reparert_avvist
+            kvalitetsmåling = reparert_måling
 
     ut = [renset]
     if avvist:

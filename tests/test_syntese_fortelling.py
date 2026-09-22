@@ -128,6 +128,17 @@ def test_bygg_prompt_skiller_direkte_kandidater_fra_analogier():
     assert "kan ikke brukes som direkte evidens" in prompt
     assert "DIREKTE_KANDIDAT" in prompt
     assert "Ikke skriv en udokumentert faktasetning først" in prompt
+    assert "én kort setning" in prompt
+
+
+def test_bygg_reparasjons_prompt_ber_om_ingen_nye_fakta():
+    prompt = syntese_fortelling.bygg_reparasjons_prompt(
+        "kidney salmon", [{"id": 1, "tittel": "Salmon kidney", "abstract": "salmon fish"}],
+        "En påstand uten kilde."
+    )
+    assert "REPARASJONSMODUS" in prompt
+    assert "uten å legge til nye fakta" in prompt
+    assert "En påstand uten kilde." in prompt
 
 
 def _importer_ollama_port():
@@ -366,3 +377,18 @@ def test_lag_syntese_fortelling_advarer_ved_ukildet_faktasetning(tmp_path, monke
 
     assert "mangler verifiserbar kildehenvisning" in ut
     assert "ikke kvalitetssikret" in ut
+
+
+def test_lag_syntese_fortelling_reparerer_ukildet_faktasetning(tmp_path, monkeypatch):
+    db_path = tmp_path / "cache.db"
+    _lagre(db_path, tittel="Ekte papir")
+    [papir] = syntese_fortelling.hent_fra_cache("Ekte", db_path)
+    svar = iter((
+        f"Dokumentert [#{papir['id']}]. Udokumentert påstand.",
+        f"Dokumentert [#{papir['id']}]. Ingen kilder i utvalget dekker dette",
+    ))
+    monkeypatch.setattr(syntese_fortelling, "kall_llm", lambda _prompt: next(svar))
+
+    ut = syntese_fortelling.lag_syntese_fortelling("Ekte", db_path)
+
+    assert "mangler verifiserbar kildehenvisning" not in ut
