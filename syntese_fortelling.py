@@ -79,16 +79,25 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
     def kildeblokk(p: dict) -> str:
         artstekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
         domenetekst = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
+        art = arts_naer_tekst(artstekst)
+        domene = domene_naer_tekst(domenetekst)
+        kategori = "DIREKTE_KANDIDAT" if art else "ANALOGI_ELLER_BAKGRUNN"
         return (
-            f"[#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
+            f"[{kategori}] [#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
             f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
             f"kilde={p.get('kilde', '?')}\n"
-            f"Artsnær={arts_naer_tekst(artstekst)} "
-            f"Domenenær={domene_naer_tekst(domenetekst)}\n"
+            f"Artsnær={art} Domenenær={domene}\n"
             f"Abstract: {p.get('abstract') or '(ingen abstract tilgjengelig)'}"
         )
 
-    kildeliste = "\n\n".join(kildeblokk(p) for p in papirer)
+    direkte = [p for p in papirer if arts_naer_tekst(f"{p.get('tittel') or ''} {p.get('abstract') or ''}")]
+    analogier = [p for p in papirer if p not in direkte]
+    kildeliste = (
+        "DIREKTE_KANDIDATER — kan brukes som direkte evidens for målobjektet:\n"
+        + ("\n\n".join(kildeblokk(p) for p in direkte) or "(ingen)\n")
+        + "\n\nANALOGI_ELLER_BAKGRUNN — kan ikke brukes som direkte evidens for målobjektet:\n"
+        + ("\n\n".join(kildeblokk(p) for p in analogier) or "(ingen)")
+    )
 
     return f"""Du er en forskningsassistent som skal skrive en SAMMENHENG-FORTELLING om: "{emne}"
 
@@ -103,6 +112,11 @@ STRENGE REGLER (brudd gjør outputen ubrukelig og blir fjernet mekanisk etterpå
    som eksplisitt merket analogi eller bakgrunn, og skriv hva som er overført og hva som
    ikke er dokumentert hos målobjektet. Ikke bruk humanmedisin eller andre arter som om
    de var forsøk på målobjektet.
+6. En påstand om målobjektets sykdom, fysiologi eller behandling kan bare støttes av
+   en DIREKTE_KANDIDAT. Hvis bare ANALOGI_ELLER_BAKGRUNN dekker poenget, skriv at det
+   er en hypotese eller et kunnskapshull; ikke presenter det som et funn.
+7. Når et poeng ikke har dekning, skal du skrive kun "Ingen kilder i utvalget dekker
+   dette". Ikke skriv en udokumentert faktasetning først og legg kunnskapshullet etterpå.
 
 FORM: Skriv ÉN sammenhengende fortelling som vever disse kildene sammen. Ikke fem
 adskilte seksjoner. Fortellingen skal svare på:

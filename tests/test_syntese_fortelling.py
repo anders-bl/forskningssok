@@ -115,6 +115,21 @@ def test_bygg_prompt_baerer_id_for_hvert_papir_og_ber_om_fortelling():
     assert "Hull i forskningen" not in prompt
 
 
+def test_bygg_prompt_skiller_direkte_kandidater_fra_analogier():
+    direkte = {"id": 1, "tittel": "Atlantic salmon kidney", "abstract": "salmon fish",
+               "forfattere": "", "tidsskrift": "Journal of Fish Diseases"}
+    analogi = {"id": 2, "tittel": "Human kidney disease", "abstract": "human patients",
+               "forfattere": "", "tidsskrift": "Clinical Medicine"}
+
+    prompt = syntese_fortelling.bygg_prompt("kidney salmon", [direkte, analogi])
+
+    kilder = prompt.split("KILDER:\n", 1)[1]
+    assert kilder.index("DIREKTE_KANDIDATER") < kilder.index("ANALOGI_ELLER_BAKGRUNN")
+    assert "kan ikke brukes som direkte evidens" in prompt
+    assert "DIREKTE_KANDIDAT" in prompt
+    assert "Ikke skriv en udokumentert faktasetning først" in prompt
+
+
 def _importer_ollama_port():
     """Injiserer en fake `_ollama_port`-modul i sys.modules FØR syntese_fortelling.kall_llm()
     gjør sin egen lazy `import _ollama_port` — samme sys.modules-cache-mekanisme som den
