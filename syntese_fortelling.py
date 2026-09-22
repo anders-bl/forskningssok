@@ -380,12 +380,19 @@ def lag_syntese_fortelling(emne: str, db_path: Path = DB) -> str:
     prompt = bygg_prompt(emne, papirer)
     rått_svar = kall_llm(prompt)
     renset, avvist = verifiser_kilder(rått_svar, papirer)
+    kvalitetsmåling = evaluer_kvalitet(renset, papirer)
 
     ut = [renset]
     if avvist:
         ut.append(
             f"\n---\n[ADVARSEL: {len(avvist)} kildehenvisning(er) fantes ikke i "
             f"kildesettet og ble fjernet: {', '.join(avvist)}]"
+        )
+    if kvalitetsmåling["mangler_kilde_enheter"]:
+        ut.append(
+            "\n---\n[ADVARSEL: "
+            f"{kvalitetsmåling['mangler_kilde_enheter']} faktiske setning(er) mangler "
+            "verifiserbar kildehenvisning; syntesen er ikke kvalitetssikret]"
         )
     ut.append(f"\n---\n## Kildeliste ({len(papirer)} kilder)\n{lag_referanseliste(papirer)}")
     return "\n".join(ut)

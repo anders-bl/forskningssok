@@ -350,3 +350,19 @@ def test_lag_syntese_fortelling_advarer_ved_konfabulert_referanse(tmp_path, monk
     assert "99999" in ut
     assert "[KILDE IKKE VERIFISERT" in ut
     assert "## Kildeliste" in ut
+
+
+def test_lag_syntese_fortelling_advarer_ved_ukildet_faktasetning(tmp_path, monkeypatch):
+    db_path = tmp_path / "cache.db"
+    _lagre(db_path, tittel="Ekte papir")
+    [papir] = syntese_fortelling.hent_fra_cache("Ekte", db_path)
+    monkeypatch.setattr(
+        syntese_fortelling,
+        "kall_llm",
+        lambda _prompt: f"Dokumentert [#{papir['id']}]. Udokumentert påstand.",
+    )
+
+    ut = syntese_fortelling.lag_syntese_fortelling("Ekte", db_path)
+
+    assert "mangler verifiserbar kildehenvisning" in ut
+    assert "ikke kvalitetssikret" in ut
