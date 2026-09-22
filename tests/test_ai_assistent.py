@@ -105,6 +105,8 @@ class TestHentFraCache:
         treff = ai_assistent.hent_fra_cache("laks", db_path)
         assert len(treff) == 1
         assert treff[0]["tittel"] == "Laks og lever"
+        assert treff[0]["tidsskrift"] == "Test Journal"
+        assert treff[0]["kilde_url"] == "https://example.org/test"
 
     def test_ingen_db_gir_aerlig_tom_liste(self, tmp_path):
         assert ai_assistent.hent_fra_cache("laks", tmp_path / "finnes-ikke.db") == []
