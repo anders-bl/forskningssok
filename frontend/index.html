@@ -1172,13 +1172,14 @@ async function openPaper(id) {
       // alt henger på papiret — knappen forsvinner av seg selv når den ikke lenger
       // trengs, i stedet for å stå der og tilby en overflødig re-henting.
       if (t.fri_pdf_url && !(dok.dokumenter || []).length) {
-        deler.push('<button class="minibtn" id="btn-hent-fulltekst">Hent fulltekst automatisk</button>');
+        deler.push('<button class="minibtn" id="btn-hent-fulltekst">Lagre lokalt</button>');
       }
       $('#reader-tilgang').innerHTML = deler.join(' · ');
+      leggTilSkuffKnapp(p, t);
       const knapp = $('#btn-hent-fulltekst');
       if (knapp) knapp.addEventListener('click', async () => {
         knapp.disabled = true;
-        knapp.textContent = 'Henter og leser PDF …';
+        knapp.textContent = 'Lagrer og leser PDF …';
         try {
           const fd = new FormData();
           fd.set('paper_id', id);
@@ -1190,10 +1191,12 @@ async function openPaper(id) {
           // OA-lenker (målt live 2026-09-15: Wiley/MDPI 403, Frontiers 200). Ærlig
           // feilmelding, ikke stille — brukeren kan fortsatt åpne "Fri PDF" manuelt.
           knapp.disabled = false;
-          knapp.textContent = 'Feilet — prøv "Fri PDF" over i stedet';
+          knapp.textContent = 'Feilet — prøv «Fri PDF» over i stedet';
         }
       });
-    }).catch(()=>{}); // tilgang-info er en bonus, aldri blokkerende
+    }).catch(() => { leggTilSkuffKnapp(p); }); // tilgang-info er en bonus, aldri blokkerende
+  } else {
+    leggTilSkuffKnapp(p);
   }
 
   // «Åpnet» er det svakeste varme-signalet, og telles ÉN gang per papir per økt:
@@ -1219,6 +1222,61 @@ async function openPaper(id) {
   if (aktivFane === 'gap') { loadGapLazy = false; loadGap(id); }
   if (aktivFane === 'kart') loadKart(id);
   if (aktivFane === 'sti') { state.cachede = null; loadSti(id); }
+}
+
+function leggTilSkuffKnapp(p, tilgang = {}) {
+  const host = $('#reader-tilgang');
+  if (!host || host.querySelector('#btn-lagre-skuff')) return;
+  if (host.textContent.trim()) {
+    const skilletegn = document.createTextNode(' · ');
+    host.appendChild(skilletegn);
+  }
+  const knapp = document.createElement('button');
+  knapp.className = 'minibtn';
+  knapp.id = 'btn-lagre-skuff';
+  knapp.textContent = 'Lagre i skuff';
+  knapp.addEventListener('click', () => lagrePapirISkuff(p, tilgang));
+  host.appendChild(knapp);
+}
+
+async function lagrePapirISkuff(p, tilgang = {}) {
+  const kilde = p.kilde_url || (p.doi ? `https://doi.org/${p.doi}` : '');
+  const linjer = [
+    `# ${p.tittel || 'Uten tittel'}`,
+    '',
+    `- Forfattere: ${p.forfattere || 'Ukjent'}`,
+    `- År: ${p.aar || 'Ukjent'}`,
+    p.tidsskrift ? `- Tidsskrift: ${p.tidsskrift}` : '',
+    p.doi ? `- DOI: ${p.doi}` : '',
+    kilde ? `- Kilde: ${kilde}` : '',
+    tilgang.fri_pdf_url ? `- Fri PDF: ${tilgang.fri_pdf_url}` : '',
+    '',
+    '## Abstract',
+    p.abstract || '(Ikke tilgjengelig)',
+    '',
+    '## Notat',
+    '',
+  ].filter(Boolean);
+  const knapp = $('#btn-lagre-skuff');
+  if (knapp) { knapp.disabled = true; knapp.textContent = 'Lagrer i skuff …'; }
+  try {
+    const u = await api('/api/utkast', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        tittel: `Artikkel — ${p.tittel || 'Uten tittel'}`,
+        innhold: linjer.join('\n'),
+      }),
+    });
+    apneSkuff();
+    velgLinse('dok');
+    await lastDokumenter();
+    await apneDokument(u.id);
+    si('Artikkelen er lagret i skuffen');
+  } catch (err) {
+    if (knapp) { knapp.disabled = false; knapp.textContent = 'Lagre i skuff'; }
+    si('Kunne ikke lagre i skuffen: ' + err.message);
+  }
 }
 
 // ---------- Fanevalg (høyre panel) ----------
