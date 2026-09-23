@@ -1447,6 +1447,7 @@ async function loadGap(id) {
         <div class="neighbor" data-id="${escapeHtml(g.id)}">
           <div class="neighbor-row1">${domeneMerke(g)}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${artMerke(g)}</div>
           <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
+          ${gapVurderingMarkup(id, g)}
         </div>`).join('') : '<div class="hint">Ingen gap — alle cachede naboer er alt sitert av papiret.</div>') +
       // Naboer utgitt ETTER kildepapiret er en tredje kategori, ikke et gap. Uten dette
       // skillet meldte proben 8 kandidater der tre var ekte (målt 10.1111/jfd.13815).
@@ -1460,6 +1461,19 @@ async function loadGap(id) {
         </div>`).join('') : '');
     visSenereSiteringer(el, id);
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
+    $$('[data-gap-vurdering]', el).forEach(button => button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const group = button.closest('[data-gap-key]');
+      const key = group?.dataset.gapKey;
+      if (!key) return;
+      try { sessionStorage.setItem(key, button.dataset.gapVurdering); } catch (_) { /* private mode may disable session storage */ }
+      const status = group.querySelector('[data-gap-status]');
+      if (status) status.textContent = `Din vurdering i denne nettleserøkten: ${gapVurderingNavn(button.dataset.gapVurdering)}`;
+      group.querySelectorAll('[data-gap-vurdering]').forEach(item => {
+        item.setAttribute('aria-pressed', String(item === button));
+      });
+    }));
     $$('#eksport-gap .rapport-btn', el).forEach(btn => btn.addEventListener('click', () => {
       const kildeTittel = (state.papers[id] || {}).tittel || id;
       lastNedRapport(`/api/rapport/gap/${encodeURIComponent(id)}`, `Citation-gap - ${kildeTittel}`, btn.dataset.format, btn);
@@ -1478,6 +1492,25 @@ async function loadGap(id) {
     // når referanselisten/gap-oppslaget feiler eller mangler forutsetninger.
     visSenereSiteringer(el, id);
   }
+}
+
+function gapVurderingNavn(value) {
+  return ({ relevant: 'relevant', irrelevant: 'irrelevant', unresolved: 'uavklart' })[value] || 'uavklart';
+}
+
+function gapVurderingMarkup(seedId, candidate) {
+  const identity = candidate.doi || candidate.id || candidate.tittel || 'ukjent';
+  const key = `forskningssok:gap-review:${seedId}:${identity}`;
+  let value = 'unresolved';
+  try { value = sessionStorage.getItem(key) || value; } catch (_) { /* private mode may disable session storage */ }
+  return `<div data-gap-key="${escapeHtml(key)}" style="margin-top:.45rem" onclick="event.stopPropagation()">
+    <div class="hint" data-gap-status>Din vurdering i denne nettleserøkten: ${gapVurderingNavn(value)}</div>
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">
+      <button type="button" class="rapport-btn" data-gap-vurdering="relevant" aria-pressed="${value === 'relevant'}">Relevant</button>
+      <button type="button" class="rapport-btn" data-gap-vurdering="irrelevant" aria-pressed="${value === 'irrelevant'}">Irrelevant</button>
+      <button type="button" class="rapport-btn" data-gap-vurdering="unresolved" aria-pressed="${value === 'unresolved'}">Uavklart</button>
+    </div>
+  </div>`;
 }
 
 function visSenereSiteringer(el, id) {
@@ -1504,10 +1537,12 @@ async function loadCitedBy(id, cursor='*', append=false) {
     const data = await api(`/api/siterer/${encodeURIComponent(id)}?${params}`);
     const works = append ? [...(state.citedByWorks || []), ...data.works] : data.works;
     state.citedByWorks = works;
+    const retrievedAt = data.edges?.[0]?.retrieved_at;
     const pageNote = data.complete
       ? `OpenAlex viser ${data.total_available ?? works.length} poster; denne listen er komplett i OpenAlex.`
       : `Viser ${works.length} av ${data.total_available ?? 'ukjent antall'} OpenAlex-poster. Flere kan hentes.`;
     host.innerHTML = `<div class="hint" style="margin:.6rem 0">${escapeHtml(pageNote)}</div>` +
+      (retrievedAt ? `<div class="hint">Kilde: OpenAlex · sist hentet ${escapeHtml(new Date(retrievedAt).toLocaleString('nb-NO'))}. Treffene er registrerte siteringsrelasjoner, ikke relevans- eller evidensvurderinger.</div>` : '') +
       (works.length ? works.map(w => {
         const tail = (w.openalex_id || '').split('/').pop();
         const href = w.doi ? `https://doi.org/${encodeURIComponent(w.doi)}` : `https://openalex.org/${encodeURIComponent(tail)}`;

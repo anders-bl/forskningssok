@@ -120,6 +120,19 @@ semantisk nærmeste studiene som sirkler rundt papiret du leser.
 
 ---
 
+### Siteringsspor og kandidatvurdering
+
+I `Gap`-fanen kan du hente innkommende OpenAlex-siteringer for en DOI og bla
+videre side for side. Siteringsoppslaget viser kilde og hentetid; hver
+siteringskant bærer også dekningsstatus for siden i API-responsen. En registrert
+sitering er en navigasjonsrelasjon; den sier ikke at arbeidet er relevant eller
+støtter en bestemt påstand.
+
+Gap-kandidater kan merkes `Relevant`, `Irrelevant` eller `Uavklart`. Vurderingen
+blir liggende i nettleserens aktive økt og sendes ikke til serveren, Luna eller
+andre brukere. Den kan brukes i en gjennomgang med Ulven, men er ikke ennå en
+varig annotasjon eller treningsdata. Kandidatlisten påvirkes ikke av merkingen.
+
 ### Evidensnivå
 
 Hver studie får et merke som viser studiedesign, fra Europe PMCs egen menneske-

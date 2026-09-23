@@ -24,6 +24,7 @@ ADR-004-disiplin: spørretid + TTL-cache, ingen crawler, ingen full korpus-indek
 import json
 import sqlite3
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -48,14 +49,14 @@ def _db(db_path: Path = DB) -> sqlite3.Connection:
     return db
 
 
-def _hent(key: str, url: str, params: dict | None, *, tving_fersk: bool = False,
-          db_path: Path = DB) -> dict:
+def _hent_med_tid(key: str, url: str, params: dict | None, *, tving_fersk: bool = False,
+                  db_path: Path = DB) -> tuple[dict, str]:
     db = _db(db_path)
     if not tving_fersk:
         rad = db.execute("SELECT hentet_ved, respons FROM openalex_cache WHERE key=?", (key,)).fetchone()
         if rad and (time.time() - rad[0]) < TTL_SEKUNDER:
             db.close()
-            return json.loads(rad[1])
+            return json.loads(rad[1]), datetime.fromtimestamp(rad[0], timezone.utc).isoformat()
     try:
         r = httpx.get(url, params=params, headers={"User-Agent": UA}, timeout=30)
         r.raise_for_status()
@@ -63,10 +64,17 @@ def _hent(key: str, url: str, params: dict | None, *, tving_fersk: bool = False,
         db.close()
         raise RuntimeError(f"OpenAlex utilgjengelig: {e}") from e
     data = r.json()
+    hentet_ved = time.time()
     db.execute("INSERT OR REPLACE INTO openalex_cache(key, hentet_ved, respons) VALUES (?,?,?)",
-               (key, time.time(), json.dumps(data)))
+               (key, hentet_ved, json.dumps(data)))
     db.commit()
     db.close()
+    return data, datetime.fromtimestamp(hentet_ved, timezone.utc).isoformat()
+
+
+def _hent(key: str, url: str, params: dict | None, *, tving_fersk: bool = False,
+          db_path: Path = DB) -> dict:
+    data, _ = _hent_med_tid(key, url, params, tving_fersk=tving_fersk, db_path=db_path)
     return data
 
 
@@ -206,7 +214,7 @@ def siterende_verk(doi: str, limit: int = 20, cursor: str = "*",
         }
 
     openalex_short_id = seed_id.rsplit("/", 1)[-1]
-    data = _hent(
+    data, retrieved_at = _hent_med_tid(
         f"cites::{doi}::{limit}::{cursor}",
         f"{BASE}/works",
         {
@@ -221,6 +229,14 @@ def siterende_verk(doi: str, limit: int = 20, cursor: str = "*",
     works = _parse(data)
     meta = data.get("meta") or {}
     next_cursor = meta.get("next_cursor")
+    source_coverage = {
+        "provider": "openalex",
+        "retrieved_at": retrieved_at,
+        "retrieved": len(works),
+        "total_available": meta.get("count"),
+        "complete": next_cursor is None,
+        "cursor": cursor,
+    }
     edges = [
         {
             "id": f"openalex:cites:{work.kilde_url.rsplit('/', 1)[-1]}:{openalex_short_id}",
@@ -229,6 +245,8 @@ def siterende_verk(doi: str, limit: int = 20, cursor: str = "*",
             "relation": "cites",
             "provider": "openalex",
             "match_method": "openalex.cites",
+            "retrieved_at": retrieved_at,
+            "source_coverage": source_coverage,
         }
         for work in works
     ]

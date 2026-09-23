@@ -100,12 +100,20 @@ def test_siterende_verk_returnerer_retningskant_og_paginering(tmp_path):
         _mock_get(json_data=seed), _mock_get(json_data=citing),
     ]) as get:
         result = openalex.siterende_verk("10.1/seed", limit=1, db_path=db)
+        cached = openalex.siterende_verk("10.1/seed", limit=1, db_path=db)
 
     assert result["status"] == "ok"
     assert result["complete"] is False
     assert result["total_available"] == 2
     assert result["retrieved"] == 1
     assert result["next_cursor"] == "cursor-2"
+    assert result["edges"][0]["retrieved_at"]
+    assert result["edges"][0]["source_coverage"] == {
+        "provider": "openalex", "retrieved_at": result["edges"][0]["retrieved_at"],
+        "retrieved": 1, "total_available": 2, "complete": False, "cursor": "*",
+    }
+    assert cached["edges"][0]["retrieved_at"] == result["edges"][0]["retrieved_at"]
+    assert get.call_count == 2
     assert result["edges"] == [{
         "id": "openalex:cites:WLATER:WSEED",
         "from_id": "10.1/later",
@@ -113,6 +121,8 @@ def test_siterende_verk_returnerer_retningskant_og_paginering(tmp_path):
         "relation": "cites",
         "provider": "openalex",
         "match_method": "openalex.cites",
+        "retrieved_at": result["edges"][0]["retrieved_at"],
+        "source_coverage": result["edges"][0]["source_coverage"],
     }]
     assert get.call_args.kwargs["params"]["filter"] == "cites:WSEED"
     assert get.call_args.kwargs["params"]["cursor"] == "*"
