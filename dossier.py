@@ -228,7 +228,8 @@ def _kall_llm_lokal_ollama(prompt: str, model: str = OLLAMA_MODELL) -> str:
     # 2026-09-11 (httpcore.ReadTimeout ved default). Et dossier er en bakgrunnsjobb, ikke
     # et live UI-kall som må svare raskt.
     svar = _ollama_port.kall_dommer(model, prompt, temperature=0.2, num_ctx=16384,
-                                     num_predict=6000, timeout=600)
+                                     num_predict=6000, timeout=600,
+                                     consumer="forskningssok.dossier")
     return svar["message"]["content"]
 
 

@@ -66,7 +66,10 @@ def _hus_dommer(model: str = DEFAULT_MODELL):
 
     def doem(prompt: str) -> str:
         # temperature 0: en relevansdom skal være reproduserbar, ikke kreativ.
-        svar = _ollama_port.kall_dommer(model, prompt, temperature=0.0, num_predict=600)
+        svar = _ollama_port.kall_dommer(
+            model, prompt, temperature=0.0, num_predict=600,
+            consumer="forskningssok.evaluer",
+        )
         return svar["message"]["content"]
 
     return doem
