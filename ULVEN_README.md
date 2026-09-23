@@ -133,6 +133,31 @@ blir liggende i nettleserens aktive økt og sendes ikke til serveren, Luna eller
 andre brukere. Den kan brukes i en gjennomgang med Ulven, men er ikke ennå en
 varig annotasjon eller treningsdata. Kandidatlisten påvirkes ikke av merkingen.
 
+---
+
+### Patentlinse (EPO OPS, pilot)
+
+I `Sti`-fanen finnes nå en brukerstartet EPO OPS-søkebane for tittel/sammendrag.
+Den bruker de første åtte ordene fra tittelen til å søke i EPOs bibliografiske
+indeks og viser patentnummer, familie-ID, dato og lenke til Espacenet. Dette er
+et `keyword_match`, ikke bevis på at patentet siterer artikkelen. OPS-søket er
+avgrenset til 20 treff per side, cachet i 24 timer og begrenset lokalt til høyst
+10 søk i minuttet, med minst seks sekunder mellom OPS-kall.
+
+Endepunkter:
+
+- `GET /api/patenter/epo/tilgjengelig` rapporterer om OPS-klientnøkkel og -hemmelighet er konfigurert.
+- `GET /api/patenter/epo?q=...&limit=10` starter et søk bare når brukeren trykker på knappen.
+
+OPS krever registrering og OAuth. Sett `EPO_OPS_KEY` og `EPO_OPS_SECRET` i
+tjenestens hemmelighetslager; aldri i profilfil, repo eller UI. Når de mangler,
+viser UI-en «ikke konfigurert» separat fra et ekte søk uten treff. Lokal
+konfigurasjonskontroll 2026-09-23 fant ingen credentials, så ekte OPS-respons,
+datadekning og deploy-oppsett er ennå ikke live-verifisert. Et tittel- eller
+sammendragstreff viser ikke at patentet siterer artikkelen og sier ikke noe om
+patentets juridiske status. Se [EPO OPS](https://www.epo.org/en/searching-for-patents/data/web-services/ops)
+for offisiell dokumentasjon og vilkår.
+
 ### Evidensnivå
 
 Hver studie får et merke som viser studiedesign, fra Europe PMCs egen menneske-

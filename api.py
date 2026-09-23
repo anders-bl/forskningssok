@@ -43,7 +43,7 @@ import retningssamtale as retningssamtale_modul
 import sti as sti_modul
 import rapport
 import scoping
-from adapters import openalex, semantic_scholar, unpaywall
+from adapters import epo_ops, openalex, semantic_scholar, unpaywall
 from adapters.europe_pmc import DB as CACHE_DB
 from citation_gap import gap_kandidater
 from cli import sok_og_ranger
@@ -623,6 +623,25 @@ def api_siterende_verk(paper_id: str, limit: int = 20, cursor: str = "*"):
         raise HTTPException(422, "ugyldig cursor")
     try:
         return openalex.siterende_verk(paper_id, limit=limit, cursor=cursor)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(502, str(e)) from e
+
+
+@app.get("/api/patenter/epo/tilgjengelig")
+def api_epo_ops_tilgjengelig():
+    """Configuration status only; never returns credential material."""
+    return epo_ops.tilgjengelig()
+
+
+@app.get("/api/patenter/epo")
+def api_epo_ops_sok(q: str, limit: int = 10):
+    """Explicit EPO OPS title/abstract search; keyword matches are not citation edges."""
+    if len(q) > 300:
+        raise HTTPException(422, "q kan ikke være lengre enn 300 tegn")
+    try:
+        return epo_ops.sok(q, limit=limit)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
     except RuntimeError as e:

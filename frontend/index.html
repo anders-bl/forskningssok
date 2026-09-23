@@ -1808,12 +1808,49 @@ async function loadSti(id) {
       ${state.cachede.filter(p => p.id !== id).map(p =>
         `<option value="${escapeHtml(p.id)}"${p.id === valgt ? ' selected' : ''}>${p.aar || '?'} · ${escapeHtml((p.tittel||'').slice(0,70))}</option>`).join('')}
     </select>
-    <div id="sti-svar"></div>`;
+    <div id="sti-svar"></div>
+    <section class="undercurrent" style="margin-top:1rem">
+      <b>Patentlinse · EPO OPS</b>
+      <div class="hint" style="margin:.35rem 0 .6rem">Søk i patenttitler og sammendrag etter ord fra denne artikkelens tittel. Et ordtreff er ikke en patentsitering eller en relevansdom.</div>
+      <button class="rapport-btn" id="btn-epo-search">Søk patentlandskap</button>
+      <div id="epo-results" aria-live="polite"></div>
+    </section>`;
   $('#sti-til').addEventListener('change', e => {
     state.stiTil = e.target.value;
     if (e.target.value) visSti(id, e.target.value);
   });
+  $('#btn-epo-search').addEventListener('click', () => loadEpoSearch(id));
   if (valgt) visSti(id, valgt);
+}
+
+async function loadEpoSearch(id) {
+  const host = $('#epo-results');
+  const button = $('#btn-epo-search');
+  const paper = state.papers[id];
+  if (!host || !button || !paper?.tittel) return;
+  button.disabled = true;
+  button.textContent = 'Søker i EPO OPS ...';
+  host.innerHTML = '<div class="hint">Henter en avgrenset, brukerinitiert patentsøk-side ...</div>';
+  try {
+    const data = await api(`/api/patenter/epo?q=${encodeURIComponent(paper.tittel)}&limit=10`);
+    if (data.status === 'unconfigured') {
+      host.innerHTML = '<div class="banner">EPO OPS er ikke konfigurert. Søket kan startes når EPO-nøkkel og -hemmelighet er lagt inn på tjenesten.</div>';
+      return;
+    }
+    const records = data.records || [];
+    host.innerHTML = `<div class="hint" style="margin:.6rem 0">EPO OPS fant ${data.total_available ?? 'ukjent antall'} bibliografiske treff; viser ${records.length}. ${data.truncated ? 'Listen er avgrenset.' : 'Listen er komplett innenfor dette søket.'}</div>` +
+      (records.length ? records.map(record => `<article class="neighbor" style="cursor:default">
+        <div class="neighbor-row1"><span>${escapeHtml(record.provider)}</span><span>${escapeHtml(record.publication_number)}</span><span>${escapeHtml(record.publication_date || 'Dato ukjent')}</span></div>
+        <div class="neighbor-title">${escapeHtml(record.title || 'Tittel ikke oppgitt')}</div>
+        <div class="hint">Patentfamilie ${escapeHtml(record.family_id || 'ikke oppgitt')} · treff på tittel/sammendrag, ikke bekreftet sitat til artikkelen</div>
+        <a href="${escapeHtml(record.url)}" target="_blank" rel="noopener noreferrer" class="minibtn">Åpne EPO-post</a>
+      </article>`).join('') : '<div class="hint">Ingen patentposter funnet i EPO OPS for disse søkeordene. Dette sier ikke noe om dekning i andre patentkilder.</div>');
+  } catch (err) {
+    host.innerHTML = `<div class="banner"><b>EPO OPS svarte ikke</b>: ${escapeHtml(err.message)}. Det betyr ikke at det ikke finnes patentdokumenter.</div>`;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Søk patentlandskap igjen';
+  }
 }
 
 async function visSti(fra, til) {
