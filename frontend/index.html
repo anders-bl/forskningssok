@@ -893,7 +893,7 @@ async function utforSok(q, foretrukketDoi = '') {
       ? data.papirer.find(p => normaliserDoi(p.doi || p.id) === normaliserDoi(foretrukketDoi))
       : null;
     if (foretrukket) openPaper(foretrukket.id);
-    else if (data.papirer.length) openPaper(data.papirer[0].id);
+    else if (!foretrukketDoi && data.papirer.length) openPaper(data.papirer[0].id);
     if (foretrukketDoi && !foretrukket) {
       $('#result-status').textContent = `Fant ikke et eksakt DOI-treff for ${foretrukketDoi}; trefflisten vises uten å velge en annen kilde automatisk.`;
     }
