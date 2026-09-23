@@ -2647,7 +2647,9 @@ $$('#dok-verktoy [data-dok]').forEach(btn => btn.addEventListener('click', async
   await lastProfil();
   await lastBank();
   lastVarme();
-  utforSok($('#search-input').value.trim());
+  const handedOffQuery = new URLSearchParams(window.location.search).get('q')?.trim();
+  if (handedOffQuery) $('#search-input').value = handedOffQuery;
+  utforSok(handedOffQuery || $('#search-input').value.trim());
 })();
 </script>
 </body>
