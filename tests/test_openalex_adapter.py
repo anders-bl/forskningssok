@@ -84,6 +84,51 @@ def test_tilgang_ingen_oa_lokasjon_gir_aerlig_fravaer_ikke_feil(tmp_path):
     assert info["lisens"] is None
     assert info["fri_pdf_url"] is None
     assert info["oa_status"] == "closed"
+
+
+def test_siterende_verk_returnerer_retningskant_og_paginering(tmp_path):
+    db = tmp_path / "cache.db"
+    seed = {"id": "https://openalex.org/WSEED", "title": "Seed", "doi": "https://doi.org/10.1/seed"}
+    citing = {"results": [{
+        "id": "https://openalex.org/WLATER", "title": "Later work", "publication_year": 2024,
+        "doi": "https://doi.org/10.1/later", "cited_by_count": 3,
+        "open_access": {"is_oa": True}, "authorships": [],
+        "primary_location": {"source": {"display_name": "Journal"}},
+        "abstract_inverted_index": None,
+    }], "meta": {"count": 2, "next_cursor": "cursor-2"}}
+    with patch("adapters.openalex.httpx.get", side_effect=[
+        _mock_get(json_data=seed), _mock_get(json_data=citing),
+    ]) as get:
+        result = openalex.siterende_verk("10.1/seed", limit=1, db_path=db)
+
+    assert result["status"] == "ok"
+    assert result["complete"] is False
+    assert result["total_available"] == 2
+    assert result["retrieved"] == 1
+    assert result["next_cursor"] == "cursor-2"
+    assert result["edges"] == [{
+        "id": "openalex:cites:WLATER:WSEED",
+        "from_id": "10.1/later",
+        "to_id": "10.1/seed",
+        "relation": "cites",
+        "provider": "openalex",
+        "match_method": "openalex.cites",
+    }]
+    assert get.call_args.kwargs["params"]["filter"] == "cites:WSEED"
+    assert get.call_args.kwargs["params"]["cursor"] == "*"
+
+
+def test_siterende_verk_ukjent_seed_er_skilt_fra_tom_graf(tmp_path):
+    with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data={})):
+        result = openalex.siterende_verk("10.1/missing", db_path=tmp_path / "cache.db")
+    assert result["status"] == "not_found"
+    assert result["complete"] is None
+    assert result["total_available"] is None
+
+
+def test_siterende_verk_avviser_for_stor_side(tmp_path):
+    with pytest.raises(ValueError, match="limit"):
+        openalex.siterende_verk("10.1/seed", limit=101, db_path=tmp_path / "cache.db")
     db = tmp_path / "cache.db"
     with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data=EMNE_RESPONS)) as m:
         papirer = openalex.verk_for_emne("T10506", limit=20, db_path=db)

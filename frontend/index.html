@@ -1447,6 +1447,7 @@ async function loadGap(id) {
           <div class="neighbor-row1">${domeneMerke(g)}<span class="dist">${g.avstand.toFixed(3)}</span><span>${g.aar||'?'} · ${escapeHtml(g.tidsskrift||'')}</span>${artMerke(g)}</div>
           <div class="neighbor-title">${escapeHtml(g.tittel)}</div>
         </div>`).join('') : '');
+    visSenereSiteringer(el, id);
     $$('.neighbor', el).forEach(n => n.addEventListener('click', () => openPaper(n.dataset.id)));
     $$('#eksport-gap .rapport-btn', el).forEach(btn => btn.addEventListener('click', () => {
       const kildeTittel = (state.papers[id] || {}).tittel || id;
@@ -1462,6 +1463,59 @@ async function loadGap(id) {
       ? ' — ingen identifikator å slå opp referanser mot; et nytt forsøk endrer ikke det.'
       : ' — prøv igjen senere.';
     el.innerHTML = `<div class="banner"><b>Feil</b>: ${escapeHtml(err.message)}${forklaring}</div>`;
+    // Innkommende siteringer trenger bare DOI-en; de skal fortsatt kunne undersøkes
+    // når referanselisten/gap-oppslaget feiler eller mangler forutsetninger.
+    visSenereSiteringer(el, id);
+  }
+}
+
+function visSenereSiteringer(el, id) {
+  const doi = (state.papers[id] || {}).doi || (id.startsWith('10.') ? id : '');
+  el.insertAdjacentHTML('beforeend', `<section class="undercurrent" style="margin-top:1rem">
+    <b>Senere arbeider</b>
+    <div class="hint" style="margin:.35rem 0 .6rem">Hent OpenAlex-poster som siterer denne DOI-en. Dette er en navigasjonsrelasjon, ikke en vurdering av relevans eller evidens.</div>
+    ${doi ? '<button class="rapport-btn" id="btn-cited-by">Finn senere siteringer</button>' : '<div class="hint">Dette papiret har ingen DOI, så innkommende OpenAlex-siteringer kan ikke slås opp.</div>'}
+    <div id="cited-by-results" aria-live="polite"></div>
+  </section>`);
+  const button = $('#btn-cited-by', el);
+  if (button) button.addEventListener('click', () => loadCitedBy(doi));
+}
+
+async function loadCitedBy(id, cursor='*', append=false) {
+  const host = $('#cited-by-results');
+  const button = $('#btn-cited-by');
+  if (!host || !button) return;
+  button.disabled = true;
+  button.textContent = 'Henter senere arbeider ...';
+  if (!append) host.innerHTML = '<div class="hint">Slår opp innkommende OpenAlex-siteringer ...</div>';
+  try {
+    const params = new URLSearchParams({limit:'20', cursor});
+    const data = await api(`/api/siterer/${encodeURIComponent(id)}?${params}`);
+    const works = append ? [...(state.citedByWorks || []), ...data.works] : data.works;
+    state.citedByWorks = works;
+    const pageNote = data.complete
+      ? `OpenAlex viser ${data.total_available ?? works.length} poster; denne listen er komplett i OpenAlex.`
+      : `Viser ${works.length} av ${data.total_available ?? 'ukjent antall'} OpenAlex-poster. Flere kan hentes.`;
+    host.innerHTML = `<div class="hint" style="margin:.6rem 0">${escapeHtml(pageNote)}</div>` +
+      (works.length ? works.map(w => {
+        const tail = (w.openalex_id || '').split('/').pop();
+        const href = w.doi ? `https://doi.org/${encodeURIComponent(w.doi)}` : `https://openalex.org/${encodeURIComponent(tail)}`;
+        return `<article class="neighbor" style="cursor:default">
+          <div class="neighbor-row1"><span>OpenAlex</span><span>${w.year || 'År ukjent'}</span><span>${w.cited_by_count ?? 'Siteringstall ukjent'} senere siteringer</span></div>
+          <div class="neighbor-title">${escapeHtml(w.title || 'Tittel ikke oppgitt')}</div>
+          <div class="hint">${escapeHtml(w.authors || 'Forfattere ikke oppgitt')} ${w.venue ? ' · ' + escapeHtml(w.venue) : ''}</div>
+          <a href="${href}" target="_blank" rel="noopener noreferrer" class="minibtn">Åpne originalpost</a>
+        </article>`;
+      }).join('') : '<div class="hint">Ingen senere siteringer funnet i OpenAlex for denne DOI-en.</div>') +
+      (!data.complete && data.next_cursor ? '<button class="rapport-btn" id="btn-cited-by-next">Vis neste side</button>' : '');
+    const next = $('#btn-cited-by-next', host);
+    if (next) next.addEventListener('click', () => loadCitedBy(id, data.next_cursor, true));
+    button.textContent = `Oppdater senere siteringer (${data.provider})`;
+  } catch (err) {
+    host.innerHTML = `<div class="banner"><b>OpenAlex svarte ikke</b>: ${escapeHtml(err.message)}. Dette betyr ikke at det ikke finnes siteringer.</div>`;
+    button.textContent = 'Prøv senere siteringer igjen';
+  } finally {
+    button.disabled = false;
   }
 }
 

@@ -175,6 +175,90 @@ def verk_for_emne(emne_id: str, limit: int = 20, *, db_path: Path = DB) -> list[
     return _parse(data)
 
 
+def siterende_verk(doi: str, limit: int = 20, cursor: str = "*",
+                   *, db_path: Path = DB) -> dict:
+    """Fetch works that cite this DOI and return explicit, directional graph edges.
+
+    `cites:<OpenAlex Work ID>` is OpenAlex's incoming-citation filter. Results are
+    capped to one page; `next_cursor` and `complete` let clients continue without
+    mistaking a truncated neighborhood for the full citation history.
+    """
+    doi = doi.strip().removeprefix("https://doi.org/").lower()
+    if not doi:
+        raise ValueError("DOI mangler")
+    if not 1 <= limit <= 100:
+        raise ValueError("limit må være mellom 1 og 100")
+
+    seed = _verk(doi, db_path=db_path)
+    seed_id = seed.get("id")
+    if not seed_id:
+        return {
+            "status": "not_found",
+            "provider": "openalex",
+            "seed_doi": doi,
+            "seed_openalex_id": None,
+            "works": [],
+            "edges": [],
+            "total_available": None,
+            "retrieved": 0,
+            "next_cursor": None,
+            "complete": None,
+        }
+
+    openalex_short_id = seed_id.rsplit("/", 1)[-1]
+    data = _hent(
+        f"cites::{doi}::{limit}::{cursor}",
+        f"{BASE}/works",
+        {
+            "filter": f"cites:{openalex_short_id}",
+            "sort": "-publication_date",
+            "per_page": limit,
+            "cursor": cursor,
+            "select": _SELECT_FELTER,
+        },
+        db_path=db_path,
+    )
+    works = _parse(data)
+    meta = data.get("meta") or {}
+    next_cursor = meta.get("next_cursor")
+    edges = [
+        {
+            "id": f"openalex:cites:{work.kilde_url.rsplit('/', 1)[-1]}:{openalex_short_id}",
+            "from_id": work.doi or work.kilde_url,
+            "to_id": doi,
+            "relation": "cites",
+            "provider": "openalex",
+            "match_method": "openalex.cites",
+        }
+        for work in works
+    ]
+    return {
+        "status": "ok",
+        "provider": "openalex",
+        "seed_doi": doi,
+        "seed_openalex_id": seed_id,
+        "works": [
+            {
+                "id": work.id,
+                "doi": work.doi,
+                "openalex_id": work.kilde_url,
+                "title": work.tittel,
+                "authors": work.forfattere,
+                "year": work.aar,
+                "venue": work.tidsskrift,
+                "cited_by_count": work.siteringstall,
+                "url": work.kilde_url,
+            }
+            for work in works
+        ],
+        "edges": edges,
+        "total_available": meta.get("count"),
+        "retrieved": len(works),
+        "next_cursor": next_cursor,
+        "complete": next_cursor is None,
+    }
+
+
 def referanser(doi: str, *, db_path: Path = DB) -> list[dict]:
     """Fallback for citation_gap.py: OpenAlex sin referenced_works, batch-oppløst til
     {doi, title} — SAMME feltnavn-kontrakt som adapters/europe_pmc.py:referanser(), slik

@@ -596,6 +596,28 @@ def api_siteringsgraf(paper_id: str):
         raise HTTPException(502, str(e)) from e
 
 
+@app.get("/api/siterer/{paper_id:path}")
+def api_siterende_verk(paper_id: str, limit: int = 20, cursor: str = "*"):
+    """OpenAlex sine innkommende DOI-sitasjoner som paginerte, retningsbestemte kanter.
+
+    Egne fra/til-ID-er og `complete`/`next_cursor` hindrer at en sidebegrenset
+    naboliste ser ut som en full graf. Semantic Scholar sin eksisterende graf beholdes
+    for kontekst/intents; denne ruta gir en rimeligere OpenAlex-vei til senere arbeider.
+    """
+    if not paper_id.startswith("10."):
+        raise HTTPException(422, "DOI kreves for OpenAlex-siteringer")
+    if not 1 <= limit <= 100:
+        raise HTTPException(422, "limit må være mellom 1 og 100")
+    if not cursor or len(cursor) > 512:
+        raise HTTPException(422, "ugyldig cursor")
+    try:
+        return openalex.siterende_verk(paper_id, limit=limit, cursor=cursor)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(502, str(e)) from e
+
+
 @app.get("/api/emne/{emne_id}")
 def api_emne_utforsk(emne_id: str, background_tasks: BackgroundTasks, navn: str = "", n: int = 20):
     """Søk-doktrinens tredje modus («Utforskning» — vet domenet, ikke termen). Alle
