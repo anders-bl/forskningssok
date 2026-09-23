@@ -869,7 +869,11 @@ function si(tekst) {
 // ---------- Søk — tre modi fra ETT søk (søk-doktrinen: Oppslag+Oppdagelse alltid
 // sammen — begge billige; Utforskning tilbys som ett synlig klikk, aldri automatisk
 // (henter+embedder 20 nye dokumenter, for tungt å kjøre på hvert tastetrykk-søk). ----------
-async function utforSok(q) {
+function normaliserDoi(doi) {
+  return (doi || '').trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/\/+$/, '').toLowerCase();
+}
+
+async function utforSok(q, foretrukketDoi = '') {
   if (!q) return;
   $('#result-status').textContent = 'søker…';
   $('#result-list').innerHTML = '';
@@ -885,7 +889,14 @@ async function utforSok(q) {
     for (const p of data.papirer) state.papers[p.id] = p;
     renderResults(data.papirer, data.eksakt_id);
     settResultatForEksport(data.papirer, `Kildesamling — «${q}»`, q);
-    if (data.papirer.length) openPaper(data.papirer[0].id);
+    const foretrukket = foretrukketDoi
+      ? data.papirer.find(p => normaliserDoi(p.doi || p.id) === normaliserDoi(foretrukketDoi))
+      : null;
+    if (foretrukket) openPaper(foretrukket.id);
+    else if (data.papirer.length) openPaper(data.papirer[0].id);
+    if (foretrukketDoi && !foretrukket) {
+      $('#result-status').textContent = `Fant ikke et eksakt DOI-treff for ${foretrukketDoi}; trefflisten vises uten å velge en annen kilde automatisk.`;
+    }
 
     // Oppdagelse: samme spørring, mot DIN cache — vis kun det som IKKE alt er i
     // Oppslag-lista (ellers er det bare den samme lista vist to ganger).
@@ -2701,9 +2712,12 @@ $$('#dok-verktoy [data-dok]').forEach(btn => btn.addEventListener('click', async
   await lastProfil();
   await lastBank();
   lastVarme();
-  const handedOffQuery = new URLSearchParams(window.location.search).get('q')?.trim();
-  if (handedOffQuery) $('#search-input').value = handedOffQuery;
-  utforSok(handedOffQuery || $('#search-input').value.trim());
+  const params = new URLSearchParams(window.location.search);
+  const handedOffDoi = params.get('doi')?.trim();
+  const handedOffQuery = params.get('q')?.trim();
+  const initialQuery = handedOffDoi || handedOffQuery || $('#search-input').value.trim();
+  if (initialQuery) $('#search-input').value = initialQuery;
+  utforSok(initialQuery, handedOffDoi || '');
 })();
 </script>
 </body>
