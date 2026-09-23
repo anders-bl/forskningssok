@@ -20,6 +20,7 @@ Bruk:
 """
 
 import argparse
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -107,13 +108,16 @@ def beregn_umap(embeddings: list[list[float]], n_components: int = 2) -> list[li
         return []
     
     X = np.array(embeddings)
+
+    if len(X) < 3:
+        raise ValueError("Minst tre embeddings kreves for projeksjon")
     
     if HAS_UMAP:
         # UMAP er bedre for globale strukturer
         reducer = umap.UMAP(
             n_components=n_components,
             random_state=42,
-            n_neighbors=15,
+            n_neighbors=min(15, len(X) - 1),
             min_dist=0.1,
             metric="cosine"
         )
@@ -127,6 +131,43 @@ def beregn_umap(embeddings: list[list[float]], n_components: int = 2) -> list[li
         )
     
     return reducer.fit_transform(X).tolist()
+
+
+def _har_kompatible_embeddings(papirer: list[dict]) -> bool:
+    """Sjekk at hele datasettet kan projiseres uten aa blande layoutregimer."""
+    embeddings = [p.get("embeddings") for p in papirer]
+    if len(embeddings) < 3 or any(not isinstance(e, list) or not e for e in embeddings):
+        return False
+    dimensjon = len(embeddings[0])
+    return dimensjon > 1 and all(
+        all(isinstance(verdi, (int, float)) for verdi in embedding)
+        and len(embedding) == dimensjon
+        for embedding in embeddings
+    )
+
+
+def lag_metadata_koordinater(papirer: list[dict]) -> list[list[float]]:
+    """Lag en stabil oversikt over metadata, uten aa antyde semantisk avstand."""
+    aar = [p.get("aar") for p in papirer if isinstance(p.get("aar"), int)]
+    min_aar = min(aar) if aar else 0
+    max_aar = max(aar) if aar else 1
+    aar_spenn = max(max_aar - min_aar, 1)
+    kilder = sorted({p.get("kilde", "Ukjent") for p in papirer})
+    kildeposisjon = {kilde: index for index, kilde in enumerate(kilder)}
+    antall_kilder = max(len(kilder) - 1, 1)
+
+    koordinater = []
+    for index, papir in enumerate(papirer):
+        papir_aar = papir.get("aar")
+        x = ((papir_aar - min_aar) / aar_spenn) if isinstance(papir_aar, int) else index
+        if not isinstance(papir_aar, int):
+            x = index / max(len(papirer) - 1, 1)
+        y = kildeposisjon.get(papir.get("kilde", "Ukjent"), 0) / antall_kilder
+        identitet = f"{papir.get('id', '')}|{papir.get('tittel', '')}".encode("utf-8")
+        digest = hashlib.sha256(identitet).digest()
+        jitter = (int.from_bytes(digest[:2], "big") / 65535 - 0.5) * 0.16
+        koordinater.append([float(x), float(y + jitter)])
+    return koordinater
 
 
 def grupper_kilder(papirer: list[dict]) -> dict[str, list]:
@@ -183,7 +224,12 @@ def detekter_gap(papirer: list[dict], aar_spenn: int = 3) -> list[dict]:
     return gap
 
 
-def lag_html_landkap(papirer: list[dict], koordinater: list[list[float]], gap: list[dict]) -> str:
+def lag_html_landkap(
+    papirer: list[dict],
+    koordinater: list[list[float]],
+    gap: list[dict],
+    layout_info: dict[str, object],
+) -> str:
     """Lag interaktiv HTML-visualisering."""
     
     # Forbered data for D3.js
@@ -303,7 +349,9 @@ def lag_html_landkap(papirer: list[dict], koordinater: list[list[float]], gap: l
 </head>
 <body>
   <h1>Visuelle Koblinger</h1>
-  <p class="subtitle">Forskningslandskap for fiskehelse · {len(papirer)} papirer · {len(gap)} gap detektert</p>
+  <p class="subtitle">Forskningslandskap · {len(papirer)} papirer · {len(gap)} gap detektert</p>
+  <p class="subtitle" style="font-weight:600">Layout: {layout_info['label']}</p>
+  <p class="subtitle">{layout_info['description']}</p>
   
   <div id="landskap"></div>
   
@@ -442,20 +490,33 @@ def main():
     for kilde, liste in grupper.items():
         print(f"  {kilde}: {len(liste)} papirer")
     
-    # Beregn UMAP (krever embeddings)
-    # MERK: Dette er en prototype — i produksjon må vi faktisk hente embeddings
-    print("\nBeregner UMAP-projeksjon...")
-    
-    # Mock koordinater for demo (i produksjon: bruk ekte embeddings)
-    np.random.seed(42)
-    koordinater = np.random.randn(len(papirer), 2).tolist()
+    print("\nBeregner layout...")
+    layout_info = {
+        "method": "metadata",
+        "label": "metadata-layout (aar og kilde)",
+        "description": "Ingen komplett embedding-serie var tilgjengelig. Koordinatene viser metadata og er ikke semantisk avstand.",
+    }
+    if _har_kompatible_embeddings(papirer):
+        try:
+            koordinater = beregn_umap([p["embeddings"] for p in papirer])
+            layout_info = {
+                "method": "embedding_projection",
+                "label": "embedding-projeksjon",
+                "description": "Koordinatene er beregnet fra dokument-embeddings med seed 42.",
+            }
+        except (ValueError, RuntimeError) as e:
+            print(f"Embedding-projeksjon feilet, bruker metadata-layout: {e}")
+            koordinater = lag_metadata_koordinater(papirer)
+    else:
+        koordinater = lag_metadata_koordinater(papirer)
+    print(f"  → layout: {layout_info['method']}")
     
     # Detekter gap
     gap = detekter_gap(papirer)
     print(f"  → {len(gap)} gap detektert")
     
     # Lag HTML
-    html = lag_html_landkap(papirer, koordinater, gap)
+    html = lag_html_landkap(papirer, koordinater, gap, layout_info)
     
     output_path = Path(args.output)
     output_path.write_text(html, encoding="utf-8")
