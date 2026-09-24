@@ -80,6 +80,7 @@ button{ font:inherit; }
 .wordmark-mark svg{ display:block; width:1.05rem; height:1.05rem; }
 .versjonsbrikke{ font-variant-numeric:tabular-nums; letter-spacing:.01em; cursor:default; }
 .topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.6rem; align-items:center; }
+#luna-thread-return[hidden]{ display:none; }
 .pilleknapp{
   border:1px solid var(--border); background:var(--surface); color:var(--muted);
   border-radius:99px; padding:.3rem .75rem; font-size:.75rem; cursor:pointer;
@@ -479,6 +480,7 @@ svg text{ font-family:system-ui,sans-serif; }
       Sitatbank <span class="tall" id="dok-antall" hidden>0</span>
     </button>
     <button class="pilleknapp" id="om-knapp" title="Kilder, hva verktøyet ikke gjør, og hvor dataen din lever">ℹ Om</button>
+    <a class="pilleknapp" id="luna-thread-return" hidden>Tilbake til Luna-samtalen</a>
     <a class="pilleknapp" href="https://portal.lauvasdata.no/launcher" title="Tilbake til Lauvasdata-portalen">Portal</a>
   </div>
 </div>
@@ -2750,6 +2752,15 @@ $$('#dok-verktoy [data-dok]').forEach(btn => btn.addEventListener('click', async
   const params = new URLSearchParams(window.location.search);
   const handedOffDoi = params.get('doi')?.trim();
   const handedOffQuery = params.get('q')?.trim();
+  const lunaSamtale = params.get('luna_samtale') || '';
+  if (/^[1-9]\d{0,9}$/.test(lunaSamtale) && Number.isSafeInteger(Number(lunaSamtale))) {
+    const returnLink = $('#luna-thread-return');
+    const returnUrl = new URL('https://portal.lauvasdata.no/luna');
+    returnUrl.searchParams.set('samtale', lunaSamtale);
+    returnLink.href = returnUrl.toString();
+    returnLink.style.display = 'inline-flex';
+    returnLink.hidden = false;
+  }
   const initialQuery = handedOffDoi || handedOffQuery || $('#search-input').value.trim();
   if (initialQuery) $('#search-input').value = initialQuery;
   utforSok(initialQuery, handedOffDoi || '');
