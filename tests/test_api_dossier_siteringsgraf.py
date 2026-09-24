@@ -26,3 +26,24 @@ def test_ekte_emne_returnerer_grafen(monkeypatch):
     r = _client().get("/api/dossier/siteringsgraf", params={"emne": "nephrocalcinosis salmon"})
     assert r.status_code == 200
     assert r.json()["noder"] == ["a"]
+
+
+def test_eksplisitt_kildesett_bevares_i_grafen(monkeypatch):
+    mottatt = []
+    monkeypatch.setattr(api.dossier_siteringsgraf_modul, "siteringsgraf_for_papirer",
+                         lambda papirer: mottatt.extend(papirer) or {"noder": [p["id"] for p in papirer], "kanter": []})
+    r = _client().post("/api/siteringsgraf/kilder", json={"papirer": [
+        {"id": "doi:10.5555/a", "doi": "https://doi.org/10.5555/a", "tittel": "Paper A", "aar": 2024},
+        {"id": "doi:10.5555/b", "doi": "10.5555/b", "tittel": "Paper B", "aar": 2010},
+    ]})
+    assert r.status_code == 200
+    assert r.json()["noder"] == ["doi:10.5555/a", "doi:10.5555/b"]
+    assert [p["doi"] for p in mottatt] == ["10.5555/a", "10.5555/b"]
+
+
+def test_eksplisitt_kildesett_avviser_tomt_for_stort_og_duplisert_input():
+    client = _client()
+    assert client.post("/api/siteringsgraf/kilder", json={"papirer": []}).status_code == 400
+    assert client.post("/api/siteringsgraf/kilder", json={"papirer": [{"id": "a"}] * 26}).status_code == 400
+    assert client.post("/api/siteringsgraf/kilder", json={"papirer": [{"id": "a"}, {"id": "a"}]}).status_code == 400
+    assert client.post("/api/siteringsgraf/kilder", json={"papirer": [{"id": "a", "doi": "not-a-doi"}]}).status_code == 400

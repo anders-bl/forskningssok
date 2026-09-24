@@ -933,6 +933,44 @@ def api_dossier_siteringsgraf(emne: str):
     return dossier_siteringsgraf_modul.siteringsgraf_for_emne(emne)
 
 
+@app.post("/api/siteringsgraf/kilder")
+def api_siteringsgraf_kilder(body: dict):
+    """Bygg en eksplisitt graf over Review-kildene brukeren nettopp fikk.
+
+    Review gjør live-oppslag, mens dossiergrafen over emne bygger på cache. Denne
+    inngangen bevarer samme ID/DOI-sett uten å late som en cacheforespørsel er samme
+    søk. Semantic Scholar-kall skjer bare etter at brukeren ber om grafen.
+    """
+    papirer = body.get("papirer")
+    if not isinstance(papirer, list) or not papirer:
+        raise HTTPException(400, "papirer må være en ikke-tom liste")
+    if len(papirer) > 25:
+        raise HTTPException(400, "maksimalt 25 kilder per graf")
+
+    renset = []
+    sett = set()
+    for papir in papirer:
+        if not isinstance(papir, dict):
+            raise HTTPException(400, "hver kilde må være et objekt")
+        ident = str(papir.get("id") or "").strip()
+        if not ident or len(ident) > 500 or ident in sett:
+            raise HTTPException(400, "hver kilde må ha en unik ID på 1–500 tegn")
+        sett.add(ident)
+        doi = str(papir.get("doi") or "").strip()
+        doi = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", doi, flags=re.I)
+        if doi and (len(doi) > 500 or not doi.lower().startswith("10.") or "/" not in doi):
+            raise HTTPException(400, "ugyldig DOI i kildelisten")
+        renset.append({
+            "id": ident,
+            "doi": doi or None,
+            "tittel": str(papir.get("tittel") or "")[:1000],
+            "aar": papir.get("aar") if isinstance(papir.get("aar"), int) else None,
+            "kilde": str(papir.get("kilde") or "")[:100],
+            "abstract": str(papir.get("abstract") or "")[:12000],
+        })
+    return dossier_siteringsgraf_modul.siteringsgraf_for_papirer(renset)
+
+
 @app.get("/api/syntese/tilgjengelig")
 def api_syntese_tilgjengelig():
     """Flaten spør FØR den viser knappen — samme mønster som /api/dossier/tilgjengelig.

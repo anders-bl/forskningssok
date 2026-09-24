@@ -70,11 +70,20 @@ def siteringsgraf_for_emne(emne: str, db_path: Path = DB) -> dict:
 
     Node-metadata (tittel/aar/kilde/art-konfidens) legges ved HER, ikke i
     bygg_siteringsgraf() — den funksjonen kjenner kun id-er, denne kjenner papirene."""
+    papirer = hent_kandidater(emne, db_path)
+    return siteringsgraf_for_papirer(papirer)
+
+
+def siteringsgraf_for_papirer(papirer: list[dict]) -> dict:
+    """Bygger samme graf direkte over et eksplisitt, allerede hentet kildesett.
+
+    Review er live og trenger ikke å skrive hvert resultat til den lokale cachet. En
+    emneoppslagsgraf kunne derfor vise et annet sett enn det brukeren nettopp så.
+    Atelieret sender Review-postene inn hit slik noder og kanter deler kildeidentitet.
+    """
     import domeneprofil
 
-    papirer = hent_kandidater(emne, db_path)
     graf = bygg_siteringsgraf(papirer)
-    per_id = {p["id"]: p for p in papirer}
     graf["noder_meta"] = {
         p["id"]: {
             "tittel": p.get("tittel") or "",
