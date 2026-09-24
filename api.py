@@ -15,7 +15,17 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import BackgroundTasks, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Path,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -1389,6 +1399,81 @@ def api_tilbakemelding(body: dict):
         # disiplin som identify_text() sin 503-håndtering ellers i huset.
         raise HTTPException(502, f"kunne ikke sende tilbakemelding akkurat nå: {e}") from e
     return {"ok": True}
+
+
+@app.get(
+    "/api/context/luna/{samtale_id}",
+    openapi_extra={
+        "x-qualified-id": "agent/ulven/forskningssok-context",
+        "x-domain-id": "ulven",
+        "x-context-source": "agent/ulven/luna",
+    },
+)
+def api_luna_kontekst(
+    request: Request, samtale_id: int = Path(ge=1)
+) -> dict[str, object]:
+    """Hent en avgrenset samtalevisning med brukerens portaløkt.
+
+    Portalens samtaleeierskap er autoritativt. Bare den shortlivede access-cookien
+    videresendes til portalens faste API-origin; refresh-cookie og øvrige headers
+    blir igjen i denne appen.
+    """
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        raise HTTPException(401, "Portaløkten mangler eller er utløpt")
+
+    try:
+        response = httpx.get(
+            f"{_PORTAL_API_URL}/api/luna/samtaler/{samtale_id}",
+            cookies={"access_token": access_token},
+            timeout=8.0,
+        )
+    except httpx.HTTPError as exc:
+        raise HTTPException(502, "Portalens samtale-API svarte ikke") from exc
+
+    if response.status_code in (401, 403, 404):
+        raise HTTPException(
+            response.status_code,
+            "Samtalen finnes ikke eller er ikke tilgjengelig for denne brukeren",
+        )
+    if response.status_code != 200:
+        raise HTTPException(502, "Portalens samtale-API svarte med en feil")
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise HTTPException(502, "Portalens samtale-API returnerte ugyldig data") from exc
+
+    samtale = payload.get("samtale") if isinstance(payload, dict) else None
+    meldinger = payload.get("meldinger") if isinstance(payload, dict) else None
+    if not isinstance(samtale, dict) or not isinstance(meldinger, list):
+        raise HTTPException(502, "Portalens samtale-API returnerte ufullstendig data")
+
+    gyldige_meldinger: list[dict[str, object]] = []
+    for melding in meldinger:
+        if not isinstance(melding, dict) or melding.get("role") not in ("user", "assistant"):
+            continue
+        content = melding.get("content")
+        if not isinstance(content, str):
+            continue
+        gyldige_meldinger.append({
+            "role": melding["role"],
+            "content": content[:1200],
+            "forkortet": len(content) > 1200,
+            "created_at": melding.get("created_at"),
+        })
+    siste = gyldige_meldinger[-8:]
+
+    return {
+        "kontrakt": "luna-context.v1",
+        "samtale": {
+            "id": samtale_id,
+            "title": str(samtale.get("title") or "Luna-samtale")[:200],
+            "scope": samtale.get("scope"),
+            "updated_at": samtale.get("updated_at"),
+            "antall_meldinger": len(meldinger),
+        },
+        "meldinger": siste,
+    }
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

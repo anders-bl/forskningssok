@@ -47,6 +47,15 @@ def api_fixture(route: Route) -> None:
         payload = []
     elif path.endswith("/api/varme"):
         payload = {"papirer": []}
+    elif path.endswith("/api/context/luna/517"):
+        payload = {
+            "kontrakt": "luna-context.v1",
+            "samtale": {"title": "Ulven: videre lesning", "antall_meldinger": 2},
+            "meldinger": [
+                {"role": "user", "content": "Finn historiske kilder om temaet"},
+                {"role": "assistant", "content": "Her er noen mulige spor."},
+            ],
+        }
     route.fulfill(status=200, content_type="application/json", body=json.dumps(payload))
 
 
@@ -60,6 +69,9 @@ def test_luna_thread_reference_returns_to_the_same_portal_thread() -> None:
         link = page.locator("#luna-thread-return")
         link.wait_for(state="visible")
         assert link.get_attribute("href") == "https://portal.lauvasdata.no/luna?samtale=517"
+        assert page.locator("#luna-context-title").inner_text() == "Ulven: videre lesning"
+        page.get_by_role("button", name="Bruk i søkefeltet").click()
+        assert page.locator("#search-input").input_value() == "Finn historiske kilder om temaet"
         browser.close()
 
 

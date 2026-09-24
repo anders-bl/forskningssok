@@ -81,6 +81,16 @@ button{ font:inherit; }
 .versjonsbrikke{ font-variant-numeric:tabular-nums; letter-spacing:.01em; cursor:default; }
 .topbar-meta{ margin-left:auto; font-size:.75rem; color:var(--muted); display:flex; gap:.6rem; align-items:center; }
 #luna-thread-return[hidden]{ display:none; }
+.luna-context{ flex:none; padding:.8rem 1.1rem; border-bottom:1px solid var(--border); background:var(--surface-2); }
+.luna-context[hidden]{ display:none; }
+.luna-context-head{ display:flex; align-items:center; gap:.65rem; }
+.luna-context-title{ margin:0; font-size:.9rem; font-weight:700; }
+.luna-context-status{ color:var(--muted); font-size:.75rem; }
+.luna-context-body{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr)); gap:.55rem; margin-top:.65rem; max-height:13rem; overflow:auto; }
+.luna-context-message{ padding:.6rem .7rem; border:1px solid var(--border); border-radius:8px; background:var(--surface); min-width:0; }
+.luna-context-message p{ margin:0; font-size:.8rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+.luna-context-message button{ margin-top:.45rem; padding:.2rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--accent); cursor:pointer; font-size:.72rem; }
+.luna-context-foot{ margin:.55rem 0 0; color:var(--muted); font-size:.72rem; }
 .pilleknapp{
   border:1px solid var(--border); background:var(--surface); color:var(--muted);
   border-radius:99px; padding:.3rem .75rem; font-size:.75rem; cursor:pointer;
@@ -590,6 +600,15 @@ svg text{ font-family:system-ui,sans-serif; }
     </div>
   </div>
 </div>
+
+<section class="luna-context" id="luna-context" hidden aria-labelledby="luna-context-title">
+  <div class="luna-context-head">
+    <h2 class="luna-context-title" id="luna-context-title">Samtalekontekst</h2>
+    <span class="luna-context-status" id="luna-context-status" role="status" aria-live="polite"></span>
+  </div>
+  <div class="luna-context-body" id="luna-context-body"></div>
+  <p class="luna-context-foot" id="luna-context-foot">Velg en brukermelding for å føre den videre til søket. Innholdet legges ikke automatisk inn i en analyse.</p>
+</section>
 
 <div class="arbeidsrom">
   <div class="shell">
@@ -2760,11 +2779,59 @@ $$('#dok-verktoy [data-dok]').forEach(btn => btn.addEventListener('click', async
     returnLink.href = returnUrl.toString();
     returnLink.style.display = 'inline-flex';
     returnLink.hidden = false;
+    void loadLunaContext(lunaSamtale);
   }
   const initialQuery = handedOffDoi || handedOffQuery || $('#search-input').value.trim();
   if (initialQuery) $('#search-input').value = initialQuery;
   utforSok(initialQuery, handedOffDoi || '');
 })();
+
+async function loadLunaContext(samtaleId) {
+  const panel = $('#luna-context');
+  const status = $('#luna-context-status');
+  const body = $('#luna-context-body');
+  panel.hidden = false;
+  status.textContent = 'Henter samtalen …';
+  try {
+    const response = await fetch(`/api/context/luna/${encodeURIComponent(samtaleId)}`, {
+      credentials: 'same-origin',
+    });
+    if (!response.ok) {
+      status.textContent = response.status === 401
+        ? 'Logg inn i portalen for å vise samtalen.'
+        : response.status === 404
+          ? 'Samtalen er ikke tilgjengelig for denne brukeren.'
+          : 'Samtalekonteksten kunne ikke hentes nå.';
+      return;
+    }
+    const data = await response.json();
+    if (data.kontrakt !== 'luna-context.v1' || !data.samtale || !Array.isArray(data.meldinger)) {
+      throw new Error('Ugyldig kontekstkontrakt');
+    }
+    $('#luna-context-title').textContent = data.samtale.title || 'Samtalekontekst';
+    status.textContent = `${data.samtale.antall_meldinger} meldinger · siste utdrag`;
+    for (const message of data.meldinger) {
+      const card = document.createElement('article');
+      card.className = 'luna-context-message';
+      const text = document.createElement('p');
+      text.textContent = message.content || '';
+      card.append(text);
+      if (message.role === 'user') {
+        const useButton = document.createElement('button');
+        useButton.type = 'button';
+        useButton.textContent = 'Bruk i søkefeltet';
+        useButton.addEventListener('click', () => {
+          $('#search-input').value = message.content || '';
+          $('#search-input').focus();
+        });
+        card.append(useButton);
+      }
+      body.append(card);
+    }
+  } catch (error) {
+    status.textContent = 'Samtalekonteksten kunne ikke leses.';
+  }
+}
 </script>
 </body>
 </html>
