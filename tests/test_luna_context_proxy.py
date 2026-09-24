@@ -25,6 +25,7 @@ def test_context_proxy_forwards_only_access_cookie_and_bounds_messages(monkeypat
         {"role": "user", "content": f"spørsmål {index}", "created_at": None}
         for index in range(10)
     ]
+    messages[9]["content"] = "x" * 1300
     messages.append({"role": "system", "content": "internt"})
     payload = {
         "samtale": {"title": "Kontekst", "scope": "project", "updated_at": None},
@@ -52,7 +53,8 @@ def test_context_proxy_forwards_only_access_cookie_and_bounds_messages(monkeypat
     assert body["samtale"]["antall_meldinger"] == 11
     assert [message["content"] for message in body["meldinger"]] == [
         f"spørsmål {index}" for index in range(2, 10)
-    ]
+    ][:7] + ["x" * 1200]
+    assert body["meldinger"][-1]["forkortet"] is True
 
 
 def test_context_proxy_preserves_owner_scope_not_found(monkeypatch) -> None:

@@ -88,7 +88,10 @@ button{ font:inherit; }
 .luna-context-status{ color:var(--muted); font-size:.75rem; }
 .luna-context-body{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr)); gap:.55rem; margin-top:.65rem; max-height:13rem; overflow:auto; }
 .luna-context-message{ padding:.6rem .7rem; border:1px solid var(--border); border-radius:8px; background:var(--surface); min-width:0; }
+.luna-context-message-meta{ display:flex; justify-content:space-between; gap:.5rem; margin-bottom:.35rem; color:var(--muted); font-size:.68rem; }
+.luna-context-message-meta strong{ color:var(--accent); font-weight:600; }
 .luna-context-message p{ margin:0; font-size:.8rem; white-space:pre-wrap; overflow-wrap:anywhere; }
+.luna-context-message-truncated{ display:block; margin-top:.35rem; color:var(--muted); font-size:.68rem; }
 .luna-context-message button{ margin-top:.45rem; padding:.2rem .5rem; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--accent); cursor:pointer; font-size:.72rem; }
 .luna-context-foot{ margin:.55rem 0 0; color:var(--muted); font-size:.72rem; }
 .pilleknapp{
@@ -2813,13 +2816,36 @@ async function loadLunaContext(samtaleId) {
     for (const message of data.meldinger) {
       const card = document.createElement('article');
       card.className = 'luna-context-message';
+      const meta = document.createElement('div');
+      meta.className = 'luna-context-message-meta';
+      const speaker = document.createElement('strong');
+      speaker.textContent = message.role === 'user' ? 'Du' : 'Luna';
+      meta.append(speaker);
+      if (message.created_at) {
+        const timestamp = new Date(message.created_at);
+        if (!Number.isNaN(timestamp.getTime())) {
+          const time = document.createElement('time');
+          time.dateTime = timestamp.toISOString();
+          time.textContent = timestamp.toLocaleString('nb-NO', { dateStyle: 'medium', timeStyle: 'short' });
+          meta.append(time);
+        }
+      }
+      card.append(meta);
       const text = document.createElement('p');
       text.textContent = message.content || '';
       card.append(text);
+      if (message.forkortet) {
+        const truncated = document.createElement('span');
+        truncated.className = 'luna-context-message-truncated';
+        truncated.textContent = 'Meldingen er forkortet i forhåndsvisningen.';
+        card.append(truncated);
+      }
       if (message.role === 'user') {
         const useButton = document.createElement('button');
         useButton.type = 'button';
-        useButton.textContent = 'Bruk i søkefeltet';
+        useButton.textContent = message.forkortet
+          ? 'Bruk utdrag i søkefeltet'
+          : 'Bruk i søkefeltet';
         useButton.addEventListener('click', () => {
           $('#search-input').value = message.content || '';
           $('#search-input').focus();
