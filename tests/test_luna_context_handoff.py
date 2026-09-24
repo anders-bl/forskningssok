@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Iterator
+from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import Route, sync_playwright
 
@@ -66,6 +67,14 @@ def api_fixture(route: Route) -> None:
                 },
             ],
         }
+    elif path.endswith("/api/papir/10.1234%2Fdemo"):
+        payload = {
+            "tittel": "Kilde med æ, &, og spørsmål?",
+            "forfattere": "Ulven, A.",
+            "aar": 2024,
+            "doi": "10.5555/demo-source",
+            "abstract": "Kort abstract.",
+        }
     route.fulfill(status=200, content_type="application/json", body=json.dumps(payload))
 
 
@@ -95,4 +104,26 @@ def test_invalid_luna_thread_reference_does_not_create_a_return_link() -> None:
         page.goto(f"{base_url}/?luna_samtale=../../517", wait_until="networkidle")
 
         assert page.locator("#luna-thread-return").is_hidden()
+        browser.close()
+
+
+def test_selected_source_can_resume_the_same_luna_thread() -> None:
+    with frontend_server() as base_url, sync_playwright() as playwright:
+        browser = playwright.chromium.launch()
+        page = browser.new_page()
+        page.route("**/api/**", api_fixture)
+        page.goto(f"{base_url}/?luna_samtale=517", wait_until="networkidle")
+        page.evaluate("openPaper('10.1234/demo')")
+
+        link = page.get_by_role("link", name="Fortsett i Luna med denne kilden")
+        link.wait_for(state="visible")
+        target = link.get_attribute("href")
+        assert target is not None
+        parsed = urlparse(target)
+        assert parsed.netloc == "portal.lauvasdata.no"
+        assert parsed.path == "/luna"
+        query = parse_qs(parsed.query)
+        assert query["samtale"] == ["517"]
+        assert "Kilde med æ, &, og spørsmål?" in query["q"][0]
+        assert "10.5555/demo-source" in query["q"][0]
         browser.close()
