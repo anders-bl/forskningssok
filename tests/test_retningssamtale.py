@@ -185,6 +185,18 @@ def test_linse_hull_tomt_korpus_gir_alle_akser_null():
     assert all(v == 0 for v in hull.values())
 
 
+def test_linse_domenetreff_knytter_ordtreff_til_stabile_kilde_ider():
+    papirer = [
+        _p("lever-1", tittel="Liver histopathology in farmed salmon"),
+        _p("miljo-1", tittel="Environmental temperature effects", abstract="salinity and co2"),
+        _p("uten-treff", tittel="Unrelated topic"),
+    ]
+    treff = rs.linse_domenetreff(papirer)
+    assert treff["Lever"] == ["lever-1"]
+    assert treff["Miljøfaktorer"] == ["miljo-1"]
+    assert "uten-treff" not in {ident for ids in treff.values() for ident in ids}
+
+
 # ---------- bygg_prompt ----------
 
 def test_bygg_prompt_baerer_kilde_id_og_de_tre_linsene():
@@ -258,6 +270,7 @@ def test_lag_review_beholder_proveniens_og_ai_status(monkeypatch):
     assert review["status"] == "fullfort"
     assert review["ai"] == {"brukt": True, "avvist": []}
     assert review["kilder"][0]["id"] == "ekte-id"
+    assert review["linser"]["domenetreff"] == {}
     kjort = [d for d in review["sok"]["detaljer"].values() if d["kjort"]]
     assert kjort and kjort[0]["revisjon"]["kilder"] == {"core": True}
     assert "[#ekte-id]" in review["rapport"]

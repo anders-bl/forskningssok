@@ -264,6 +264,21 @@ def linse_hull(papirer: list) -> dict[str, int]:
     return dict(c)
 
 
+def linse_domenetreff(papirer: list) -> dict[str, list[str]]:
+    """Koble hver akse til stabile kilde-ID-er via samme eksplisitte ordtreff som hull-tellingen.
+
+    Dette er et navigasjonsspor, ikke en faglig klassifisering. Konsumenter må vise
+    at treffene er mekaniske og la kildene kunne inspiseres.
+    """
+    treff: dict[str, list[str]] = {akse: [] for akse in scoping.AKSER}
+    for papir in papirer:
+        tekst = f"{papir.tittel or ''} {papir.abstract or ''}"
+        for akse, dekning in scoping.akse_dekning(tekst).items():
+            if dekning > 0:
+                treff.setdefault(akse, []).append(papir.id)
+    return {akse: ids for akse, ids in treff.items() if ids}
+
+
 def _til_dict(p) -> dict:
     """PaperDossier → dict-shapen syntese_fortelling.py sine gjenbrukte funksjoner
     (verifiser_kilder/lag_referanseliste) forventer."""
@@ -390,7 +405,7 @@ def lag_review(fritekst: str) -> dict:
             "input": {"fritekst": ""},
             "sok": {"fraser": {}, "detaljer": {}},
             "kilder": [],
-            "linser": {"aktuell": [], "glemt": [], "hull": {}},
+            "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {}},
             "ai": {"brukt": False, "avvist": []},
             "rapport": "Ingen tekst å jobbe med.",
         }
@@ -408,7 +423,7 @@ def lag_review(fritekst: str) -> dict:
             "input": {"fritekst": fritekst},
             "sok": sok_meta,
             "kilder": [],
-            "linser": {"aktuell": [], "glemt": [], "hull": {}},
+            "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {}},
             "ai": {"brukt": False, "avvist": []},
             "rapport": (f"Ingen kilder funnet for dine tanker rundt dette — verken norsk eller "
                          f"engelsk søk ga treff.\nSøkefraser prøvd: {sokt}"),
@@ -441,7 +456,8 @@ def lag_review(fritekst: str) -> dict:
         "input": {"fritekst": fritekst},
         "sok": sok_meta,
         "kilder": papirer,
-        "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull},
+        "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull,
+                   "domenetreff": linse_domenetreff(papirer_obj)},
         "ai": {"brukt": ai_brukt, "avvist": avvist},
         "rapport": "\n".join(ut),
     }
