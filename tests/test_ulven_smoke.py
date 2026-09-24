@@ -52,6 +52,20 @@ def test_ulven_flaten_har_status_og_smoke_landemerker() -> None:
     assert "Kilder: ${kildeStatus}" in html
 
 
+def test_doi_handoff_velger_ikke_fremmed_treff_ved_manglende_doi() -> None:
+    html = FRONTEND.read_text(encoding="utf-8")
+    start = html.index("async function utforSok(")
+    slutt = html.index("\n}\n", start) + 2
+    sokefunksjon = html[start:slutt]
+
+    assert "if (foretrukket) openPaper(foretrukket.id);" in sokefunksjon
+    assert (
+        "else if (!foretrukketDoi && data.papirer.length) "
+        "openPaper(data.papirer[0].id);"
+    ) in sokefunksjon
+    assert "Fant ikke et eksakt DOI-treff" in sokefunksjon
+
+
 def test_ulven_hovedreise_beholder_revisjon_og_resultater() -> None:
     treff = [_papir()]
     revisjon = {
