@@ -126,4 +126,12 @@ def test_selected_source_can_resume_the_same_luna_thread() -> None:
         assert query["samtale"] == ["517"]
         assert "Kilde med æ, &, og spørsmål?" in query["q"][0]
         assert "10.5555/demo-source" in query["q"][0]
+        assert json.loads(query["kilde"][0]) == {
+            "kildeapp": "forskningssok",
+            "papir_id": "10.1234/demo",
+            "tittel": "Kilde med æ, &, og spørsmål?",
+            "forfattere": "Ulven, A.",
+            "aar": 2024,
+            "doi": "10.5555/demo-source",
+        }
         browser.close()

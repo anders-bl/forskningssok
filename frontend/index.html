@@ -1185,7 +1185,15 @@ async function openPaper(id) {
     ].filter(Boolean);
     const lunaUrl = new URL('https://portal.lauvasdata.no/luna');
     lunaUrl.searchParams.set('samtale', lunaSamtale);
-    lunaUrl.searchParams.set('q', promptLines.join('\n').slice(0, 8000));
+    lunaUrl.searchParams.set('q', promptLines.join('\n').slice(0, 1800));
+    lunaUrl.searchParams.set('kilde', JSON.stringify({
+      kildeapp: 'forskningssok',
+      papir_id: id,
+      tittel: p.tittel || 'Uten tittel',
+      forfattere: p.forfattere || null,
+      aar: p.aar || null,
+      doi: p.doi ? normaliserDoi(p.doi) : null,
+    }));
     lunaFollowup.href = lunaUrl.toString();
     lunaFollowup.hidden = false;
   } else {
