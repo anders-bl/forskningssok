@@ -775,6 +775,35 @@ når spørringen ville brukt en annen modell enn utdraget. Uten `bank_utdrag.db`
 uendret. Måling 2026-09-25: utdraget gir identiske avstander og treff som `boker.db` for samme
 spørring (bge-m3-bygg av delutdrag), så eksport og bygg er trofaste.
 
+## Artsnivå: hva handler dette om (2026-09-25, `art_niva.py`)
+
+`arts_naer_tekst` er en ja/nei-test over én liste der generelle ord («fish», «aquaculture»)
+står ved siden av selve målarten, så en sjøpølse-artikkel ble «artsnær». `art_niva.klassifiser`
+gir i stedet fire nivå, med bevis (kilde og termer): `maal` (laksefisk), `naer` (annen/uspesifisert
+fisk og akvakultur), `annet` (skalldyr, pattedyr, mennesker) og `ingen`. Termlistene bor i
+`profiler/*.toml` (`[art.niva]`); en profil uten den faller tilbake til ja/nei og sier det
+(`kilde="legacy"`). Signal, aldri filter: ingenting tas bort.
+
+Syntese-prompten bruker nivået: bare `maal` blir DIREKTE_KANDIDAT (regel 5/6). Rangeringen
+(`ranking.py`) bruker fortsatt `arts_naer_tekst`, uendret.
+
+Målt mot en håndlest fasit på 145 artikler (`tests/fixtures/art_fasit.json`; bank-utdraget og en
+fast-frø-trekning fra cachen; hash-delt i utvikling 78 / holdout 67). Fasiten er merket av én modell
+før noen regel ble kjørt, ikke av et menneske, og usikre tilfeller er holdt utenfor.
+
+| | maal-presisjon | maal-gjenfinning | fire nivå riktig |
+|---|---|---|---|
+| gammel ja/nei (tittel+tekst) | 25 % holdout / 33 % utvikling | 100 % | ikke definert |
+| `art_niva` (holdout, målt én gang) | 92 % | 100 % | 91 % |
+| `art_niva` (utvikling, justert mot) | 94 % | 100 % | 95 % |
+
+Tre justeringsrunder mot utviklingsdelen (`salmo` traff «salmoides»/«salmonella», tittel-
+rangering mot generelle ord, andelskrav for tekstbaserte maal-treff); holdout ble ikke sett før
+sluttmålingen. Kjente svakheter: organismer utenfor listene blir `ingen` i stedet for `annet`
+(4 av 6 holdout-feil), et laksederivat testet i rotter blir `maal` (MeSH sier «Salmon»), og
+tekst på andre språk enn norsk/engelsk (japansk) treffer ikke. Mål på nytt med
+`python art_niva_eval.py [--holdout]` etter enhver endring i termlistene.
+
 ## Overvåking — hva som dekker hva (2026-09-04)
 
 Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en

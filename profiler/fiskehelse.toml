@@ -80,7 +80,7 @@ termer = [
 # «salmon arm» er et STEDSNAVN (by i British Columbia) — samme homonym-klasse som
 # legemiddelnavnet over, funnet ved korpus-inspeksjon 2026-09-04: «A Salmon Arm scrapbook»
 # lå i cachen med arts_naer=True og ble båndet OPP over ekte fiskehelse-papirer.
-kollisjoner = ["salmon calcitonin", "salmon arm"]
+kollisjoner = ["salmon calcitonin", "salmon arm", "salmonella"]
 # MeSH-descriptorer som betyr «dette handler om målobjektet». Valgt fra NLMs vokabular
 # 2026-09-04, FØR måling og uten å se på hvilke cachede papirer som bærer hvilke —
 # ellers ville lista vært tilpasset svaret (forhåndsregistreringen sier hvorfor).
@@ -89,6 +89,45 @@ kollisjoner = ["salmon calcitonin", "salmon arm"]
 mesh_termer = [
   "Salmo salar", "Salmonidae", "Oncorhynchus", "Fishes", "Fish Diseases",
   "Aquaculture", "Fisheries", "Trout", "Salmon",
+]
+
+[art.niva]
+# Nivåinndeling av «hva handler dette om»: maal > naer > annet > ingen. Erstatter ikke
+# `termer` over (rangeringen bruker den fortsatt), men gir syntesen og bank-bakgrunnen et
+# skille ja/nei-testen ikke kan: «fish» og «aquaculture» står i `termer`, så en sjøpølse-
+# artikkel ble målt som artsnær (22 av 32 tittel-treff falske mot en håndlest fasit,
+# 2026-09-25). Termene er skrevet FØR noen fasit ble sett; de justeres kun mot utviklings-
+# delen av fasiten (tests/fixtures/art_fasit.json), aldri mot den tilbakeholdte delen.
+#   maal   = målobjektet selv (laksefisk)
+#   naer   = samme fagområde, annen/uspesifisert fisk eller akvakultur generelt
+#   annet  = organismer utenfor fagområdet: skalldyr/bløtdyr og pattedyr/mennesker
+# Treff er ordgrense-basert: korte termer (<5 tegn) må matche hele ordet, lengre matcher
+# ordstart så «salmonid» og «trouts» treffer. Norske sammensetninger står oppført eksplisitt.
+# MeSH-descriptorer som alene avgjør «maal» (de brede i `mesh_termer`, som «Fishes», gir bare «naer»).
+mesh_maal = ["Salmo salar", "Salmonidae", "Oncorhynchus", "Trout", "Salmon"]
+maal = [
+  "salmon", "salmo salar", "salmo trutta", "laks", "oppdrettslaks", "smolt", "post-smolt", "salmonid", "oncorhynchus",
+  "trout", "ørret", "regnbueørret", "sea lice", "lepeophtheirus", "lakselus", "ihnv",
+  "infectious hematopoietic necrosis", "salmonid alphavirus", "moritella",
+]
+naer = [
+  "fish", "finfish", "teleost", "aquaculture", "oppdrett", "aquatic animal", "tilapia", "oreochromis",
+  "zebrafish", "danio", "catfish", "clarias", "ictalurus", "carp", "seabass", "sea bass", "sea bream",
+  "seabream", "eel", "anguilla", "cod", "grouper", "epinephelus", "sturgeon", "koi", "croaker",
+  "sardine", "flounder", "tuna", "halibut", "bream", "perch", "pikeperch", "micropterus", "largemouth bass",
+  "stumpnose", "tongue sole", "mullet", "medaka", "cichlid", "coregonus", "whitefish", "seafood",
+  "otolith",
+]
+# Ord i `naer` som ikke sier noe om HVILKEN organisme: i en tittel taper de mot en spesifikk
+# annet-term («sea cucumber aquaculture» handler om sjøpølse, ikke fisk).
+generisk = ["aquaculture", "oppdrett", "aquatic animal"]
+annet = [
+  "shrimp", "prawn", "crab", "lobster", "crayfish", "crustacean", "oyster", "mussel", "clam",
+  "abalone", "scallop", "mollus", "bivalve", "sea cucumber", "octopus", "squid",
+  "patients", "patient", "children", "women", "mice", "mouse", "rats", "cattle", "pigs", "poultry",
+  "chicken", "dogs", "raccoon", "livestock", "lizard", "reptile", "bird", "birds", "ornitholog", "tiger",
+  "deer", "whale", "mammal", "cyanobacteri", "osteoporosis", "cancer", "tumor", "tumour", "surgery",
+  "cardiovascular", "cataract",
 ]
 
 [akser]

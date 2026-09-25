@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import domeneprofil  # noqa: E402
 from ai_assistent import hent_fra_cache  # noqa: E402
 from paths import DB  # noqa: E402
-from domeneprofil import arts_naer_tekst, domene_naer_tekst  # noqa: E402
+from art_niva import klassifiser as art_niva  # noqa: E402
+from domeneprofil import domene_naer_tekst  # noqa: E402
 from ranking import ranger_cachede  # noqa: E402
 
 # Matcher [#<id>] — id-en er cachet papers.id. I praksis kan dette være DOI eller
@@ -77,9 +78,9 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
     Instruksen i punkt 1-4 er en avtale med modellen, ikke en garanti —
     verifiser_kilder() er garantien."""
     def kildeblokk(p: dict) -> str:
-        artstekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
         domenetekst = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
-        art = arts_naer_tekst(artstekst)
+        niva = art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva
+        art = niva == "maal"
         domene = domene_naer_tekst(domenetekst)
         kategori = "DIREKTE_KANDIDAT" if art else "ANALOGI_ELLER_BAKGRUNN"
         if p.get("kilde") == "bok-bank" and not art:
@@ -90,11 +91,11 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
             f"[{kategori}] [#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
             f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
             f"kilde={p.get('kilde', '?')}\n"
-            f"Artsnær={art} Domenenær={domene}\n"
+            f"Artsnivå={niva} Domenenær={domene}\n"
             f"Abstract: {p.get('abstract') or '(ingen abstract tilgjengelig)'}"
         )
 
-    direkte = [p for p in papirer if arts_naer_tekst(f"{p.get('tittel') or ''} {p.get('abstract') or ''}")]
+    direkte = [p for p in papirer if art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva == "maal"]
     analogier = [p for p in papirer if p not in direkte]
     kildeliste = (
         "DIREKTE_KANDIDATER — kan brukes som direkte evidens for målobjektet:\n"
@@ -112,7 +113,9 @@ STRENGE REGLER (brudd gjør outputen ubrukelig og blir fjernet mekanisk etterpå
 3. Mangler god kildedekning for et poeng, skriv det ærlig
    ("Ingen kilder i utvalget dekker dette") — ikke fyll ut med antakelser.
 4. Dikt ALDRI opp en [#id] som ikke står i kildelisten. Den blir oppdaget og fjernet.
-5. En kilde med Artsnær=False er ikke direkte evidens for målarten. Bruk den bare
+5. En kilde med Artsnivå annet enn maal er ikke direkte evidens for målarten
+   (naer = annen eller uspesifisert art, annet = organisme utenfor fagområdet,
+   ingen = ingen organisme nevnt). Bruk den bare
    som eksplisitt merket analogi eller bakgrunn, og skriv hva som er overført og hva som
    ikke er dokumentert hos målobjektet. Ikke bruk humanmedisin eller andre arter som om
    de var forsøk på målobjektet.
