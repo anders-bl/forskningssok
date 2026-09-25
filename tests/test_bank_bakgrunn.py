@@ -113,6 +113,7 @@ def test_lag_syntese_uten_flagg_rorer_ikke_banken(monkeypatch, tmp_path):
     monkeypatch.setattr(syntese_fortelling, "hent_kandidater",
                         lambda emne, db_path=None: [{"id": 1, "tittel": "A", "forfattere": "X", "aar": 2024}])
     monkeypatch.setattr(syntese_fortelling, "kall_llm", lambda prompt: kall.append(prompt) or "Fakta [#1].")
+    monkeypatch.setattr(bank_bakgrunn, "utdrag_finnes", lambda: False)
     monkeypatch.setattr(bank_bakgrunn, "hent_bakgrunn",
                         lambda *a, **k: pytest.fail("banken skal ikke søkes uten bank_bakgrunn=True"))
     ut = syntese_fortelling.lag_syntese_fortelling("emne")

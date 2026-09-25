@@ -740,6 +740,41 @@ reportlab Platypus, men genererer Typst-kilde (`til_typst()`) og kompilerer den 
 Neste ledd i standarden er å løfte `rapport_mal.typ` og emitteren ut som felles motor når
 stromkontrol migrerer; til da bor de her, bygget for å kunne løftes.
 
+## Bok-banken som BAKGRUNN i syntesen (2026-09-25)
+
+`syntese_fortelling.py` kan legge nærmeste chunks fra husets bok-bank (`bøker/boker.db`) til
+som eget merket BAKGRUNN-lag ved siden av de cachede papirene. Bankposter siteres som
+`[#bank:<chunk_id>]` og går gjennom samme `verifiser_kilder()`-gate; en artsnær post får
+DIREKTE_KANDIDAT, resten BANK_BAKGRUNN (kan ikke støtte påstander om målobjektet alene).
+Kildeblokken i utdata viser `[bok-bank, avstand ...]`, og `[BANK-BAKGRUNN: ...]` sier alltid
+om banken ble brukt og hvorfor ikke.
+
+To veier, samme utdata (`bank_bakgrunn.py`):
+
+| | Lokalt (Anders' Mac) | Prod (Dokploy) |
+|---|---|---|
+| Kilde | `boker.db`, hele banken | `bank_utdrag.db`, utdrag i volumet |
+| Embedder | bge-m3 (Ollama) | mistral-embed (ai-proxy), samme som cachen |
+| Terskel | kalibrerte bånd, MØRKT slippes ikke inn | ingen kalibrerte bånd: rangering + maks 2 chunks per bok |
+| På når | `--bank` / `bank_bakgrunn=True` | automatisk når `bank_utdrag.db` er bygget |
+
+Prod har ikke `boker.db`, og bankens bge-m3-vektorer kan ikke brukes med mistral-embed
+(annet vektorrom). Derfor tas TEKSTEN til fagfeltets del av banken med
+(`bank_proveniens` i profilen) og embeddes på nytt der søket kjører. Ingen ny inngående flate.
+
+```bash
+# 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit
+venv/bin/python bank_utdrag.py eksporter
+# 2. Etter deploy, i containeren (embedder ~4 700 chunks via ai-proxy; idempotent, kan gjentas):
+docker exec <forskningssok-container> python bank_utdrag.py bygg
+docker exec <forskningssok-container> python bank_utdrag.py status
+```
+
+`bygg` nekter å blande modeller i ett utdrag (`meta.embed_modell`), og `sok()` nekter å søke
+når spørringen ville brukt en annen modell enn utdraget. Uten `bank_utdrag.db` er oppførselen
+uendret. Måling 2026-09-25: utdraget gir identiske avstander og treff som `boker.db` for samme
+spørring (bge-m3-bygg av delutdrag), så eksport og bygg er trofaste.
+
 ## Overvåking — hva som dekker hva (2026-09-04)
 
 Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en

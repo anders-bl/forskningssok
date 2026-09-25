@@ -394,25 +394,30 @@ def lag_referanseliste(papirer: list[dict]) -> str:
         f"{p.get('tittel', '(uten tittel)')}. "
         + (f"DOI: {p['doi']}. " if p.get("doi") else "")
         + (f"URL: {p['kilde_url']}" if p.get("kilde_url") else "(ingen ekstern lenke)")
-        + (f" [bok-bank, avstand {p['bank_avstand']} {p['bank_band']}]" if p.get("kilde") == "bok-bank" else "")
+        + (f" [bok-bank, avstand {p['bank_avstand']}{' ' + p['bank_band'] if p.get('bank_band') else ''}]" if p.get("kilde") == "bok-bank" else "")
         for p in papirer
     )
 
 
-def lag_syntese_fortelling(emne: str, db_path: Path = DB, *, bank_bakgrunn: bool = False) -> str:
+def lag_syntese_fortelling(emne: str, db_path: Path = DB, *, bank_bakgrunn: bool | None = None) -> str:
     """Hovedfunksjon: hent kilder → prompt → kall LLM → verifiser kilder → returner.
 
     `bank_bakgrunn=True` legger bok-bankens nærmeste chunks til som BAKGRUNN (se
-    bank_bakgrunn.py). Av som standard, og lokalt-only: uten boker.db eller bge-m3-embedder
-    fortsetter syntesen uten bank og sier hvorfor i utdata, aldri stille."""
+    bank_bakgrunn.py); uten boker.db/utdrag eller embedder fortsetter syntesen uten bank og
+    sier hvorfor i utdata, aldri stille. None (standard) = automatisk: på bare når et
+    bygd bank_utdrag.db finnes, altså når noen bevisst har satt banken opp der syntesen kjører.
+    Uten utdrag er oppførselen uendret, så prod endres ikke av selve koden."""
     papirer = hent_kandidater(emne, db_path)
     if not papirer:
         return (f"Ingen kilder i cachen for «{emne}».\n"
                  f'Kjør først: python3 cli.py "{emne}" --oppdater')
 
     bank_notat = ""
+    if bank_bakgrunn is None:
+        import bank_bakgrunn as bb  # lokal import: modulen er valgfri
+        bank_bakgrunn = bb.utdrag_finnes()
     if bank_bakgrunn:
-        import bank_bakgrunn as bb  # lokal import: modulen er valgfri og lokal
+        import bank_bakgrunn as bb  # lokal import: modulen er valgfri
         bakgrunn, bank_status = bb.hent_bakgrunn(emne)
         papirer = papirer + bakgrunn
         bank_notat = (

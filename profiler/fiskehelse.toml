@@ -22,6 +22,12 @@ sok_eksempel = "nephrocalcinosis smolt seawater transfer"
 # validerer den IKKE som påkrevd — et fagfelt uten eget utstyrsspor lar bare feltet stå
 # tomt, og dossier.py hopper stille over utvidelsen.
 sok_utstyr = "aquaculture fish imaging ultrasound X-ray computer vision sensor"
+# Valgfritt: hvilken del av bok-banken (bøker/boker.db) som hører til dette fagfeltet, som
+# proveniens-prefikser. bank_utdrag.py eksporterer akkurat disse til prod-utdraget som
+# syntese-laget bruker som BAKGRUNN. «epmc:» er Europe PMC OA-artikler (verifisert CC BY),
+# «core:fiskehelse» de CORE-verkene som passerte lisensgaten i fold_op.py. Tom/mangler =
+# ingen bank-bakgrunn for dette fagfeltet.
+bank_proveniens = ["epmc:", "core:fiskehelse"]
 
 [domene]
 # Domene-nærhet matches mot forfatter-affiliasjon + tidsskriftnavn — de to strengene
