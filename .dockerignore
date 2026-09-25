@@ -8,3 +8,6 @@ cache.db
 # Testene kjøres aldri i containeren. profiler/ er IKKE her — den MÅ med,
 # domeneprofil.py laster den ved import og feiler høyt hvis den mangler.
 tests/
+# Frittstående analyseverktøy (requirements-scivis.txt); serveren importerer det aldri.
+scivis_koblinger.py
+requirements-scivis.txt

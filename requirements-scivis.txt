@@ -1,0 +1,8 @@
+# Kun for scivis_koblinger.py (frittstående landskaps-verktøy, brukes ikke av serveren).
+# Holdt utenfor requirements.txt med vilje: produksjonsimaget skal ikke dra med seg disse.
+#   pip install -r requirements-scivis.txt
+-r requirements.txt
+numpy
+scikit-learn
+# Valgfri, gir bedre layout enn t-SNE-reserven:
+umap-learn

@@ -26,15 +26,25 @@ import math
 from pathlib import Path
 from datetime import datetime
 
-# Prøv å importere umap-learn, fall tilbake til t-SNE hvis ikke tilgjengelig
+# Frittstående analyseverktøy med tunge avhengigheter som serveren aldri bruker. De bor i
+# requirements-scivis.txt, ikke requirements.txt, så produksjonsimaget ikke drar med seg
+# numpy/scikit-learn (2026-09-25; var udeklarert, og feilet med rå ImportError i
+# prosjektets egen venv). umap-learn er valgfri: t-SNE er reserve.
+try:
+    import numpy as np
+except ImportError:
+    raise SystemExit("scivis_koblinger.py krever numpy og scikit-learn:\n"
+                     "    pip install -r requirements-scivis.txt")
 try:
     import umap
     HAS_UMAP = True
 except ImportError:
     HAS_UMAP = False
-    from sklearn.manifold import TSNE
-
-import numpy as np
+    try:
+        from sklearn.manifold import TSNE
+    except ImportError:
+        raise SystemExit("scivis_koblinger.py krever scikit-learn (eller umap-learn):\n"
+                         "    pip install -r requirements-scivis.txt")
 
 import domeneprofil
 
