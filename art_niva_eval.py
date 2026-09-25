@@ -16,6 +16,7 @@ from pathlib import Path
 
 import art_niva
 import domeneprofil
+import tema
 
 FASIT = Path(__file__).resolve().parent / "tests" / "fixtures" / "art_fasit.json"
 NIVAER = art_niva.NIVAER
@@ -48,6 +49,27 @@ def rapport(gull: list[dict]) -> dict:
     return ut
 
 
+def tema_rapport(gull: list[dict]) -> dict:
+    """Mikro-snitt over alle (artikkel, tema)-par + hver artikkels eksakte mengde. Bare artikler
+    merket med tema i fasiten (fiskerelaterte) telles."""
+    tp = fp = fn = eksakt = n = 0
+    per = Counter()
+    for g in gull:
+        if "tema" not in g:
+            continue
+        n += 1
+        gold = set(g["tema"])
+        pred = {f.tema for f in tema.klassifiser(g["tittel"], g["tekst"])}
+        tp += len(gold & pred); fp += len(pred - gold); fn += len(gold - pred)
+        eksakt += gold == pred
+        for t in gold - pred:
+            per[("mistet", t)] += 1
+        for t in pred - gold:
+            per[("falsk", t)] += 1
+    return {"n": n, "presisjon": tp / (tp + fp) if tp + fp else None, "gjenfinning": tp / (tp + fn) if tp + fn else None,
+            "eksakt": eksakt / n if n else None, "tp": tp, "fp": fp, "fn": fn, "per": per}
+
+
 def main():
     a = argparse.ArgumentParser()
     a.add_argument("--holdout", action="store_true")
@@ -64,6 +86,12 @@ def main():
     print(f"  ny, alle fire nivå riktig: {r['ny']['nivaa_riktig']:.0%}")
     for (fasit, pred), n in sorted(r["ny"]["forvekslinger"].items(), key=lambda x: -x[1]):
         print(f"    fasit {fasit:6} -> ny {pred:6} x{n}")
+    tr = tema_rapport(gull)
+    print(f"  temaer ({tr['n']} artikler): presisjon {tr['presisjon']:.0%} gjenfinning {tr['gjenfinning']:.0%}"
+          f" eksakt mengde {tr['eksakt']:.0%} (tp {tr['tp']} fp {tr['fp']} fn {tr['fn']})")
+    if args.feil and not args.holdout:
+        for (hva, t), c in sorted(tr["per"].items(), key=lambda x: -x[1])[:14]:
+            print(f"    {hva:6} {t:13} x{c}")
     if args.feil and not args.holdout:
         for g in gull:
             f = art_niva.klassifiser(g["tittel"], g["tekst"], g["mesh"])

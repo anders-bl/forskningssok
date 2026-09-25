@@ -130,6 +130,39 @@ annet = [
   "cardiovascular", "cataract",
 ]
 
+[tema]
+# Temaer per artikkel, utledet fra INNHOLDET (tittel + tekst), flere per artikkel. Erstatter ikke
+# `akser` under (de er forskningsakser for Omfang-panelet, ikke emner), og er ikke bank-samlingen:
+# samlingsnavnet (nyrehelse, vaksine, ...) speiler søket som fant artikkelen, ikke hva den handler om.
+# Termene er skrevet før noen tema-fasit ble sammenlignet; justeres kun mot utviklingsdelen.
+# Regler (tema.py): treff i tittelen gir temaet; ellers kreves minst to treff i teksten.
+# Korte termer (<5 tegn) må være hele ord, lengre matcher ordstart.
+nyre = ["kidney", "renal", "nephro", "nephrocalcinosis", "calcification", "calcium", "magnesium",
+        "urine", "osmoregulation", "ionoregulation", "urolith", "nyre", "kalsium"]
+lever = ["liver", "hepat", "steatosis", "lipid metabolism", "lever"]
+bildediagn = ["ultrasound", "ultrasonography", "radiograph", "x-ray", "mri", "tomograph", "sonograph",
+              "echograph", "imaging", "ultralyd"]
+maskinsyn = ["computer vision", "machine vision", "deep learning", "neural network", "convolutional",
+             "image analysis", "image processing", "image recognition", "yolo", "machine learning",
+             "artificial intelligence", "iot", "internet of things", "camera"]
+infeksjon = ["virus", "viral", "bacteri", "parasit", "pathogen", "infection", "infectious", "lice",
+             "amoeb", "fungal", "fungi", "disease outbreak", "antimicrobial", "antibiotic", "mortality"]
+immun = ["vaccin", "immun", "antibod", "adjuvant", "probiotic", "inflammat"]
+velferd = ["welfare", "stress", "stocking density", "behaviour", "behavior", "slaughter", "stunning",
+           "enrichment", "velferd"]
+miljo = ["water quality", "temperature", "salinity", "oxygen", "ammonia", "co2", "carbon dioxide", "ras",
+         "recirculating", "environmental", "hypoxia", "sediment", "climate", "vannkjemi"]
+ernaring = ["diet", "dietary", "feed", "nutrition", "fishmeal", "fish meal", "supplementation", "protein",
+            "aquafeed", "fôr"]
+genetikk = ["genetic", "genome", "gene expression", "breeding", "triploid", "hybrid", "transcriptom",
+            "heritab", "gene editing", "crispr", "genotype"]
+skjelett = ["skeletal", "vertebra", "deformit", "bone", "osteo", "skjelett"]
+reproduksjon = ["reproduct", "maturation", "sexual", "sterility", "spawning", "gonad", "sex determination",
+                "fecundity"]
+overvaking = ["surveillance", "monitoring", "detection", "biomarker", "screening", "sensor", "diagnos",
+              "overvåking"]
+okonomi = ["economic", "price", "prices", "cost", "market", "profit", "bioeconomic", "harvest planning"]
+
 [akser]
 # Forskningsakser for «Omfang»-panelet (idébank #28: faser/miljøfaktorer/regenerasjon;
 # idébank #30: lever/ultralyd-validering). Nøkkelord-tilstedeværelse, bevisst kjedelig —

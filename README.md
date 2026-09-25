@@ -804,6 +804,21 @@ sluttmålingen. Kjente svakheter: organismer utenfor listene blir `ingen` i sted
 tekst på andre språk enn norsk/engelsk (japansk) treffer ikke. Mål på nytt med
 `python art_niva_eval.py [--holdout]` etter enhver endring i termlistene.
 
+### Temaer per artikkel (`tema.py`)
+
+Bank-samlingene (`nyrehelse`, `vaksine`, `velferd`, ...) er navngitt etter søket som fant artikkelen,
+og gir ett tema per artikkel. `tema.klassifiser` gir i stedet flere temaer utledet fra tittel og
+tekst, med bevis: 14 temaer i profilen (`[tema]`: nyre, lever, bildediagn, maskinsyn, infeksjon, immun,
+velferd, miljo, ernaring, genetikk, skjelett, reproduksjon, overvaking, okonomi). Tittelen gir temaet;
+ellers kreves fire treff fordelt på tre ulike termer i teksten. Terskelene ble valgt med et rutenett
+over utviklingsdelen (én enkelt omtale ga 55 % presisjon).
+
+Målt på de 94 fiskerelaterte artiklene i fasiten (temaene er merket av én modell, flere temaer per
+artikkel, én usikker utelatt): utvikling 78 % presisjon / 84 % gjenfinning / 59 % eksakt mengde; holdout
+(målt én gang) **71 % / 84 % / 49 %**. Samling-som-tema på bank-artiklene: 57 % / 36 %, mot 71 % / 91 %
+for innholdsavledet (dette delsettet inkluderer utviklingsartikler brukt til justering). Ikke koblet til
+noen flate ennå; funksjonen er tilgjengelig for syntese, bank-eksport og Omfang.
+
 ## Overvåking — hva som dekker hva (2026-09-04)
 
 Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en
