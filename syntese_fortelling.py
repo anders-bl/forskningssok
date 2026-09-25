@@ -82,6 +82,10 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
         art = arts_naer_tekst(artstekst)
         domene = domene_naer_tekst(domenetekst)
         kategori = "DIREKTE_KANDIDAT" if art else "ANALOGI_ELLER_BAKGRUNN"
+        if p.get("kilde") == "bok-bank" and not art:
+            # Bankens bakgrunn er kuratert kontekst, ikke funn for målobjektet: egen
+            # merkelapp så modellen (og en leser av prompten) ser hvor den kom fra.
+            kategori = "BANK_BAKGRUNN"
         return (
             f"[{kategori}] [#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
             f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
@@ -390,16 +394,33 @@ def lag_referanseliste(papirer: list[dict]) -> str:
         f"{p.get('tittel', '(uten tittel)')}. "
         + (f"DOI: {p['doi']}. " if p.get("doi") else "")
         + (f"URL: {p['kilde_url']}" if p.get("kilde_url") else "(ingen ekstern lenke)")
+        + (f" [bok-bank, avstand {p['bank_avstand']} {p['bank_band']}]" if p.get("kilde") == "bok-bank" else "")
         for p in papirer
     )
 
 
-def lag_syntese_fortelling(emne: str, db_path: Path = DB) -> str:
-    """Hovedfunksjon: hent kilder → prompt → kall LLM → verifiser kilder → returner."""
+def lag_syntese_fortelling(emne: str, db_path: Path = DB, *, bank_bakgrunn: bool = False) -> str:
+    """Hovedfunksjon: hent kilder → prompt → kall LLM → verifiser kilder → returner.
+
+    `bank_bakgrunn=True` legger bok-bankens nærmeste chunks til som BAKGRUNN (se
+    bank_bakgrunn.py). Av som standard, og lokalt-only: uten boker.db eller bge-m3-embedder
+    fortsetter syntesen uten bank og sier hvorfor i utdata, aldri stille."""
     papirer = hent_kandidater(emne, db_path)
     if not papirer:
         return (f"Ingen kilder i cachen for «{emne}».\n"
                  f'Kjør først: python3 cli.py "{emne}" --oppdater')
+
+    bank_notat = ""
+    if bank_bakgrunn:
+        import bank_bakgrunn as bb  # lokal import: modulen er valgfri og lokal
+        bakgrunn, bank_status = bb.hent_bakgrunn(emne)
+        papirer = papirer + bakgrunn
+        bank_notat = (
+            f"[BANK-BAKGRUNN: {bank_status['antall']} bankposter lagt til"
+            f" (beste avstand {bank_status['beste_avstand']}, {bank_status['forkastet_morkt']} forkastet som MØRKT)]"
+            if bank_status["tilgjengelig"] and bakgrunn else
+            f"[BANK-BAKGRUNN: ikke brukt — {bank_status['arsak'] or 'ingen treff'}]"
+        )
 
     prompt = bygg_prompt(emne, papirer)
     rått_svar = kall_llm(prompt)
@@ -430,6 +451,8 @@ def lag_syntese_fortelling(emne: str, db_path: Path = DB) -> str:
             f"{kvalitetsmåling['mangler_kilde_enheter']} faktiske setning(er) mangler "
             "verifiserbar kildehenvisning; syntesen er ikke kvalitetssikret]"
         )
+    if bank_notat:
+        ut.append(f"\n---\n{bank_notat}")
     ut.append(f"\n---\n## Kildeliste ({len(papirer)} kilder)\n{lag_referanseliste(papirer)}")
     return "\n".join(ut)
 
@@ -439,8 +462,10 @@ def main():
     parser.add_argument("--emne", type=str, required=True,
                          help="Emnet syntesen skal handle om")
     parser.add_argument("--db", type=str, default=str(DB), help="Database-sti")
+    parser.add_argument("--bank", action="store_true",
+                         help="Legg bok-bankens nærmeste chunks til som BAKGRUNN (lokalt; se bank_bakgrunn.py)")
     args = parser.parse_args()
-    print(lag_syntese_fortelling(args.emne, Path(args.db)))
+    print(lag_syntese_fortelling(args.emne, Path(args.db), bank_bakgrunn=args.bank))
 
 
 if __name__ == "__main__":
