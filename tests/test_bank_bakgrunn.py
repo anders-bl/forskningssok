@@ -13,6 +13,7 @@ import sqlite_vec
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bank_bakgrunn  # noqa: E402
+import bank_utdrag  # noqa: E402
 import syntese_fortelling  # noqa: E402
 
 DIM = 1024
@@ -45,10 +46,14 @@ def boker_db(tmp_path):
         ("Nephrocalcinosis in farmed salmonids", "nyrehelse", "Intro", "Nephrocalcinosis in salmon kidney.",
          "epmc:nyrehelse:PMC10157097 folded 2026-09-19", _vec(1.0, 0.6)),   # 0.6 skarpt
         ("Human Physiology", "biologi", "Urinary System", "Kidneys regulate calcium.",
-         "wikibooks:biologi:hp folded", _vec(1.0, 0.9)),                    # 0.9 delvis
+         "core:fiskehelse:hp folded", _vec(1.0, 0.9)),                      # 0.9 delvis
         ("Irrelevant kokebok", "mat", None, "Slik lager du pannekaker.", None, _vec(0.0, 1.0)),  # 1.41 MØRKT
+        ("Uratifisert pakke", "humble-september-2026", None, "Ukjent proveniens.",
+         "humble-september-2026:NULL", _vec(1.0, 0.01)),                    # må ikke lekke inn
     ]
     for i, (bok, samling, heading, tekst, prov, v) in enumerate(rader, start=1):
+        if bok == "Irrelevant kokebok":
+            prov = "core:fiskehelse:matbok"
         db.execute("INSERT INTO book_chunks(id, bok, samling, heading, chunk_text, chunk_index, indexed_at, proveniens)"
                    " VALUES (?,?,?,?,?,?,?,?)", (i, bok, samling, heading, tekst, 0, "2026-09-25", prov))
         db.execute("INSERT INTO book_embeddings_v2(chunk_id, embedding) VALUES (?,?)",
@@ -67,6 +72,33 @@ def test_hent_bakgrunn_rangerer_og_forkaster_morkt(boker_db):
     assert status["forkastet_morkt"] == 1
     assert status["beste_avstand"] == pytest.approx(0.6, abs=1e-3)
     assert [p["bank_band"] for p in poster] == ["skarpt", "delvis"]
+
+
+def test_hele_banken_filtreres_paa_proveniens_allowlist(boker_db):
+    poster, _ = bank_bakgrunn.hent_bakgrunn("nephrocalcinosis", db_path=boker_db, embed_fn=_embed)
+    assert all(p["samling"] != "humble-september-2026" for p in poster)
+
+
+def test_manglende_proveniens_allowlist_stenger_bankbakgrunn(boker_db, monkeypatch):
+    import domeneprofil
+    monkeypatch.setattr(domeneprofil, "PROFIL", {"navn": "test"})
+    poster, status = bank_bakgrunn.hent_bakgrunn("nephrocalcinosis", db_path=boker_db, embed_fn=_embed)
+    assert poster == []
+    assert status["tilgjengelig"] is False
+    assert "bank_proveniens" in status["arsak"]
+
+
+def test_utdrag_uten_mistral_kalibrering_failes_lukket(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_PROXY_URL", "http://proxy.invalid")
+    monkeypatch.setattr(bank_utdrag, "finnes", lambda *_a, **_k: True)
+    monkeypatch.setattr(bank_utdrag, "embed_modell", lambda: "mistral-embed")
+    monkeypatch.setattr(bank_utdrag, "sok",
+                        lambda *a, **k: pytest.fail("ukalibrert utdrag skal ikke levere treff"))
+    poster, status = bank_bakgrunn.hent_bakgrunn("irrelevant query", utdrag_db=tmp_path / "unused.db")
+    assert poster == []
+    assert status["tilgjengelig"] is True
+    assert status["kilde"] == "utdrag"
+    assert "mangler kalibrert relevansterskel" in status["arsak"]
 
 
 def test_bankpost_har_verifiserbar_id_og_ekte_lenke_bare_der_den_finnes(boker_db):
@@ -156,10 +188,10 @@ def test_samme_bok_teller_maks_to_ganger(tmp_path):
     db.execute("CREATE VIRTUAL TABLE book_embeddings_v2 USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])")
     for i in range(1, 6):   # fem chunks fra samme bok, stigende avstand
         db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)",
-                   (i, "Bok A", "s", None, f"tekst {i}", i, "2026-09-25", None))
+                   (i, "Bok A", "s", None, f"tekst {i}", i, "2026-09-25", "epmc:test:"))
         db.execute("INSERT INTO book_embeddings_v2(chunk_id, embedding) VALUES (?,?)",
                    (i, sqlite_vec.serialize_float32(_vec(1.0, 0.1 * i))))
-    db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)", (6, "Bok B", "s", None, "annen", 0, "2026-09-25", None))
+    db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)", (6, "Bok B", "s", None, "annen", 0, "2026-09-25", "epmc:test:"))
     db.execute("INSERT INTO book_embeddings_v2(chunk_id, embedding) VALUES (?,?)",
                (6, sqlite_vec.serialize_float32(_vec(1.0, 0.7))))
     db.commit()
@@ -168,3 +200,33 @@ def test_samme_bok_teller_maks_to_ganger(tmp_path):
     boker = [p["tittel"] for p in poster]
     assert boker.count("Bok A") == 2
     assert boker.count("Bok B") == 1
+
+
+def test_adaptiv_overfetch_finner_flere_boker_forbi_tett_forste_bok(tmp_path):
+    sti = tmp_path / "boker.db"
+    db = sqlite3.connect(sti)
+    db.enable_load_extension(True)
+    sqlite_vec.load(db)
+    db.execute("""CREATE TABLE book_chunks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, bok TEXT NOT NULL, samling TEXT NOT NULL,
+        heading TEXT, chunk_text TEXT NOT NULL, chunk_index INTEGER NOT NULL,
+        indexed_at TEXT NOT NULL, proveniens TEXT, UNIQUE(bok, chunk_index))""")
+    db.execute("CREATE VIRTUAL TABLE book_embeddings_v2 USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])")
+    for i in range(1, 31):
+        db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)",
+                   (i, "Dominerende bok", "epmc", None, f"tekst {i}", i, "d", "epmc:test:"))
+        db.execute("INSERT INTO book_embeddings_v2(chunk_id, embedding) VALUES (?,?)",
+                   (i, sqlite_vec.serialize_float32(_vec(1.0, i / 1000))))
+    for i, bok in enumerate(("Bok B", "Bok C", "Bok D"), start=31):
+        db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)",
+                   (i, bok, "epmc", None, f"tekst {i}", i, "d", "epmc:test:"))
+        db.execute("INSERT INTO book_embeddings_v2(chunk_id, embedding) VALUES (?,?)",
+                   (i, sqlite_vec.serialize_float32(_vec(1.0, i / 1000))))
+    db.commit()
+    db.close()
+
+    poster, _ = bank_bakgrunn.hent_bakgrunn("x", k=5, db_path=sti, embed_fn=_embed)
+    boker = [p["tittel"] for p in poster]
+    assert len(poster) == 5
+    assert boker.count("Dominerende bok") == 2
+    assert set(boker) == {"Dominerende bok", "Bok B", "Bok C", "Bok D"}

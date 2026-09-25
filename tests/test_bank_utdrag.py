@@ -109,13 +109,12 @@ def prod(monkeypatch, utdrag, tmp_path):
     return db
 
 
-def test_prod_bruker_utdrag_uten_bands_og_uten_morkt_terskel(prod, boker, monkeypatch):
+def test_prod_ukalibrert_mistral_utdrag_failes_lukket(prod, boker, monkeypatch):
     monkeypatch.setenv(bank_bakgrunn.BOKER_DB_ENV, str(boker))   # skal IKKE brukes i prod
     poster, status = bank_bakgrunn.hent_bakgrunn("x", k=5, embed_fn=_embed, utdrag_db=prod)
+    assert poster == []
     assert status["kilde"] == "utdrag" and status["tilgjengelig"] is True
-    assert [p["id"] for p in poster] == ["bank:3", "bank:1", "bank:2"]
-    assert all(p["bank_band"] is None for p in poster)
-    assert poster[0]["kilde_url"] == "https://pmc.ncbi.nlm.nih.gov/articles/PMC1/"
+    assert "mangler kalibrert relevansterskel" in status["arsak"]
 
 
 def test_prod_uten_utdrag_gir_arsak(monkeypatch, tmp_path):
