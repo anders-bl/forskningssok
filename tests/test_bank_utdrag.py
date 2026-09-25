@@ -151,3 +151,77 @@ def test_batcher_deler_paa_antall_og_tegnbudsjett():
     store = [{"tekst": "a" * 12000}, {"tekst": "b" * 12000}, {"tekst": "c" * 100}]
     assert [len(b) for b in bank_utdrag._batcher(store, 32)] == [1, 2]   # 12000 + 12000 > 20000
     assert list(bank_utdrag._batcher([], 32)) == []
+
+
+def _bank_med_artikkel(tmp_path, tekster_per_bok):
+    """boker.db-fixture der hver artikkel har flere chunks; returnerer (sti, rader-tuples)."""
+    sti = tmp_path / "boker2.db"
+    db = sqlite3.connect(sti)
+    db.execute("""CREATE TABLE book_chunks (id INTEGER PRIMARY KEY AUTOINCREMENT, bok TEXT NOT NULL,
+        samling TEXT NOT NULL, heading TEXT, chunk_text TEXT NOT NULL, chunk_index INTEGER NOT NULL,
+        indexed_at TEXT NOT NULL, proveniens TEXT, UNIQUE(bok, chunk_index))""")
+    cid = 0
+    for bok, tekster in tekster_per_bok.items():
+        for i, t in enumerate(tekster):
+            cid += 1
+            db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)",
+                       (cid, bok, "s", None, t, i, "d", f"epmc:s:PMC{cid} folded"))
+    db.commit()
+    db.close()
+    return sti
+
+
+def test_eksport_klassifiserer_per_artikkel_ikke_per_chunk(tmp_path):
+    sti = _bank_med_artikkel(tmp_path, {
+        "Vaccination against IHNV in rainbow trout": ["Kort chunk uten art.", "Ingen art her heller.", "Kidney"],
+        "Sea Cucumber Aquaculture phage therapy": ["Bacteria and phage. Phage therapy of virus infection. Pathogen."],
+    })
+    ut = tmp_path / "u.jsonl"
+    bank_utdrag.eksporter(sti, ut, ["epmc:"])
+    rader = [json.loads(l) for l in ut.read_text(encoding="utf-8").splitlines()]
+    trout = [r for r in rader if r["bok"].startswith("Vaccination")]
+    assert {r["art_niva"] for r in trout} == {"maal"}          # arves av ALLE chunks, også de uten artsord
+    assert "immun" in trout[0]["tema"]
+    komuk = [r for r in rader if r["bok"].startswith("Sea Cucumber")]
+    assert komuk[0]["art_niva"] == "annet"
+
+
+def test_bygg_lagrer_metadata_og_migrerer_eldre_utdrag_uten_reembedding(tmp_path):
+    sti = _bank_med_artikkel(tmp_path, {"Nephrocalcinosis in farmed salmonids": ["nyre tekst"]})
+    ut = tmp_path / "u.jsonl"
+    bank_utdrag.eksporter(sti, ut, ["epmc:"])
+    # bygg et «eldre» utdrag uten metadata-kolonnene
+    db_sti = tmp_path / "gammel.db"
+    gammel = sqlite3.connect(db_sti)
+    gammel.enable_load_extension(True)
+    sqlite_vec.load(gammel)
+    gammel.execute("CREATE TABLE utdrag(chunk_id INTEGER PRIMARY KEY, bok TEXT, samling TEXT, heading TEXT, tekst TEXT, proveniens TEXT)")
+    gammel.execute("CREATE VIRTUAL TABLE utdrag_vec USING vec0(chunk_id INTEGER PRIMARY KEY, embedding float[1024])")
+    gammel.execute("CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT)")
+    gammel.execute("INSERT INTO meta VALUES('embed_modell','bge-m3')")
+    gammel.execute("INSERT INTO utdrag VALUES (1,'Nephrocalcinosis in farmed salmonids','s',NULL,'nyre tekst','epmc:s:PMC1 folded')")
+    gammel.execute("INSERT INTO utdrag_vec VALUES (1, ?)", (sqlite_vec.serialize_float32(_vec(1.0)),))
+    gammel.commit()
+    gammel.close()
+    kall = []
+    r = bank_utdrag.bygg(ut, db_sti, embed_fn=lambda t: kall.append(t) or _embed(t), modell="bge-m3")
+    assert r["nye"] == 0 and kall == []                       # ingen re-embedding
+    rader, _ = bank_utdrag.sok("x", 3, db_path=db_sti, embed_fn=_embed, modell="bge-m3")
+    assert rader[0][7] == "maal" and "nyre" in json.loads(rader[0][8])
+
+
+def test_bank_bakgrunn_bruker_utdragets_artikkelnivaa_og_faller_tilbake_til_chunk(prod, boker, monkeypatch):
+    poster, _ = bank_bakgrunn.hent_bakgrunn("x", k=5, embed_fn=_embed, utdrag_db=prod)
+    assert all(p["art_grunnlag"] == "artikkel" and p["art_niva"] for p in poster)
+    # boker.db-veien har ikke artikkelnivå: da klassifiseres tittel + den ene chunken, og det sies fra
+    fall = bank_bakgrunn._art_og_tema("Nephrocalcinosis in salmonids", None, "kidney calcium", None, None)
+    assert fall["art_grunnlag"] == "chunk" and fall["art_niva"] == "maal" and "nyre" in fall["tema"]
+
+
+def test_syntese_prompt_og_referanseliste_viser_art_og_tema_for_bankposter():
+    post = {"id": "bank:9", "tittel": "Vaccine paper", "forfattere": "bok-bank/x", "aar": "u.å.", "abstract": "a",
+            "doi": None, "kilde_url": None, "kilde": "bok-bank", "samling": "x", "bank_avstand": 0.5,
+            "bank_band": None, "art_niva": "maal", "tema": ["immun", "infeksjon"], "art_grunnlag": "artikkel"}
+    prompt = syntese_fortelling.bygg_prompt("emne", [post])
+    assert "[DIREKTE_KANDIDAT] [#bank:9]" in prompt and "Temaer=immun,infeksjon" in prompt
+    assert "[bok-bank, avstand 0.5, art=maal, tema=immun,infeksjon]" in syntese_fortelling.lag_referanseliste([post])

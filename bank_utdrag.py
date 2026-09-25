@@ -31,7 +31,9 @@ from pathlib import Path
 import sqlite_vec
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import art_niva  # noqa: E402
 import domeneprofil  # noqa: E402
+import tema  # noqa: E402
 from paths import DB  # noqa: E402
 
 HER = Path(__file__).resolve().parent
@@ -62,6 +64,9 @@ def _db(sti: Path) -> sqlite3.Connection:
     sqlite_vec.load(db)
     db.execute("CREATE TABLE IF NOT EXISTS utdrag(chunk_id INTEGER PRIMARY KEY, bok TEXT, samling TEXT,"
                " heading TEXT, tekst TEXT, proveniens TEXT)")
+    for kol in ("art_niva", "tema"):   # lagt til 2026-09-25; eldre utdrag migreres uten re-embedding
+        if kol not in {r[1] for r in db.execute("PRAGMA table_info(utdrag)")}:
+            db.execute(f"ALTER TABLE utdrag ADD COLUMN {kol} TEXT")
     db.execute(f"CREATE VIRTUAL TABLE IF NOT EXISTS utdrag_vec USING vec0(chunk_id INTEGER PRIMARY KEY,"
                f" embedding float[{DIM}])")
     db.execute("CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT)")
@@ -84,11 +89,32 @@ def eksporter(boker_db: Path = STANDARD_BOKER, ut: Path = JSONL,
     finally:
         db.close()
     ut.parent.mkdir(parents=True, exist_ok=True)
+    klassifisering = _klassifiser_artikler(rader)
     with ut.open("w", encoding="utf-8") as f:
         for cid, bok, samling, heading, tekst, prov in rader:
+            niva, temaer = klassifisering[bok]
             f.write(json.dumps({"id": cid, "bok": bok, "samling": samling, "heading": heading,
-                                "tekst": tekst, "proveniens": prov}, ensure_ascii=False) + "\n")
+                                "tekst": tekst, "proveniens": prov, "art_niva": niva,
+                                "tema": temaer}, ensure_ascii=False) + "\n")
     return len(rader)
+
+
+ARTIKKEL_CHUNKS = 3   # samme grunnlag som fasiten (tittel + de tre første chunkene)
+
+
+def _klassifiser_artikler(rader: list[tuple]) -> dict[str, tuple[str, list[str]]]:
+    """Art og temaer avgjøres per ARTIKKEL, ikke per chunk: en enkelt chunk nevner sjelden
+    arten, men tittelen og de første chunkene gjør det. Alle chunks i en artikkel arver svaret."""
+    tekster: dict[str, list[str]] = {}
+    for _cid, bok, _s, _h, tekst, _p in rader:      # rader er sortert på id
+        tekster.setdefault(bok, [])
+        if len(tekster[bok]) < ARTIKKEL_CHUNKS:
+            tekster[bok].append(tekst)
+    ut = {}
+    for bok, deler in tekster.items():
+        samlet = " ".join(deler)[:3600]
+        ut[bok] = (art_niva.klassifiser(bok, samlet).niva, [f.tema for f in tema.klassifiser(bok, samlet)])
+    return ut
 
 
 def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
@@ -114,6 +140,11 @@ def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
             if r["id"] not in har:
                 ventende.append(r)
         hoppet = sum(1 for _ in har)
+        for linje in jsonl.read_text(encoding="utf-8").splitlines():   # metadata for allerede embeddede
+            r = json.loads(linje)
+            if r["id"] in har:
+                db.execute("UPDATE utdrag SET art_niva=?, tema=? WHERE chunk_id=?",
+                           (r.get("art_niva"), json.dumps(r.get("tema", []), ensure_ascii=False), r["id"]))
         for del_ in _batcher(ventende, batch):
             for forsok in range(4):
                 try:
@@ -124,8 +155,10 @@ def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
                         raise
                     time.sleep(2 ** forsok)
             for r, v in zip(del_, vektorer, strict=True):
-                db.execute("INSERT OR REPLACE INTO utdrag VALUES (?,?,?,?,?,?)",
-                           (r["id"], r["bok"], r["samling"], r["heading"], r["tekst"], r["proveniens"]))
+                db.execute("INSERT OR REPLACE INTO utdrag(chunk_id, bok, samling, heading, tekst, proveniens,"
+                           " art_niva, tema) VALUES (?,?,?,?,?,?,?,?)",
+                           (r["id"], r["bok"], r["samling"], r["heading"], r["tekst"], r["proveniens"],
+                            r.get("art_niva"), json.dumps(r.get("tema", []), ensure_ascii=False)))
                 db.execute("INSERT INTO utdrag_vec(chunk_id, embedding) VALUES (?,?)",
                            (r["id"], sqlite_vec.serialize_float32(v)))
             db.commit()
@@ -165,7 +198,8 @@ def finnes(db_path: Path | None = None) -> bool:
 def sok(emne: str, k: int, *, db_path: Path | None = None, embed_fn=None,
         modell: str | None = None) -> tuple[list[tuple], str]:
     """Nærmeste utdrag-chunks. Returnerer (rader, arsak); rader har samme form som
-    boker.db-spørringen i bank_bakgrunn: (id, bok, samling, heading, tekst, proveniens, avstand).
+    boker.db-spørringen i bank_bakgrunn: (id, bok, samling, heading, tekst, proveniens, avstand,
+    art_niva, tema); de to siste er None/None fra boker.db.
     Tom liste + årsak hvis modellene ikke stemmer."""
     db_path = db_path or utdrag_db_sti()
     modell = modell or embed_modell()
@@ -182,7 +216,8 @@ def sok(emne: str, k: int, *, db_path: Path | None = None, embed_fn=None,
             embed_fn = bank._hus_embed()
         qvec = embed_fn([emne])[0]
         rader = db.execute(
-            """SELECT u.chunk_id, u.bok, u.samling, u.heading, u.tekst, u.proveniens, v.distance
+            """SELECT u.chunk_id, u.bok, u.samling, u.heading, u.tekst, u.proveniens, v.distance,
+                      u.art_niva, u.tema
                FROM utdrag_vec v JOIN utdrag u ON u.chunk_id = v.chunk_id
                WHERE v.embedding MATCH ? AND K = ? ORDER BY v.distance""",
             (sqlite_vec.serialize_float32(qvec), k)).fetchall()

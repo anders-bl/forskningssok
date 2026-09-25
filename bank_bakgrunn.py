@@ -70,6 +70,18 @@ def _kilde_url(proveniens: str | None) -> str | None:
     return f"https://pmc.ncbi.nlm.nih.gov/articles/{m.group(1)}/" if m else None
 
 
+def _art_og_tema(bok: str, heading: str | None, tekst: str | None, niva, temaer_json) -> dict:
+    """Art og temaer for en bankpost. Utdraget har dem alt regnet ut per ARTIKKEL (eksport-
+    tiden); boker.db har ikke, så da klassifiseres tittel + den ene chunken, som er svakere."""
+    import json  # noqa: PLC0415
+    import art_niva  # noqa: PLC0415
+    import tema  # noqa: PLC0415
+    if niva is not None:
+        return {"art_niva": niva, "tema": json.loads(temaer_json or "[]"), "art_grunnlag": "artikkel"}
+    return {"art_niva": art_niva.klassifiser(bok, tekst).niva,
+            "tema": [f.tema for f in tema.klassifiser(bok, tekst)], "art_grunnlag": "chunk"}
+
+
 def utdrag_finnes() -> bool:
     import bank_utdrag
     return bank_utdrag.finnes()
@@ -85,7 +97,7 @@ def _rader_boker(sti: Path, emne: str, k: int, embed_fn) -> list[tuple]:
         qvec = embed([emne])[0]
         return db.execute(
             """SELECT bc.id, bc.bok, bc.samling, bc.heading, bc.chunk_text,
-                      bc.proveniens, be.distance
+                      bc.proveniens, be.distance, NULL, NULL
                FROM book_embeddings_v2 be JOIN book_chunks bc ON bc.id = be.chunk_id
                WHERE be.embedding MATCH ? AND K = ? ORDER BY be.distance""",
             (sqlite_vec.serialize_float32(qvec), k * 6)).fetchall()
@@ -131,7 +143,7 @@ def hent_bakgrunn(emne: str, k: int = MAKS_BAKGRUNN, *, db_path: Path | str | No
     status["kilde"] = "utdrag" if bruk_utdrag else "boker.db"
     poster: list[dict] = []
     per_bok: dict[str, int] = {}
-    for cid, bok, samling, heading, tekst, prov, avstand in rader:
+    for cid, bok, samling, heading, tekst, prov, avstand, niva, temaer in rader:
         if kal is not None and avstand >= kal.MORKT:
             status["forkastet_morkt"] += 1
             continue
@@ -153,6 +165,7 @@ def hent_bakgrunn(emne: str, k: int = MAKS_BAKGRUNN, *, db_path: Path | str | No
             "samling": samling,
             "bank_avstand": round(float(avstand), 4),
             "bank_band": kal.band(avstand) if kal else None,
+            **_art_og_tema(bok, heading, tekst, niva, temaer),
         })
     status["antall"] = len(poster)
     status["beste_avstand"] = round(float(rader[0][6]), 4) if rader else None

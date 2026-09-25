@@ -79,7 +79,7 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
     verifiser_kilder() er garantien."""
     def kildeblokk(p: dict) -> str:
         domenetekst = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
-        niva = art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva
+        niva = p.get('art_niva') or art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva
         art = niva == "maal"
         domene = domene_naer_tekst(domenetekst)
         kategori = "DIREKTE_KANDIDAT" if art else "ANALOGI_ELLER_BAKGRUNN"
@@ -91,11 +91,14 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
             f"[{kategori}] [#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
             f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
             f"kilde={p.get('kilde', '?')}\n"
-            f"Artsnivå={niva} Domenenær={domene}\n"
+            f"Artsnivå={niva} Domenenær={domene}"
+            + (f" Temaer={','.join(p['tema'])}" if p.get("kilde") == "bok-bank" and p.get("tema") else "")
+            + "\n"
             f"Abstract: {p.get('abstract') or '(ingen abstract tilgjengelig)'}"
         )
 
-    direkte = [p for p in papirer if art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva == "maal"]
+    direkte = [p for p in papirer
+              if (p.get('art_niva') or art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva) == "maal"]
     analogier = [p for p in papirer if p not in direkte]
     kildeliste = (
         "DIREKTE_KANDIDATER — kan brukes som direkte evidens for målobjektet:\n"
@@ -391,13 +394,25 @@ def _kall_llm_lokal_ollama(prompt: str, model: str = OLLAMA_MODELL) -> str:
     return svar["message"]["content"]
 
 
+def _bankmerke(p: dict) -> str:
+    """Åpen om hvor bakgrunnen kom fra og hva den er klassifisert som, så en leser kan si «feil»."""
+    if p.get("kilde") != "bok-bank":
+        return ""
+    deler = [f"avstand {p['bank_avstand']}" + (f" {p['bank_band']}" if p.get("bank_band") else "")]
+    if p.get("art_niva"):
+        deler.append(f"art={p['art_niva']}")
+    if p.get("tema"):
+        deler.append("tema=" + ",".join(p["tema"]))
+    return " [bok-bank, " + ", ".join(deler) + "]"
+
+
 def lag_referanseliste(papirer: list[dict]) -> str:
     return "\n".join(
         f"[#{p['id']}] {p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}). "
         f"{p.get('tittel', '(uten tittel)')}. "
         + (f"DOI: {p['doi']}. " if p.get("doi") else "")
         + (f"URL: {p['kilde_url']}" if p.get("kilde_url") else "(ingen ekstern lenke)")
-        + (f" [bok-bank, avstand {p['bank_avstand']}{' ' + p['bank_band'] if p.get('bank_band') else ''}]" if p.get("kilde") == "bok-bank" else "")
+        + _bankmerke(p)
         for p in papirer
     )
 

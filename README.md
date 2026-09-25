@@ -770,6 +770,13 @@ docker exec <forskningssok-container> python bank_utdrag.py bygg
 docker exec <forskningssok-container> python bank_utdrag.py status
 ```
 
+Eksporten (2026-09-25) legger også art og temaer på hver chunk, regnet ut per ARTIKKEL (tittel + de
+tre første chunkene, samme grunnlag som fasiten): `art_niva` (maal/naer/annet/ingen) og `tema` (se
+`art_niva.py` og `tema.py`). `bygg` lagrer dem i `bank_utdrag.db` og oppdaterer eldre utdrag uten å
+embedde på nytt. Syntese-prompten viser `Artsnivå=` og `Temaer=` for bankposter, og kildelisten viser
+`[bok-bank, avstand ..., art=..., tema=...]`. Fra `boker.db` (lokalt) finnes ikke artikkelnivået, så der
+klassifiseres tittel + den ene chunken (svakere; `art_grunnlag="chunk"`).
+
 `bygg` nekter å blande modeller i ett utdrag (`meta.embed_modell`), og `sok()` nekter å søke
 når spørringen ville brukt en annen modell enn utdraget. Uten `bank_utdrag.db` er oppførselen
 uendret. Måling 2026-09-25: utdraget gir identiske avstander og treff som `boker.db` for samme
