@@ -129,6 +129,12 @@ annet = [
   "deer", "whale", "mammal", "cyanobacteri", "osteoporosis", "cancer", "tumor", "tumour", "surgery",
   "cardiovascular", "cataract",
 ]
+# Visningsnavn for nivåene (rapporter og flater), så koden ikke bærer fagfelt-ord.
+[art.niva.merker]
+maal = "målarten (laksefisk)"
+naer = "annen eller uspesifisert fisk/akvakultur"
+annet = "organismer utenfor fagområdet"
+ingen = "ingen organisme nevnt"
 
 [tema]
 # Temaer per artikkel, utledet fra INNHOLDET (tittel + tekst), flere per artikkel. Erstatter ikke
