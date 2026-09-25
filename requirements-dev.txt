@@ -9,3 +9,4 @@ pytest
 # Kun her, ikke i requirements.txt: appen selv bruker httpx (seks moduler), aldri
 # httpx2 — den er utelukkende testklientens avhengighet og hører ikke hjemme i imaget.
 httpx2
+playwright

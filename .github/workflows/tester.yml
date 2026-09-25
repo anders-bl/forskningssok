@@ -31,6 +31,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt   # trekker inn requirements.txt via -r
 
+      - name: Installer Chromium for nettlesertestene
+        run: python -m playwright install --with-deps chromium
+
       - name: Kjør testene UTEN nettverk
         # Den døde proxyen er selve poenget: en test som trenger internett skal feile her,
         # ikke oppdages måneder senere som en tilfeldig rød kjøring.
