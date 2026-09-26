@@ -766,10 +766,10 @@ Prod har ikke `boker.db`, og bankens bge-m3-vektorer kan ikke brukes med mistral
 (annet vektorrom). Derfor tas TEKSTEN til fagfeltets del av banken med
 (`bank_proveniens` i profilen) og embeddes på nytt der søket kjører. Ingen ny inngående flate.
 Første Mistral-måling (2026-09-26) fant et avstandsgap mellom 10 dekkede og 10 fjerne
-spørringer, men bare 2/10 dekkede spørringer fant forventet dokument som nærmeste treff.
-Dette er et kandidatresultat, ikke en akseptert kalibrering; se
-`data/mistral_bank_kalibrering_2026-09-26.json`. Fail-closed forblir aktiv til spørringer
-og relevansfasit er gjennomgått.
+spørringer. Manuell chunk-vurdering fant 3 direkte svar, 6 delvise bakgrunnstreff og ett
+irrelevant treff. Målesettet mangler tilgrensende kontroller, så det fastsetter ikke alle
+tre bånd; fail-closed forblir aktiv. Spørringer og vurderinger:
+`data/mistral_bank_kalibrering_2026-09-26.json`.
 
 ```bash
 # 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit

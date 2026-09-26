@@ -78,10 +78,13 @@ målinger ligger i `data/mistral_bank_kalibrering_2026-09-26.json`.
 - Dekkede: min 0,395824, median 0,503500, maks 0,517202.
 - Fjerne: min 0,618867, median 0,653449, maks 0,686889.
 - Gap mellom dekket-maks og fjern-min: 0,101665.
-- Forventet dokument var nærmeste for 2/10 dekkede spørsmål.
+- Oppgitt fasitdokument var nærmeste for 2/10. Denne eksakte dokumentfasiten var for
+  streng: manuell gjennomgang av faktisk topp-chunk fant 3 direkte svar, 6 delvise
+  bakgrunnstreff og 1 irrelevant treff. Blant annet svarer en annen håndbokchunk direkte
+  på nefrokalsinose-spørsmålet.
 
-Avstanden alene gir et lovende kandidatområde, men den dårlige dokument-topp1-raten
-viser at de positive fasitene eller selve relevanskravet ikke er gode nok. Dette må
-gjennomgås mot de faktiske nærmeste chunkene før en terskel kan ratifiseres. Ingen
-Mistral-terskel er aktivert; prod failer fortsatt lukket. Dermed er de opprinnelige
-akseptkriteriene ikke oppfylt ennå.
+Avstanden skiller foreløpig dekket fra fjernt i dette settet, og de fleste topp-chunks er
+minst nyttig bakgrunn. Men settet har ingen tilgrensende kontrollgruppe, så SKARPT og
+MØRKT kan ikke deles forsvarlig i tre bånd ennå. Den ene irrelevante chunk-en viser også
+at avstandsbånd ikke erstatter relevanskontroll. Ingen Mistral-terskel er aktivert; prod
+failer fortsatt lukket. De opprinnelige akseptkriteriene er ikke oppfylt ennå.
