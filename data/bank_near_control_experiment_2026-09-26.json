@@ -1,0 +1,794 @@
+{
+  "tittel": "Nabokontroller for embeddingkalibrering av bok-bank",
+  "maalt": "2026-09-26",
+  "korpus_chunks": 4732,
+  "design": {
+    "dekket": 10,
+    "fjern": 10,
+    "tidligere_nabokandidater": 8,
+    "nye_nabokontroller": 10,
+    "annotering": "Nye kontroller er håndskrevne for å etterspørre et konkret forhold eller en måleverdi som ikke finnes i utdraget. De er ikke blindt vurdert og utgjør en eksplorativ delvis-relevant gruppe, ikke fasit for mørkt-båndet."
+  },
+  "modeller": {
+    "mistral-embed": {
+      "dimensjoner": 1024,
+      "prefikser": {
+        "dokument": "ingen",
+        "sporring": "ingen"
+      },
+      "vektorer_normalisert": true,
+      "intervaller": {
+        "covered": {
+          "n": 10,
+          "min": 0.3958243131637573,
+          "median": 0.496809259057045,
+          "max": 0.5172015428543091
+        },
+        "far": {
+          "n": 10,
+          "min": 0.6188673973083496,
+          "median": 0.6490745842456818,
+          "max": 0.6868895292282104
+        },
+        "neighbor_candidate": {
+          "n": 8,
+          "min": 0.4314437210559845,
+          "median": 0.4979003071784973,
+          "max": 0.5279915928840637
+        },
+        "adjacent_control": {
+          "n": 10,
+          "min": 0.41064321994781494,
+          "median": 0.4836254417896271,
+          "max": 0.5855374932289124
+        }
+      },
+      "input_tokens": 1311529,
+      "kost_estimat_usd": 0.131153,
+      "batcher": 241,
+      "api_kall": 242,
+      "kostnadsmerknad": "USD 0.131153 er beregnet fra rapporterte tokens i full pass; et separat éinspørringsformat-probe er ikke medregnet."
+    },
+    "nomic-embed-text-v2-moe": {
+      "dimensjoner": 768,
+      "prefikser": {
+        "dokument": "search_document: ",
+        "sporring": "search_query: "
+      },
+      "vektorer_normalisert": true,
+      "intervaller": {
+        "adjacent_control": {
+          "n": 10,
+          "min": 0.9372645020484924,
+          "median": 0.9866102933883667,
+          "max": 1.0804102420806885
+        },
+        "covered": {
+          "n": 10,
+          "min": 0.7511935234069824,
+          "median": 0.8799507319927216,
+          "max": 0.9643020629882812
+        },
+        "far": {
+          "n": 10,
+          "min": 1.1093841791152954,
+          "median": 1.1655119061470032,
+          "max": 1.2344815731048584
+        },
+        "neighbor_candidate": {
+          "n": 8,
+          "min": 0.8303199410438538,
+          "median": 0.9448139071464539,
+          "max": 1.0313869714736938
+        }
+      },
+      "ollama_kober": 20,
+      "langste_dokumenttegn": 8838,
+      "dokumenter_over_2000_tegn": 4
+    }
+  },
+  "modellintern_sammenligning": {
+    "mistral-embed": {
+      "dekket_maks": 0.5172015428543091,
+      "nabokontroll_min": 0.41064321994781494,
+      "nabokontroll_maks": 0.5855374932289124,
+      "fjern_min": 0.6188673973083496,
+      "dekket_og_nabokontroll_overlapper": true,
+      "nabokontroll_og_fjern_overlapper": false
+    },
+    "nomic-embed-text-v2-moe": {
+      "dekket_maks": 0.9643020629882812,
+      "nabokontroll_min": 0.9372645020484924,
+      "nabokontroll_maks": 1.0804102420806885,
+      "fjern_min": 1.1093841791152954,
+      "dekket_og_nabokontroll_overlapper": true,
+      "nabokontroll_og_fjern_overlapper": false
+    }
+  },
+  "nye_nabokontroller": [
+    {
+      "sporring": "Hvilken avstand mellom akustiske mottakere og hvilket sendeintervall ga best deteksjonsrate for smolt på vandring i norske fjorder?",
+      "ikke_dekket_fakta": "Litteraturlisten nevner telemetri i tanker, men korpuset har ikke forsøksresultater om mottakergeometri eller vandringsdeteksjon.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Kamera/ekkolodd gir fiskeposisjon og atferd, men ikke akustisk tagg, mottakeravstand eller sendeintervall.",
+        "topp5": [
+          {
+            "id": 235357,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.474894
+          },
+          {
+            "id": 235788,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.480856
+          },
+          {
+            "id": 235735,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.481841
+          },
+          {
+            "id": 235558,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.485971
+          },
+          {
+            "id": 235774,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.495154
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet er en litteraturliste som nevner akustisk telemetri i fisketanker, men oppgir ikke mottakeravstand eller vandringsdeteksjon.",
+        "topp5": [
+          {
+            "id": 235638,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.08041
+          },
+          {
+            "id": 236066,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.105122
+          },
+          {
+            "id": 235418,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.107516
+          },
+          {
+            "id": 235603,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.111522
+          },
+          {
+            "id": 235357,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.111957
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilken polymer, partikkelstørrelse og konsentrasjon av mikroplast endret tarmmikrobiomet hos atlantisk laks?",
+      "ikke_dekket_fakta": "Mikroplast omtales for sediment og forurensning; tarmmikrobiom omtales i andre arter/studier. Ingen direkte lakseeksponering med disse målene.",
+      "mistral": {
+        "topp1_relevans": "irrelevant",
+        "begrunnelse": "Treffet handler om slim og immunforsvar, ikke mikroplast eller tarmmikrobiom.",
+        "topp5": [
+          {
+            "id": 235488,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.541216
+          },
+          {
+            "id": 235486,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.55861
+          },
+          {
+            "id": 234392,
+            "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+            "avstand": 0.56317
+          },
+          {
+            "id": 235491,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.563413
+          },
+          {
+            "id": 235492,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.564104
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "irrelevant",
+        "begrunnelse": "Treffet nevner slim hos laks, men ikke mikroplast eller tarmmikrobiom.",
+        "topp5": [
+          {
+            "id": 235620,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.047403
+          },
+          {
+            "id": 235427,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.055163
+          },
+          {
+            "id": 235488,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.060202
+          },
+          {
+            "id": 234392,
+            "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+            "avstand": 1.060276
+          },
+          {
+            "id": 234414,
+            "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+            "avstand": 1.060878
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilke primere og hvilken deteksjonsgrense brukes for å måle eDNA fra lakselus i vann fra laksemerder?",
+      "ikke_dekket_fakta": "Korpuset har generelle eDNA-primer- og deteksjonsgrensedata samt lakselusmåling, men ingen lusespesifikk eDNA-analyse.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omhandler lusetelling, men ikke eDNA-primer eller deteksjonsgrense.",
+        "topp5": [
+          {
+            "id": 235402,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.518645
+          },
+          {
+            "id": 235560,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.537783
+          },
+          {
+            "id": 235778,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.544475
+          },
+          {
+            "id": 235986,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.545038
+          },
+          {
+            "id": 235400,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.546298
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet handler om eDNA-patogenovervåking rundt avlusing og lusetelling, men ikke lusespesifikk eDNA-assay.",
+        "topp5": [
+          {
+            "id": 233290,
+            "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+            "avstand": 0.983624
+          },
+          {
+            "id": 233294,
+            "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+            "avstand": 0.987908
+          },
+          {
+            "id": 233309,
+            "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+            "avstand": 0.990176
+          },
+          {
+            "id": 233304,
+            "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+            "avstand": 0.991069
+          },
+          {
+            "id": 233291,
+            "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+            "avstand": 0.992333
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hva er arvegraden og den genomiske avlsverdien for resistens mot Lepeophtheirus salmonis hos atlantisk laks?",
+      "ikke_dekket_fakta": "Avl/resistens og lakselus finnes i ulike kilder; ingen lusespesifikke arvegrader eller genomiske avlsverdier er oppgitt.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler fiskens lusfølsomhet, men ingen lusespesifikke arvegrader eller genomiske avlsverdier.",
+        "topp5": [
+          {
+            "id": 235399,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.486916
+          },
+          {
+            "id": 235400,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.501929
+          },
+          {
+            "id": 235828,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.504364
+          },
+          {
+            "id": 235401,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.511979
+          },
+          {
+            "id": 236024,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.512766
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet nevner sjølus og fiskefølsomhet, men ingen lusespesifikke arvegrader eller genomiske avlsverdier.",
+        "topp5": [
+          {
+            "id": 235664,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.952045
+          },
+          {
+            "id": 235834,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.95417
+          },
+          {
+            "id": 235604,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.960833
+          },
+          {
+            "id": 235828,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.962286
+          },
+          {
+            "id": 235668,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.962869
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilken LED-bølgelengde og lysplan utløser smoltifisering hos atlantisk laks i kommersielle sjømerder?",
+      "ikke_dekket_fakta": "Fotoperiode og smoltifisering omtales, men ikke denne konkrete LED-bølgelengden og kommersielle protokollen.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler lys i merd, men ikke LED-bølgelengde eller en smoltifiseringsprotokoll.",
+        "topp5": [
+          {
+            "id": 235563,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.410643
+          },
+          {
+            "id": 235561,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.417244
+          },
+          {
+            "id": 235562,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.419473
+          },
+          {
+            "id": 235560,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.421738
+          },
+          {
+            "id": 235418,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.447785
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet oppgir fotoperioderegimer for smoltifisering hos ørret, men ikke LED-bølgelengde eller kommersiell lakseprotokoll.",
+        "topp5": [
+          {
+            "id": 235561,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.937265
+          },
+          {
+            "id": 235418,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.98344
+          },
+          {
+            "id": 235563,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.983762
+          },
+          {
+            "id": 235560,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.991468
+          },
+          {
+            "id": 235562,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.015524
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilken målt oksygenmetning og eksponeringstid utløser gassblæresyke hos voksen atlantisk laks?",
+      "ikke_dekket_fakta": "Håndboken beskriver gassovermetning og at risiko varierer med metning/tid; den gir ikke den etterspurte oksygendosen for voksen atlantisk laks.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet oppgir gassblæresyke-verdier for ørret, men ikke dose-respons for voksen atlantisk laks.",
+        "topp5": [
+          {
+            "id": 235742,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.417416
+          },
+          {
+            "id": 235333,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.417903
+          },
+          {
+            "id": 235334,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.42142
+          },
+          {
+            "id": 235509,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.439368
+          },
+          {
+            "id": 235988,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.441535
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler oksygenbehov hos laksefisk, men gir ikke etterspurt dose-respons for voksen atlantisk laks.",
+        "topp5": [
+          {
+            "id": 235333,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.957399
+          },
+          {
+            "id": 235334,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.961946
+          },
+          {
+            "id": 235741,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.970219
+          },
+          {
+            "id": 235742,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.972224
+          },
+          {
+            "id": 235504,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.973323
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilken konsentrasjon av algalt toksin forklarte dødeligheten fra Pseudochattonella-bloomet i Chile i 2016?",
+      "ikke_dekket_fakta": "En review omtaler krisen og algearten, men ingen toksinkonsentrasjon som forklarer dødeligheten.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler alger og gjelleskade, men ikke toksinkonsentrasjonen fra Chile-krisen.",
+        "topp5": [
+          {
+            "id": 235764,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.585537
+          },
+          {
+            "id": 235524,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.60021
+          },
+          {
+            "id": 235722,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.60164
+          },
+          {
+            "id": 235404,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.60324
+          },
+          {
+            "id": 232788,
+            "tittel": "Antibiotic use in Chilean salmon aquaculture: antimicrobial resistance, sustainability, and One Health implications.",
+            "avstand": 0.603876
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler Chile-krisen og algeoppblomstring, men ikke toksinkonsentrasjonen.",
+        "topp5": [
+          {
+            "id": 232788,
+            "tittel": "Antibiotic use in Chilean salmon aquaculture: antimicrobial resistance, sustainability, and One Health implications.",
+            "avstand": 1.000137
+          },
+          {
+            "id": 232797,
+            "tittel": "Antibiotic use in Chilean salmon aquaculture: antimicrobial resistance, sustainability, and One Health implications.",
+            "avstand": 1.043257
+          },
+          {
+            "id": 232789,
+            "tittel": "Antibiotic use in Chilean salmon aquaculture: antimicrobial resistance, sustainability, and One Health implications.",
+            "avstand": 1.072386
+          },
+          {
+            "id": 232768,
+            "tittel": "Antibiotic use in Chilean salmon aquaculture: antimicrobial resistance, sustainability, and One Health implications.",
+            "avstand": 1.076432
+          },
+          {
+            "id": 232759,
+            "tittel": "Antibiotic use in Chilean salmon aquaculture: antimicrobial resistance, sustainability, and One Health implications.",
+            "avstand": 1.078976
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilken minste varighet og salinitet i ferskvannsbad fjernet 99 prosent av lakselus uten målbar osmotisk belastning?",
+      "ikke_dekket_fakta": "Reviewen oppgir bred behandlingseffekt og at bad kan gi midlertidig osmotisk stress; den spesifiserer ikke denne optimaliserte dose-responsen.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet beskriver fiskens osmoregulering, men ikke badets varighet eller lusefjerningseffekt.",
+        "topp5": [
+          {
+            "id": 235466,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.532981
+          },
+          {
+            "id": 235465,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.537746
+          },
+          {
+            "id": 235335,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.542565
+          },
+          {
+            "id": 235501,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.544254
+          },
+          {
+            "id": 235502,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.550897
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet beskriver osmolalitet og saltholdighet hos fisk, men ikke badets varighet eller lusefjerningseffekt.",
+        "topp5": [
+          {
+            "id": 235465,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.99046
+          },
+          {
+            "id": 235467,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.021489
+          },
+          {
+            "id": 231955,
+            "tittel": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture.",
+            "avstand": 1.033761
+          },
+          {
+            "id": 235502,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.039418
+          },
+          {
+            "id": 235335,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 1.046458
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hvilken ultralydfrekvens og skannevinkel gir høyest sensitivitet for nefrokalsinose hos oppdrettet laksefisk?",
+      "ikke_dekket_fakta": "Korpuset dekker nefrokalsinose og diagnostiske utfordringer, men ingen ultralydfrekvens eller sensitivitet.",
+      "mistral": {
+        "topp1_relevans": "irrelevant",
+        "begrunnelse": "Treffet gjelder vannhastighet og svømmeatferd, ikke nefrokalsinose eller bildediagnostikk.",
+        "topp5": [
+          {
+            "id": 235735,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.477375
+          },
+          {
+            "id": 236024,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.480751
+          },
+          {
+            "id": 235401,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.483685
+          },
+          {
+            "id": 236009,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.485888
+          },
+          {
+            "id": 235560,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.490634
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet rapporterer nefrokalsinose hos sardiner, men ikke ultralydfrekvens eller sensitivitet.",
+        "topp5": [
+          {
+            "id": 286863,
+            "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+            "avstand": 0.989597
+          },
+          {
+            "id": 236965,
+            "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+            "avstand": 0.993164
+          },
+          {
+            "id": 236960,
+            "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+            "avstand": 1.010678
+          },
+          {
+            "id": 236963,
+            "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+            "avstand": 1.013064
+          },
+          {
+            "id": 236972,
+            "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+            "avstand": 1.014228
+          }
+        ]
+      }
+    },
+    {
+      "sporring": "Hva er fold-endringen i IL-1beta, IL-10 og TNF-alfa mellom injeksjonsstedene i lakselusvaksinering av atlantisk laks?",
+      "ikke_dekket_fakta": "Studien omtaler lokale immunresponser og injeksjonssted, men ikke disse spesifikke fold-endringene.",
+      "mistral": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler vaksinasjon og bivirkninger, men ikke cytokinenes fold-endring mellom injeksjonssteder.",
+        "topp5": [
+          {
+            "id": 235929,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.480335
+          },
+          {
+            "id": 235453,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.481923
+          },
+          {
+            "id": 233334,
+            "tittel": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+            "avstand": 0.482019
+          },
+          {
+            "id": 233326,
+            "tittel": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+            "avstand": 0.488227
+          },
+          {
+            "id": 235452,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.492837
+          }
+        ]
+      },
+      "nomic": {
+        "topp1_relevans": "delvis",
+        "begrunnelse": "Treffet omtaler kortisol etter vaksinasjon, men ikke cytokinenes fold-endring etter injeksjonssted.",
+        "topp5": [
+          {
+            "id": 235928,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.965039
+          },
+          {
+            "id": 233071,
+            "tittel": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+            "avstand": 0.977636
+          },
+          {
+            "id": 233364,
+            "tittel": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+            "avstand": 0.980278
+          },
+          {
+            "id": 233362,
+            "tittel": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+            "avstand": 0.980797
+          },
+          {
+            "id": 235806,
+            "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+            "avstand": 0.982744
+          }
+        ]
+      }
+    }
+  ],
+  "tolkning": [
+    "Begge modellene plasserer de nye nabokontrollene mellom de dekkede og fjerne intervallene i dette lille utvalget.",
+    "For begge modellene overlapper nabokontroller med dekkede avstander, men ikke med fjerne avstander. Det er forenlig med en delvis-bakgrunnsgruppe, men beviser ikke terskler.",
+    "Nomic og Mistral avstander må ikke sammenlignes på tvers av vektorrom.",
+    "Mistral sitt tidligere 10-spørringssett hadde feil medianoppsummering: den viste øvre midtverdi. Råmålingene var korrekte; medianen er nå gjennomsnittet av de to midterste verdiene."
+  ],
+  "begrensninger": [
+    "Liten og håndskrevet spørsmålsgruppe, ikke blind fasit.",
+    "Flere kontroller har relaterte treff som gir delvis bakgrunn, selv når den etterspurte detaljen mangler.",
+    "Nomic sitt kontekstvindu er 512 tokens; nøyaktig tokenavkorting per chunk er ikke målt.",
+    "Ingen produksjonsterskler er aktivert; Mistral forblir fail-closed."
+  ],
+  "manuell_topp1_kontroller": {
+    "mistral-embed": {
+      "direkte": 0,
+      "delvis": 8,
+      "irrelevant": 2
+    },
+    "nomic-embed-text-v2-moe": {
+      "direkte": 0,
+      "delvis": 9,
+      "irrelevant": 1
+    }
+  }
+}
