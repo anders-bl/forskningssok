@@ -744,6 +744,92 @@ reportlab Platypus, men genererer Typst-kilde (`til_typst()`) og kompilerer den 
 Neste ledd i standarden er å løfte `rapport_mal.typ` og emitteren ut som felles motor når
 stromkontrol migrerer; til da bor de her, bygget for å kunne løftes.
 
+## Bok-banken som BAKGRUNN i syntesen (2026-09-25)
+
+`syntese_fortelling.py` kan legge nærmeste chunks fra husets bok-bank (`bøker/boker.db`) til
+som eget merket BAKGRUNN-lag ved siden av de cachede papirene. Bankposter siteres som
+`[#bank:<chunk_id>]` og går gjennom samme `verifiser_kilder()`-gate; en artsnær post får
+DIREKTE_KANDIDAT, resten BANK_BAKGRUNN (kan ikke støtte påstander om målobjektet alene).
+Kildeblokken i utdata viser `[bok-bank, avstand ...]`, og `[BANK-BAKGRUNN: ...]` sier alltid
+om banken ble brukt og hvorfor ikke.
+
+To veier, samme utdata (`bank_bakgrunn.py`):
+
+| | Lokalt (Anders' Mac) | Prod (Dokploy) |
+|---|---|---|
+| Kilde | `boker.db`, hele banken | `bank_utdrag.db`, utdrag i volumet |
+| Embedder | bge-m3 (Ollama) | mistral-embed (ai-proxy), samme som cachen |
+| Terskel | kalibrerte bånd, MØRKT slippes ikke inn | ingen kalibrerte bånd: rangering + maks 2 chunks per bok |
+| På når | `--bank` / `bank_bakgrunn=True` | automatisk når `bank_utdrag.db` er bygget |
+
+Prod har ikke `boker.db`, og bankens bge-m3-vektorer kan ikke brukes med mistral-embed
+(annet vektorrom). Derfor tas TEKSTEN til fagfeltets del av banken med
+(`bank_proveniens` i profilen) og embeddes på nytt der søket kjører. Ingen ny inngående flate.
+
+```bash
+# 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit
+venv/bin/python bank_utdrag.py eksporter
+# 2. Etter deploy, i containeren (embedder ~4 700 chunks via ai-proxy; idempotent, kan gjentas):
+docker exec <forskningssok-container> python bank_utdrag.py bygg
+docker exec <forskningssok-container> python bank_utdrag.py status
+```
+
+Eksporten (2026-09-25) legger også art og temaer på hver chunk, regnet ut per ARTIKKEL (tittel + de
+tre første chunkene, samme grunnlag som fasiten): `art_niva` (maal/naer/annet/ingen) og `tema` (se
+`art_niva.py` og `tema.py`). `bygg` lagrer dem i `bank_utdrag.db` og oppdaterer eldre utdrag uten å
+embedde på nytt. Syntese-prompten viser `Artsnivå=` og `Temaer=` for bankposter, og kildelisten viser
+`[bok-bank, avstand ..., art=..., tema=...]`. Fra `boker.db` (lokalt) finnes ikke artikkelnivået, så der
+klassifiseres tittel + den ene chunken (svakere; `art_grunnlag="chunk"`).
+
+`bygg` nekter å blande modeller i ett utdrag (`meta.embed_modell`), og `sok()` nekter å søke
+når spørringen ville brukt en annen modell enn utdraget. Uten `bank_utdrag.db` er oppførselen
+uendret. Måling 2026-09-25: utdraget gir identiske avstander og treff som `boker.db` for samme
+spørring (bge-m3-bygg av delutdrag), så eksport og bygg er trofaste.
+
+## Artsnivå: hva handler dette om (2026-09-25, `art_niva.py`)
+
+`arts_naer_tekst` er en ja/nei-test over én liste der generelle ord («fish», «aquaculture»)
+står ved siden av selve målarten, så en sjøpølse-artikkel ble «artsnær». `art_niva.klassifiser`
+gir i stedet fire nivå, med bevis (kilde og termer): `maal` (laksefisk), `naer` (annen/uspesifisert
+fisk og akvakultur), `annet` (skalldyr, pattedyr, mennesker) og `ingen`. Termlistene bor i
+`profiler/*.toml` (`[art.niva]`); en profil uten den faller tilbake til ja/nei og sier det
+(`kilde="legacy"`). Signal, aldri filter: ingenting tas bort.
+
+Syntese-prompten bruker nivået: bare `maal` blir DIREKTE_KANDIDAT (regel 5/6). Rangeringen
+(`ranking.py`) bruker fortsatt `arts_naer_tekst`, uendret.
+
+Målt mot en håndlest fasit på 145 artikler (`tests/fixtures/art_fasit.json`; bank-utdraget og en
+fast-frø-trekning fra cachen; hash-delt i utvikling 78 / holdout 67). Fasiten er merket av én modell
+før noen regel ble kjørt, ikke av et menneske, og usikre tilfeller er holdt utenfor.
+
+| | maal-presisjon | maal-gjenfinning | fire nivå riktig |
+|---|---|---|---|
+| gammel ja/nei (tittel+tekst) | 25 % holdout / 33 % utvikling | 100 % | ikke definert |
+| `art_niva` (holdout, målt én gang) | 92 % | 100 % | 91 % |
+| `art_niva` (utvikling, justert mot) | 94 % | 100 % | 95 % |
+
+Tre justeringsrunder mot utviklingsdelen (`salmo` traff «salmoides»/«salmonella», tittel-
+rangering mot generelle ord, andelskrav for tekstbaserte maal-treff); holdout ble ikke sett før
+sluttmålingen. Kjente svakheter: organismer utenfor listene blir `ingen` i stedet for `annet`
+(4 av 6 holdout-feil), et laksederivat testet i rotter blir `maal` (MeSH sier «Salmon»), og
+tekst på andre språk enn norsk/engelsk (japansk) treffer ikke. Mål på nytt med
+`python art_niva_eval.py [--holdout]` etter enhver endring i termlistene.
+
+### Temaer per artikkel (`tema.py`)
+
+Bank-samlingene (`nyrehelse`, `vaksine`, `velferd`, ...) er navngitt etter søket som fant artikkelen,
+og gir ett tema per artikkel. `tema.klassifiser` gir i stedet flere temaer utledet fra tittel og
+tekst, med bevis: 14 temaer i profilen (`[tema]`: nyre, lever, bildediagn, maskinsyn, infeksjon, immun,
+velferd, miljo, ernaring, genetikk, skjelett, reproduksjon, overvaking, okonomi). Tittelen gir temaet;
+ellers kreves fire treff fordelt på tre ulike termer i teksten. Terskelene ble valgt med et rutenett
+over utviklingsdelen (én enkelt omtale ga 55 % presisjon).
+
+Målt på de 94 fiskerelaterte artiklene i fasiten (temaene er merket av én modell, flere temaer per
+artikkel, én usikker utelatt): utvikling 78 % presisjon / 84 % gjenfinning / 59 % eksakt mengde; holdout
+(målt én gang) **71 % / 84 % / 49 %**. Samling-som-tema på bank-artiklene: 57 % / 36 %, mot 71 % / 91 %
+for innholdsavledet (dette delsettet inkluderer utviklingsartikler brukt til justering). Ikke koblet til
+noen flate ennå; funksjonen er tilgjengelig for syntese, bank-eksport og Omfang.
+
 ## Overvåking — hva som dekker hva (2026-09-04)
 
 Fire lag, og de ser ulike ting. Kartlagt før noe nytt ble bygget, i stedet for å legge en

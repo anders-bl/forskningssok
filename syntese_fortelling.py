@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import domeneprofil  # noqa: E402
 from ai_assistent import hent_fra_cache  # noqa: E402
 from paths import DB  # noqa: E402
-from domeneprofil import arts_naer_tekst, domene_naer_tekst  # noqa: E402
+from art_niva import klassifiser as art_niva  # noqa: E402
+from domeneprofil import domene_naer_tekst  # noqa: E402
 from ranking import ranger_cachede  # noqa: E402
 
 # Matcher [#<id>] — id-en er cachet papers.id. I praksis kan dette være DOI eller
@@ -77,20 +78,27 @@ def bygg_prompt(emne: str, papirer: list[dict]) -> str:
     Instruksen i punkt 1-4 er en avtale med modellen, ikke en garanti —
     verifiser_kilder() er garantien."""
     def kildeblokk(p: dict) -> str:
-        artstekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
         domenetekst = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
-        art = arts_naer_tekst(artstekst)
+        niva = p.get('art_niva') or art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva
+        art = niva == "maal"
         domene = domene_naer_tekst(domenetekst)
         kategori = "DIREKTE_KANDIDAT" if art else "ANALOGI_ELLER_BAKGRUNN"
+        if p.get("kilde") == "bok-bank" and not art:
+            # Bankens bakgrunn er kuratert kontekst, ikke funn for målobjektet: egen
+            # merkelapp så modellen (og en leser av prompten) ser hvor den kom fra.
+            kategori = "BANK_BAKGRUNN"
         return (
             f"[{kategori}] [#{p['id']}] {p.get('tittel', '(uten tittel)')} — "
             f"{p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}), "
             f"kilde={p.get('kilde', '?')}\n"
-            f"Artsnær={art} Domenenær={domene}\n"
+            f"Artsnivå={niva} Domenenær={domene}"
+            + (f" Temaer={','.join(p['tema'])}" if p.get("kilde") == "bok-bank" and p.get("tema") else "")
+            + "\n"
             f"Abstract: {p.get('abstract') or '(ingen abstract tilgjengelig)'}"
         )
 
-    direkte = [p for p in papirer if arts_naer_tekst(f"{p.get('tittel') or ''} {p.get('abstract') or ''}")]
+    direkte = [p for p in papirer
+              if (p.get('art_niva') or art_niva(p.get('tittel'), p.get('abstract'), p.get('mesh')).niva) == "maal"]
     analogier = [p for p in papirer if p not in direkte]
     kildeliste = (
         "DIREKTE_KANDIDATER — kan brukes som direkte evidens for målobjektet:\n"
@@ -108,7 +116,9 @@ STRENGE REGLER (brudd gjør outputen ubrukelig og blir fjernet mekanisk etterpå
 3. Mangler god kildedekning for et poeng, skriv det ærlig
    ("Ingen kilder i utvalget dekker dette") — ikke fyll ut med antakelser.
 4. Dikt ALDRI opp en [#id] som ikke står i kildelisten. Den blir oppdaget og fjernet.
-5. En kilde med Artsnær=False er ikke direkte evidens for målarten. Bruk den bare
+5. En kilde med Artsnivå annet enn maal er ikke direkte evidens for målarten
+   (naer = annen eller uspesifisert art, annet = organisme utenfor fagområdet,
+   ingen = ingen organisme nevnt). Bruk den bare
    som eksplisitt merket analogi eller bakgrunn, og skriv hva som er overført og hva som
    ikke er dokumentert hos målobjektet. Ikke bruk humanmedisin eller andre arter som om
    de var forsøk på målobjektet.
@@ -384,22 +394,56 @@ def _kall_llm_lokal_ollama(prompt: str, model: str = OLLAMA_MODELL) -> str:
     return svar["message"]["content"]
 
 
+def _bankmerke(p: dict) -> str:
+    """Åpen om hvor bakgrunnen kom fra og hva den er klassifisert som, så en leser kan si «feil»."""
+    if p.get("kilde") != "bok-bank":
+        return ""
+    deler = [f"avstand {p['bank_avstand']}" + (f" {p['bank_band']}" if p.get("bank_band") else "")]
+    if p.get("art_niva"):
+        deler.append(f"art={p['art_niva']}")
+    if p.get("tema"):
+        deler.append("tema=" + ",".join(p["tema"]))
+    return " [bok-bank, " + ", ".join(deler) + "]"
+
+
 def lag_referanseliste(papirer: list[dict]) -> str:
     return "\n".join(
         f"[#{p['id']}] {p.get('forfattere', 'Ukjent forfatter')} ({p.get('aar', 'u.å.')}). "
         f"{p.get('tittel', '(uten tittel)')}. "
         + (f"DOI: {p['doi']}. " if p.get("doi") else "")
         + (f"URL: {p['kilde_url']}" if p.get("kilde_url") else "(ingen ekstern lenke)")
+        + _bankmerke(p)
         for p in papirer
     )
 
 
-def lag_syntese_fortelling(emne: str, db_path: Path = DB) -> str:
-    """Hovedfunksjon: hent kilder → prompt → kall LLM → verifiser kilder → returner."""
+def lag_syntese_fortelling(emne: str, db_path: Path = DB, *, bank_bakgrunn: bool | None = None) -> str:
+    """Hovedfunksjon: hent kilder → prompt → kall LLM → verifiser kilder → returner.
+
+    `bank_bakgrunn=True` legger bok-bankens nærmeste chunks til som BAKGRUNN (se
+    bank_bakgrunn.py); uten boker.db/utdrag eller embedder fortsetter syntesen uten bank og
+    sier hvorfor i utdata, aldri stille. None (standard) = automatisk: på bare når et
+    bygd bank_utdrag.db finnes, altså når noen bevisst har satt banken opp der syntesen kjører.
+    Uten utdrag er oppførselen uendret, så prod endres ikke av selve koden."""
     papirer = hent_kandidater(emne, db_path)
     if not papirer:
         return (f"Ingen kilder i cachen for «{emne}».\n"
                  f'Kjør først: python3 cli.py "{emne}" --oppdater')
+
+    bank_notat = ""
+    if bank_bakgrunn is None:
+        import bank_bakgrunn as bb  # lokal import: modulen er valgfri
+        bank_bakgrunn = bb.utdrag_finnes()
+    if bank_bakgrunn:
+        import bank_bakgrunn as bb  # lokal import: modulen er valgfri
+        bakgrunn, bank_status = bb.hent_bakgrunn(emne)
+        papirer = papirer + bakgrunn
+        bank_notat = (
+            f"[BANK-BAKGRUNN: {bank_status['antall']} bankposter lagt til"
+            f" (beste avstand {bank_status['beste_avstand']}, {bank_status['forkastet_morkt']} forkastet som MØRKT)]"
+            if bank_status["tilgjengelig"] and bakgrunn else
+            f"[BANK-BAKGRUNN: ikke brukt — {bank_status['arsak'] or 'ingen treff'}]"
+        )
 
     prompt = bygg_prompt(emne, papirer)
     rått_svar = kall_llm(prompt)
@@ -430,6 +474,8 @@ def lag_syntese_fortelling(emne: str, db_path: Path = DB) -> str:
             f"{kvalitetsmåling['mangler_kilde_enheter']} faktiske setning(er) mangler "
             "verifiserbar kildehenvisning; syntesen er ikke kvalitetssikret]"
         )
+    if bank_notat:
+        ut.append(f"\n---\n{bank_notat}")
     ut.append(f"\n---\n## Kildeliste ({len(papirer)} kilder)\n{lag_referanseliste(papirer)}")
     return "\n".join(ut)
 
@@ -439,8 +485,10 @@ def main():
     parser.add_argument("--emne", type=str, required=True,
                          help="Emnet syntesen skal handle om")
     parser.add_argument("--db", type=str, default=str(DB), help="Database-sti")
+    parser.add_argument("--bank", action="store_true",
+                         help="Legg bok-bankens nærmeste chunks til som BAKGRUNN (lokalt; se bank_bakgrunn.py)")
     args = parser.parse_args()
-    print(lag_syntese_fortelling(args.emne, Path(args.db)))
+    print(lag_syntese_fortelling(args.emne, Path(args.db), bank_bakgrunn=args.bank))
 
 
 if __name__ == "__main__":
