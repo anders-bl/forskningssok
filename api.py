@@ -38,6 +38,7 @@ import dossier as dossier_modul
 import dossier_innsikt as dossier_innsikt_modul
 import dossier_siteringsgraf as dossier_siteringsgraf_modul
 import syntese_fortelling as syntese_modul
+import tema as tema_modul
 import retningssamtale as retningssamtale_modul
 import sti as sti_modul
 import rapport
@@ -1273,6 +1274,7 @@ def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", 
     # Omfang over kildenes samlede tekst (tittel+abstract) — dekning per akse.
     tekst = " ".join(f"{p.get('tittel', '')} {p.get('abstract', '')}" for p in papirer)
     omfang = scoping.akse_dekning(tekst)
+    sammensetning = scoping.kilde_sammensetning(papirer)
 
     verifisering = {"tilgjengelig": verifiser_modul.tilgjengelig()}
 
@@ -1300,7 +1302,8 @@ def api_rapport_konvergens(q: str, format: str = "md", stil: str = "vancouver", 
 
     blokker = rapport.konvergens_blokker(
         q, papirer, gap_papir=gap_papir, gap=gap, omfang=omfang, revisjon=revisjon,
-        verifisering=verifisering, tverrfaglig=tverrfaglig, hovedfunn=hovedfunn, stil=stil)
+        verifisering=verifisering, tverrfaglig=tverrfaglig, hovedfunn=hovedfunn, stil=stil,
+        sammensetning=sammensetning)
     return _rapport_svar(blokker, format, _slug(q) or "rapport", f"Forskningsrapport: {q}")
 
 
@@ -1369,7 +1372,9 @@ def api_rapport_omfang(tekst: str, tittel: str = "Omfang-rapport", format: str =
 def api_omfang(tekst: str):
     """Akse-dekning for Omfang-fanen — se scoping.py for hvorfor dette er en bevisst
     enkel nøkkelord-heuristikk, ikke en semantisk klassifikator."""
-    return {"akser": scoping.akse_dekning(tekst)}
+    return {"akser": scoping.akse_dekning(tekst),
+            "temaer": [{"tema": f.tema, "score": f.score, "bevis": list(f.bevis)}
+                       for f in tema_modul.klassifiser(None, tekst)]}
 
 
 @app.post("/api/tilbakemelding")

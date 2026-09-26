@@ -689,7 +689,8 @@ def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | Non
                        gap: dict | None = None, omfang: dict[str, float] | None = None,
                        revisjon: dict | None = None, verifisering: dict | None = None,
                        tverrfaglig: list[dict] | None = None, hovedfunn: list[dict] | None = None,
-                       stil: str = "vancouver", tittel: str | None = None) -> list[Blokk]:
+                       stil: str = "vancouver", tittel: str | None = None,
+                       sammensetning: dict | None = None) -> list[Blokk]:
     """Én forskningsrapport for `query`, bygget av de ferdig-beregnede bitene. Hver seksjon
     er ærlig om fravær: mangler gap-papiret, står seksjonen ikke; er verifisering ikke
     tilgjengelig (Mistral-abonnement), sies det rett ut i stedet for å utelates stille."""
@@ -752,6 +753,23 @@ def konvergens_blokker(query: str, papirer: list[dict], *, gap_papir: dict | Non
         for akse, dekning in omfang.items():
             merke = "godt dekket" if dekning >= 1.0 else ("tynt/ikke nevnt" if dekning == 0 else "delvis")
             b.append(Blokk("p", f"· {akse}: {round(dekning * 100)} % ({merke})"))
+
+    # 3b. Kildesammensetning: hva kildene handler om (art og temaer)
+    if sammensetning and sammensetning.get("antall"):
+        n = sammensetning["antall"]
+        merker = (domeneprofil.PROFIL.get("art", {}).get("niva", {}) or {}).get("merker", {})
+        b.append(Blokk("h2", "Kildesammensetning — art og temaer"))
+        b.append(Blokk("meta", "Regelbasert merking av tittel og abstract, ikke en dom: målt til ca. 92 % "
+                               "presisjon for målart og ca. 71 % for temaer mot en modell-merket fasit."))
+        for niva, antall in sammensetning["art"].items():
+            if antall:
+                b.append(Blokk("p", f"· {merker.get(niva, niva)}: {antall} av {n} kilder"))
+        temaer = sammensetning.get("temaer") or {}
+        if temaer:
+            b.append(Blokk("p", "Temaer (en kilde kan ha flere): " + ", ".join(
+                f"{t.replace('_', ' ')} {v['kilder']}" for t, v in temaer.items())))
+        else:
+            b.append(Blokk("p", "Ingen temaer nådde terskelen for disse kildene."))
 
     # 4. Tverrfaglige retninger (fase 1, smartsyntese-veikart) — semantisk nære papirer
     # UTENFOR domenet (ikke norsk fagmiljø/tidsskrift OG nevner ikke målarten). Det er den

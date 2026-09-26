@@ -770,10 +770,61 @@ docker exec <forskningssok-container> python bank_utdrag.py bygg
 docker exec <forskningssok-container> python bank_utdrag.py status
 ```
 
+Eksporten (2026-09-25) legger også art og temaer på hver chunk, regnet ut per ARTIKKEL (tittel + de
+tre første chunkene, samme grunnlag som fasiten): `art_niva` (maal/naer/annet/ingen) og `tema` (se
+`art_niva.py` og `tema.py`). `bygg` lagrer dem i `bank_utdrag.db` og oppdaterer eldre utdrag uten å
+embedde på nytt. Syntese-prompten viser `Artsnivå=` og `Temaer=` for bankposter, og kildelisten viser
+`[bok-bank, avstand ..., art=..., tema=...]`. Fra `boker.db` (lokalt) finnes ikke artikkelnivået, så der
+klassifiseres tittel + den ene chunken (svakere; `art_grunnlag="chunk"`).
+
 `bygg` nekter å blande modeller i ett utdrag (`meta.embed_modell`), og `sok()` nekter å søke
 når spørringen ville brukt en annen modell enn utdraget. Uten `bank_utdrag.db` er oppførselen
 uendret. Måling 2026-09-25: utdraget gir identiske avstander og treff som `boker.db` for samme
 spørring (bge-m3-bygg av delutdrag), så eksport og bygg er trofaste.
+
+## Artsnivå: hva handler dette om (2026-09-25, `art_niva.py`)
+
+`arts_naer_tekst` er en ja/nei-test over én liste der generelle ord («fish», «aquaculture»)
+står ved siden av selve målarten, så en sjøpølse-artikkel ble «artsnær». `art_niva.klassifiser`
+gir i stedet fire nivå, med bevis (kilde og termer): `maal` (laksefisk), `naer` (annen/uspesifisert
+fisk og akvakultur), `annet` (skalldyr, pattedyr, mennesker) og `ingen`. Termlistene bor i
+`profiler/*.toml` (`[art.niva]`); en profil uten den faller tilbake til ja/nei og sier det
+(`kilde="legacy"`). Signal, aldri filter: ingenting tas bort.
+
+Syntese-prompten bruker nivået: bare `maal` blir DIREKTE_KANDIDAT (regel 5/6). Rangeringen
+(`ranking.py`) bruker fortsatt `arts_naer_tekst`, uendret.
+
+Målt mot en håndlest fasit på 145 artikler (`tests/fixtures/art_fasit.json`; bank-utdraget og en
+fast-frø-trekning fra cachen; hash-delt i utvikling 78 / holdout 67). Fasiten er merket av én modell
+før noen regel ble kjørt, ikke av et menneske, og usikre tilfeller er holdt utenfor.
+
+| | maal-presisjon | maal-gjenfinning | fire nivå riktig |
+|---|---|---|---|
+| gammel ja/nei (tittel+tekst) | 25 % holdout / 33 % utvikling | 100 % | ikke definert |
+| `art_niva` (holdout, målt én gang) | 92 % | 100 % | 91 % |
+| `art_niva` (utvikling, justert mot) | 94 % | 100 % | 95 % |
+
+Tre justeringsrunder mot utviklingsdelen (`salmo` traff «salmoides»/«salmonella», tittel-
+rangering mot generelle ord, andelskrav for tekstbaserte maal-treff); holdout ble ikke sett før
+sluttmålingen. Kjente svakheter: organismer utenfor listene blir `ingen` i stedet for `annet`
+(4 av 6 holdout-feil), et laksederivat testet i rotter blir `maal` (MeSH sier «Salmon»), og
+tekst på andre språk enn norsk/engelsk (japansk) treffer ikke. Mål på nytt med
+`python art_niva_eval.py [--holdout]` etter enhver endring i termlistene.
+
+### Temaer per artikkel (`tema.py`)
+
+Bank-samlingene (`nyrehelse`, `vaksine`, `velferd`, ...) er navngitt etter søket som fant artikkelen,
+og gir ett tema per artikkel. `tema.klassifiser` gir i stedet flere temaer utledet fra tittel og
+tekst, med bevis: 14 temaer i profilen (`[tema]`: nyre, lever, bildediagn, maskinsyn, infeksjon, immun,
+velferd, miljo, ernaring, genetikk, skjelett, reproduksjon, overvaking, okonomi). Tittelen gir temaet;
+ellers kreves fire treff fordelt på tre ulike termer i teksten. Terskelene ble valgt med et rutenett
+over utviklingsdelen (én enkelt omtale ga 55 % presisjon).
+
+Målt på de 94 fiskerelaterte artiklene i fasiten (temaene er merket av én modell, flere temaer per
+artikkel, én usikker utelatt): utvikling 78 % presisjon / 84 % gjenfinning / 59 % eksakt mengde; holdout
+(målt én gang) **71 % / 84 % / 49 %**. Samling-som-tema på bank-artiklene: 57 % / 36 %, mot 71 % / 91 %
+for innholdsavledet (dette delsettet inkluderer utviklingsartikler brukt til justering). Ikke koblet til
+noen flate ennå; funksjonen er tilgjengelig for syntese, bank-eksport og Omfang.
 
 ## Overvåking — hva som dekker hva (2026-09-04)
 
