@@ -413,6 +413,7 @@ button{ font:inherit; }
 /* Dokument-linsen (fase 2, prosjekt/rapportmotor-veikart) */
 .skuff-linse{ border:none; background:none; color:var(--muted); font-size:.75rem; font-weight:700; padding:.2rem .55rem; border-radius:99px; cursor:pointer; }
 .skuff-linse.aktiv{ background:var(--surface-2); color:var(--text); }
+.skuff-linse.drop-ready{ outline:2px dashed var(--accent); outline-offset:2px; color:var(--text); }
 .skuff-kropp[hidden]{ display:none; }
 .dok-hode{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; margin-bottom:.5rem; }
 #dok-tittel{ flex:1; min-width:200px; font-size:1rem; font-weight:700; border:none; border-bottom:1px solid var(--border); background:none; color:var(--text); padding:.25rem 0; }
@@ -425,6 +426,8 @@ button{ font:inherit; }
 
 
 .sitatkort{ border:1px solid var(--border); border-radius:10px; padding:.6rem .65rem; margin-bottom:.55rem; background:var(--surface); }
+.sitatkort[draggable="true"]{ cursor:grab; }
+.sitatkort[draggable="true"]:active{ cursor:grabbing; }
 .sitatkort.los{ border-style:dashed; }
 .sitat-tekst{ font-style:italic; font-size:.8125rem; line-height:1.5; padding-left:.6rem; border-left:2px solid var(--accent-muted); margin-bottom:.4rem; }
 .sitat-kilde{ font-size:.6875rem; color:var(--muted); line-height:1.4; }
@@ -755,7 +758,7 @@ svg text{ font-family:system-ui,sans-serif; }
           </span>
         </div>
         <div id="dok-editor" class="dok-editor"></div>
-        <div class="hint" style="margin-top:.5rem">Sitater settes inn der markøren står: «Sett inn» i sitatbanken, eller Sitér i leseflaten mens dokumentet er åpent. Klikk et sitat i teksten for å åpne papiret. I PDF-en blir det sitatblokk med kildelinje på stedet.</div>
+        <div class="hint" style="margin-top:.5rem">Dra et sitat fra banken hit, eller bruk «Sett inn» for å sette det ved markøren. «Sitér» i leseflaten virker også mens dokumentet er åpent. Klikk sitatet i teksten for å åpne papiret. I PDF-en blir det sitatblokk med kildelinje.</div>
       </div>
     </div>
   </div>
@@ -900,8 +903,21 @@ function normaliserDoi(doi) {
   return (doi || '').trim().replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '').replace(/\/+$/, '').toLowerCase();
 }
 
+function visTomLeseflate() {
+  state.paperId = null;
+  $('#reader-head').hidden = true;
+  $('#reader-body').hidden = true;
+  $('#empty-reader').hidden = false;
+}
+
 async function utforSok(q, foretrukketDoi = '') {
   if (!q) return;
+  visTomLeseflate();
+  state.sisteResultat = { ids: [], tittel: '', query: null };
+  $('#result-count').textContent = '';
+  visRevisjon(null);
+  oppdaterDossierSynlighet();
+  oppdaterSynteseSynlighet();
   $('#result-status').textContent = 'søker…';
   $('#result-list').innerHTML = '';
   $('#cache-echo').hidden = true;
@@ -2424,7 +2440,7 @@ function tegnSitat(s) {
                  s.paper_aar && `(${s.paper_aar})`, s.paper_tittel]
                 .filter(Boolean).join(' ');
   return `
-    <div class="sitatkort" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}" data-tekst="${escapeHtml(s.tekst)}" data-kilde="${escapeHtml(kilde)}">
+    <div class="sitatkort" draggable="true" title="Dra sitatet til dokumentet" data-id="${s.id}" data-paper="${escapeHtml(s.paper_id)}" data-tekst="${escapeHtml(s.tekst)}" data-kilde="${escapeHtml(kilde)}">
       <div class="sitat-tekst">«${escapeHtml(s.tekst)}»</div>
       <div class="sitat-kilde">${escapeHtml(kilde)}${s.paper_doi ? ' · doi:' + escapeHtml(s.paper_doi) : ''}</div>
       <textarea class="sitat-kommentar" placeholder="Kommentar…" rows="1">${escapeHtml(s.kommentar||'')}</textarea>
@@ -2436,7 +2452,17 @@ function tegnSitat(s) {
     </div>`;
 }
 
+const SITAT_DRAG_TYPE = 'application/x-forskningssok-sitat+json';
+
 function koblSitatHandlinger(rot) {
+  $$('.sitatkort[draggable="true"]', rot).forEach(kort => kort.addEventListener('dragstart', e => {
+    if (e.target.closest('button,textarea')) { e.preventDefault(); return; }
+    e.dataTransfer.setData(SITAT_DRAG_TYPE, JSON.stringify({
+      id: Number(kort.dataset.id), paper_id: kort.dataset.paper,
+      tekst: kort.dataset.tekst, kilde: kort.dataset.kilde,
+    }));
+    e.dataTransfer.effectAllowed = 'copy';
+  }));
   $$('.sitat-kommentar', rot).forEach(ta => ta.addEventListener('blur', async () => {
     const id = ta.closest('.sitatkort').dataset.id;
     await api(`/api/sitater/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'},
@@ -2683,6 +2709,24 @@ function lagEditor() {
     const n = e.target.closest('sitat-ref');
     if (n && n.dataset.paper) openPaper(n.dataset.paper);
   });
+  const dropType = SITAT_DRAG_TYPE;
+  $('#dok-editor').addEventListener('dragover', e => {
+    if (e.dataTransfer.types.includes(dropType)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  });
+  $('#dok-editor').addEventListener('drop', e => {
+    if (!e.dataTransfer.types.includes(dropType)) return;
+    e.preventDefault();
+    try {
+      const sitat = JSON.parse(e.dataTransfer.getData(dropType));
+      if (!Number.isInteger(sitat.id) || !sitat.tekst || dokState.id === null) return;
+      const treff = dokState.editor.view.posAtCoords({ left: e.clientX, top: e.clientY });
+      const pos = treff?.pos ?? dokState.editor.state.selection.to;
+      dokState.editor.chain().focus().insertContentAt(pos, innholdForSitat(sitat)).run();
+    } catch (err) { si('Kunne ikke sette inn sitatet: ' + err.message); }
+  });
   return dokState.editor;
 }
 
@@ -2691,10 +2735,32 @@ function velgLinse(l) {
   $$('.skuff-linse').forEach(b => b.classList.toggle('aktiv', b.dataset.linse === l));
   $('#skuff-kropp-bank').hidden = (l !== 'bank');
   $('#dok-kropp').hidden = (l !== 'dok');
-  if (l === 'dok') { lagEditor(); lastDokumenter(); }
+  let dokumenter = null;
+  if (l === 'dok') { lagEditor(); dokumenter = lastDokumenter(); }
   lastVarme({ tvungen: true });
+  return dokumenter;
 }
 $$('.skuff-linse').forEach(b => b.addEventListener('click', () => { apneSkuff(); velgLinse(b.dataset.linse); }));
+
+const dokumentTab = $('.skuff-linse[data-linse="dok"]');
+dokumentTab.addEventListener('dragover', e => {
+  if (e.dataTransfer.types.includes(SITAT_DRAG_TYPE)) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    dokumentTab.classList.add('drop-ready');
+  }
+});
+dokumentTab.addEventListener('dragleave', () => dokumentTab.classList.remove('drop-ready'));
+dokumentTab.addEventListener('drop', async e => {
+  if (!e.dataTransfer.types.includes(SITAT_DRAG_TYPE)) return;
+  e.preventDefault();
+  dokumentTab.classList.remove('drop-ready');
+  try {
+    const sitat = JSON.parse(e.dataTransfer.getData(SITAT_DRAG_TYPE));
+    if (!Number.isInteger(sitat.id) || !sitat.tekst) return;
+    await slippSitatPaDokument(sitat);
+  } catch (err) { si('Kunne ikke sette inn sitatet: ' + err.message); }
+});
 
 async function lastDokumenter() {
   const liste = await api('/api/utkast').catch(() => []);
@@ -2763,6 +2829,20 @@ async function lagreDokument() {
 }
 $('#dok-tittel').addEventListener('input', planleggLagring);
 
+function innholdForSitat(s) {
+  return [
+    { type: 'sitat', attrs: { id: Number(s.id), paper: s.paper_id, tekst: s.tekst, kilde: s.kilde || sitatKilde(s) } },
+    { type: 'text', text: ' ' },
+  ];
+}
+
+async function slippSitatPaDokument(s) {
+  apneSkuff();
+  await velgLinse('dok');
+  if (dokState.id === null) await nyttDokument();
+  settInnSitat(s);
+}
+
 function settInnSitat(s) {
   if (dokState.linse !== 'dok' || !dokState.editor || dokState.id === null) {
     dokState.venterSitat = s;
@@ -2771,10 +2851,7 @@ function settInnSitat(s) {
     if (dokState.id === null) si('Lag et dokument først (+ Nytt dokument), så settes sitatet inn');
     return;
   }
-  dokState.editor.chain().focus().insertContent([
-    { type: 'sitat', attrs: { id: s.id, paper: s.paper_id, tekst: s.tekst, kilde: s.kilde || sitatKilde(s) } },
-    { type: 'text', text: ' ' },
-  ]).run();
+  dokState.editor.chain().focus().insertContent(innholdForSitat(s)).run();
 }
 
 $$('#dok-verktoy [data-dok]').forEach(btn => btn.addEventListener('click', async () => {
