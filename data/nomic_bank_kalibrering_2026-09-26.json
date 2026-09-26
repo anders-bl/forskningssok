@@ -48,7 +48,7 @@
   },
   "begrensninger": [
     "Eksperimentelt sammenligningssett, ikke blindt annotert gold standard.",
-    "Nomic-kontekstvinduet er 512 tokens; tokenlengder ble ikke målt. Fire korpustekster oversteg 2000 tegn og kan ha blitt avkortet av embedderen.",
+    "Nomic-passeringen avkortet ni chunks over 512 tokens. Ingen av disse ID-ene forekommer i lagrede topp-5-treff; se data/nomic_context_audit_2026-09-26.json.",
     "Nabokandidatene er ikke en ren negativgruppe: noen spørsmål er faktisk besvart av korpuset.",
     "Avstandsverdier kan ikke sammenlignes på tvers av ulike embedding-modeller.",
     "Dette kalibrerer ikke mistral-embed, som fortsatt mangler egen nabokontrollgruppe."
@@ -1037,5 +1037,13 @@
     }
   ],
   "dekket_forventet_tittel_i_topp5_normalisert": 8,
-  "dekket_gap_fjern_min_minus_dekket_maks": 0.145082
+  "dekket_gap_fjern_min_minus_dekket_maks": 0.145082,
+  "kontekstrevisjon": {
+    "audit_fil": "data/nomic_context_audit_2026-09-26.json",
+    "kontekstvindu_tokens": 512,
+    "chunks_over_kontekst": 9,
+    "silent_truncation": true,
+    "noen_over_kontekst_ider_i_lagret_topp5": false,
+    "produksjonsklar": false
+  }
 }

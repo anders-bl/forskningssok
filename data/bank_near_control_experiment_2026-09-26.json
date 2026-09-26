@@ -770,13 +770,14 @@
   "tolkning": [
     "Begge modellene plasserer de nye nabokontrollene mellom de dekkede og fjerne intervallene i dette lille utvalget.",
     "For begge modellene overlapper nabokontroller med dekkede avstander, men ikke med fjerne avstander. Det er forenlig med en delvis-bakgrunnsgruppe, men beviser ikke terskler.",
+    "Top1-avstander overlapper ogsaa mellom manuell relevansklasse: Mistral direkte 0.395824-0.510213 vs irrelevant 0.477375-0.541216; Nomic direkte 0.751194-0.943482 vs irrelevant 0.915366-1.047403. Avstand alene kan derfor ikke skille relevante og irrelevante toppfunn i dette utvalget.",
     "Nomic og Mistral avstander må ikke sammenlignes på tvers av vektorrom.",
     "Mistral sitt tidligere 10-spørringssett hadde feil medianoppsummering: den viste øvre midtverdi. Råmålingene var korrekte; medianen er nå gjennomsnittet av de to midterste verdiene."
   ],
   "begrensninger": [
     "Liten og håndskrevet spørsmålsgruppe, ikke blind fasit.",
     "Flere kontroller har relaterte treff som gir delvis bakgrunn, selv når den etterspurte detaljen mangler.",
-    "Nomic sitt kontekstvindu er 512 tokens; nøyaktig tokenavkorting per chunk er ikke målt.",
+    "Nomic-passeringen avkortet ni av 4732 dokumentchunks over 512 tokens; ingen av ID-ene forekommer i lagrede topp-5-treff. Se data/nomic_context_audit_2026-09-26.json.",
     "Ingen produksjonsterskler er aktivert; Mistral forblir fail-closed."
   ],
   "manuell_topp1_kontroller": {
@@ -789,6 +790,19 @@
       "direkte": 0,
       "delvis": 9,
       "irrelevant": 1
+    }
+  },
+  "top1_relevans_avstandsintervaller": {
+    "datagrunnlag": "dekkede og nabokandidatspoersmaal i modellrapportene samt de 10 nye nabokontrollene; intervallene er modellinterne",
+    "mistral-embed": {
+      "direkte": {"n": 3, "min": 0.395824, "max": 0.510213},
+      "delvis": {"n": 14, "min": 0.402981, "max": 0.585537},
+      "irrelevant": {"n": 3, "min": 0.477375, "max": 0.541216}
+    },
+    "nomic-embed-text-v2-moe": {
+      "direkte": {"n": 9, "min": 0.751194, "max": 0.943482},
+      "delvis": {"n": 16, "min": 0.801902, "max": 1.080410},
+      "irrelevant": {"n": 3, "min": 0.915366, "max": 1.047403}
     }
   }
 }

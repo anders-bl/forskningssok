@@ -780,6 +780,13 @@ i dette forsoeket, men nabokandidatene overlapper og er ikke en ren negativ kont
 Resultatene er utforskende og aktiverer ingen produksjonsterskel. Fullt maalesett, topp 5 og
 manuelle vurderinger: `data/nomic_bank_kalibrering_2026-09-26.json`.
 
+En full kontekstrevisjon med `truncate=false` fant 9 av 4 732 dokumentchunks over Nomic sitt
+512-tokenvindu. De var 586-4 103 tokens med `search_document:`-prefiks og BOS/EOS; Ollama ville
+ellers avkortet dem stille med standard `truncate=true`. Ingen av de ni ligger i topp 5 i de
+lagrede kalibreringsspoerringene, men Nomic-resultatene dekker dermed ikke hele korpusteksten
+trofast. Nomic er ikke klar for produksjonsbruk med dagens chunking. Se
+`data/nomic_context_audit_2026-09-26.json` for chunk-ID-er og maaling.
+
 En oppfoelging la til 10 haandskrevne nabokontroller som ber om konkrete maal eller detaljer
 som ikke er oppgitt i utdraget. Mistral-avstandene var 0.4106-0.5855 mot 0.3958-0.5172 for
 dekkede spoersmaal og 0.6189-0.6869 for fjerne. Nomic hadde 0.9373-1.0804 mot 0.7512-0.9643
@@ -788,6 +795,17 @@ dekkede spoersmaalene, men ikke de fjerne. Toppchunkene ga hovedsakelig delvis b
 handlingsspesifikke detaljene manglet. Kontrollene er haandskrevne, ikke en blind fasit, saa
 ingen terskel aktiveres. Rapporten har spoersmaal, topp 5, manuelle vurderinger og
 annoteringsforbehold: `data/bank_near_control_experiment_2026-09-26.json`.
+
+Sammenstilling av manuelt merkede topp-1-funn forklarer terskelvalget: Mistral direkte-treff
+ligger paa 0.3958-0.5102 og irrelevante paa 0.4774-0.5412. For Nomic er intervallene
+0.7512-0.9435 og 0.9154-1.0474. Avstandene overlapper mellom direkte og irrelevante funn;
+avstand alene kan ikke trygt avgjore om bakgrunn skal slippes inn. Utvalget er lite og ikke
+blindet, saa dette er en forklaring paa fail-closed, ikke en endelig kvalitetsevaluering.
+
+Tokenrevisjonen viste at Nomic hadde avkortet ni korpuschunks under denne sammenligningen.
+Resultatene over skal derfor leses som en utforskende maaling paa den faktisk innsendte teksten,
+ikke som en ren fullkorpus-sammenligning. De lagrede topp 5 ble ikke paavirket direkte av disse
+ni chunkene.
 
 Gjennomgangen fant ogsaa at medianene i den foerste Mistral-rapporten brukte oevre midtverdi
 for ti observasjoner. Oppsummeringen er rettet til gjennomsnittet av de to midterste
