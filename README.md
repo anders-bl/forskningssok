@@ -767,18 +767,31 @@ Prod har ikke `boker.db`, og bankens bge-m3-vektorer kan ikke brukes med mistral
 (`bank_proveniens` i profilen) og embeddes på nytt der søket kjører. Ingen ny inngående flate.
 Første Mistral-måling (2026-09-26) fant et avstandsgap mellom 10 dekkede og 10 fjerne
 spørringer. Manuell chunk-vurdering fant 3 direkte svar, 6 delvise bakgrunnstreff og ett
-irrelevant treff. Målesettet mangler tilgrensende kontroller, så det fastsetter ikke alle
-tre bånd; fail-closed forblir aktiv. Spørringer og vurderinger:
+irrelevant treff. Det foerste maalesettet manglet tilgrensende kontroller og fastsatte ikke
+alle tre baand; fail-closed forblir aktiv. Spoersmaal og vurderinger:
 `data/mistral_bank_kalibrering_2026-09-26.json`.
 
-En lokal sammenligning på samme 4 732 chunks testet også BGE-M3, multilingual E5 og Nomic
+En lokal sammenligning paa samme 4 732 chunks testet ogsaa BGE-M3, multilingual E5 og Nomic
 Embed v2 MoE. Nomic brukte `search_document:`/`search_query:`-prefiksene og ga 768-dimensjonale
-vektorer. På de 10 dekkede spørsmålene lå forventet kilde øverst i 7 tilfeller; etter
+vektorer. Paa de 10 dekkede spoersmaalene laa forventet kilde oeverst i 7 tilfeller; etter
 normalisering av sluttpunktum var kilden i topp 5 i 8 av 10. Manuell vurdering av toppchunkene
-ga 7 direkte og 3 delvise svar. Avstandsintervallet for fjerne spørsmål lå over de dekkede i
-dette forsøket, men nabokandidatene overlapper og er ikke en ren negativ kontrollgruppe.
-Resultatene er utforskende og aktiverer ingen produksjonsterskel. Fullt målesett, topp 5 og
+ga 7 direkte og 3 delvise svar. Avstandsintervallet for fjerne spoersmaal laa over de dekkede
+i dette forsoeket, men nabokandidatene overlapper og er ikke en ren negativ kontrollgruppe.
+Resultatene er utforskende og aktiverer ingen produksjonsterskel. Fullt maalesett, topp 5 og
 manuelle vurderinger: `data/nomic_bank_kalibrering_2026-09-26.json`.
+
+En oppfoelging la til 10 haandskrevne nabokontroller som ber om konkrete maal eller detaljer
+som ikke er oppgitt i utdraget. Mistral-avstandene var 0.4106-0.5855 mot 0.3958-0.5172 for
+dekkede spoersmaal og 0.6189-0.6869 for fjerne. Nomic hadde 0.9373-1.0804 mot 0.7512-0.9643
+og 1.1094-1.2345 i de samme gruppene. For begge modeller overlapper nabokontrollene med de
+dekkede spoersmaalene, men ikke de fjerne. Toppchunkene ga hovedsakelig delvis bakgrunn; de
+handlingsspesifikke detaljene manglet. Kontrollene er haandskrevne, ikke en blind fasit, saa
+ingen terskel aktiveres. Rapporten har spoersmaal, topp 5, manuelle vurderinger og
+annoteringsforbehold: `data/bank_near_control_experiment_2026-09-26.json`.
+
+Gjennomgangen fant ogsaa at medianene i den foerste Mistral-rapporten brukte oevre midtverdi
+for ti observasjoner. Oppsummeringen er rettet til gjennomsnittet av de to midterste
+verdiene; raamalingene er uendret.
 
 ```bash
 # 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit

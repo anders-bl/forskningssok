@@ -75,8 +75,8 @@ million token. Målemetrikken er samme sqlite-vec L2 som søkeveien bruker.
 Det foreløpige settet ligger i `data/mistral_bank_kalibrering.json`; alle spørsmål og
 målinger ligger i `data/mistral_bank_kalibrering_2026-09-26.json`.
 
-- Dekkede: min 0,395824, median 0,503500, maks 0,517202.
-- Fjerne: min 0,618867, median 0,653449, maks 0,686889.
+- Dekkede: min 0,395824, median 0,496809, maks 0,517202.
+- Fjerne: min 0,618867, median 0,649075, maks 0,686889.
 - Gap mellom dekket-maks og fjern-min: 0,101665.
 - Oppgitt fasitdokument var nærmeste for 2/10. Denne eksakte dokumentfasiten var for
   streng: manuell gjennomgang av faktisk topp-chunk fant 3 direkte svar, 6 delvise
@@ -84,7 +84,27 @@ målinger ligger i `data/mistral_bank_kalibrering_2026-09-26.json`.
   på nefrokalsinose-spørsmålet.
 
 Avstanden skiller foreløpig dekket fra fjernt i dette settet, og de fleste topp-chunks er
-minst nyttig bakgrunn. Men settet har ingen tilgrensende kontrollgruppe, så SKARPT og
-MØRKT kan ikke deles forsvarlig i tre bånd ennå. Den ene irrelevante chunk-en viser også
-at avstandsbånd ikke erstatter relevanskontroll. Ingen Mistral-terskel er aktivert; prod
-failer fortsatt lukket. De opprinnelige akseptkriteriene er ikke oppfylt ennå.
+minst nyttig bakgrunn. Det foerste settet manglet tilgrensende kontroller, saa SKARPT og
+MORKT kunne ikke deles forsvarlig i tre baand. Den ene irrelevante chunk-en viser ogsaa at
+avstandsbånd ikke erstatter relevanskontroll.
+
+## Oppfoelging med nabokontroller (2026-09-26)
+
+Etter foerste maaling ble 10 haandskrevne spoersmaal lagt til. De er naerliggende fiskehelse-
+og akvakulturspoersmaal som ber om spesifikke maaleverdier eller metoder korpuset ikke oppgir.
+Samme kontrollspoersmaal ble maalt mot hele Mistral- og Nomic-korpuset. Resultat, topp 5 og
+manuell vurdering per modell ligger i `data/bank_near_control_experiment_2026-09-26.json`.
+
+Mistral-avstandene var 0.4106-0.5855 for kontrollene, mot 0.3958-0.5172 for dekkede og
+0.6189-0.6869 for fjerne spoersmaal. Kontrollene overlapper de dekkede spoersmaalene, men
+ikke de fjerne. Manuell vurdering fant 8 delvise bakgrunnstreff og 2 irrelevante for Mistral.
+Dette gir en mulig mellomgruppe i dette utvalget, men ikke en blind fasit eller et
+tilstrekkelig grunnlag for produksjonsterskler.
+
+Oppfoelgingskjoeringen gjentok ogsaa de opprinnelige Mistral-spoerringene og traff samme
+naermeste chunk og avstand. Medianoppsummeringen i foerste rapport var likevel feil: den
+brukte oevre midtverdi for ti observasjoner. Medianene er rettet til gjennomsnittet av de to
+midterste verdiene; raamalingene er uendret.
+
+Ingen Mistral-terskel er aktivert; prod failer fortsatt lukket. De opprinnelige
+akseptkriteriene er ikke oppfylt ennaa.
