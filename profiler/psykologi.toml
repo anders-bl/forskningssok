@@ -1,0 +1,72 @@
+# Første psykologi-/helsefremmingsprofil for faglig utforsking.
+# Termene gir søke- og sorteringssignaler; de er ikke en klinisk vurdering.
+
+navn = "Psykologi og helsefremmende arbeid"
+kort = "psykisk helse, helsefremming og psykososiale forhold"
+sok_standard = "mental health promotion"
+sok_eksempel = "community mental health prevention wellbeing"
+
+[domene]
+merke = "[fag]"
+merke_betyr = "psykologi-, folkehelse- eller helsefremmingsmiljø/tidsskrift"
+fagmiljoer = [
+  "norwegian institute of public health", "folkehelseinstituttet", "fhi",
+  "norwegian centre for violence and traumatic stress studies", "nkvts",
+  "norwegian university of science and technology", "ntnu",
+  "university of oslo", "universitetet i oslo", "university of bergen",
+  "universitetet i bergen", "oslomet", "university of tromsø", "uit",
+]
+fagtidsskrifter = [
+  "health promotion international", "scandinavian journal of public health",
+  "suicide and life-threatening behavior", "crisis: the journal of crisis intervention",
+  "journal of mental health", "bmc public health", "international journal of mental health systems",
+  "psychological medicine", "frontiers in psychology", "community mental health journal",
+]
+
+[art]
+merke = "[tema?]"
+merke_betyr = "nevner ikke psykisk helse eller psykososiale forhold i tittel/abstract"
+merke_utdypet = "kan likevel være relevant; vurder innholdet selv"
+termer = [
+  "mental health", "mental wellbeing", "mental well-being", "psychological wellbeing",
+  "psychological well-being", "psychosocial", "psychiatric", "psychology",
+  "psychological", "psychological distress", "mental illness", "mental disorder",
+  "psykisk helse", "psykisk helsevern", "psykologi", "psykologisk", "psykososial",
+  "livskvalitet", "trivsel", "wellbeing", "well-being",
+]
+mesh_termer = [
+  "Mental Health", "Health Promotion", "Psychology", "Psychiatry",
+  "Social Support", "Stress, Psychological", "Suicide Prevention",
+]
+
+[tema]
+helsefremming = ["health promotion", "mental health promotion", "health promoting", "helsefremming", "helsefremmende"]
+forebygging = ["prevention", "preventive", "early intervention", "forebygging", "forebyggende", "tidlig innsats"]
+psykisk_helse = ["mental health", "mental wellbeing", "mental well-being", "psychological distress", "psykisk helse", "psykisk helsevern"]
+trivsel_livskvalitet = ["wellbeing", "well-being", "quality of life", "life satisfaction", "livskvalitet", "trivsel"]
+psykososiale_forhold = ["psychosocial", "social support", "social isolation", "belonging", "sosial støtte", "ensomhet", "tilhørighet"]
+suicidforebygging = ["suicide prevention", "suicidal ideation", "suicide attempt", "self-harm", "selvmordsforebygging", "selvmordstanker", "selvskading"]
+tiltak_og_evaluering = ["intervention", "program evaluation", "implementation", "randomized controlled trial", "intervensjon", "evaluering", "implementering"]
+
+[akser]
+"Fremme og forebygging" = ["health promotion", "prevention", "protective factor", "resilience", "helsefremming", "forebygging", "beskyttelsesfaktor", "resiliens"]
+"Psykisk helse og livskvalitet" = ["mental health", "psychological wellbeing", "quality of life", "psykisk helse", "livskvalitet", "trivsel"]
+"Sosiale forhold og støtte" = ["social support", "social connection", "loneliness", "belonging", "sosial støtte", "ensomhet", "tilhørighet"]
+"Tiltak og evaluering" = ["intervention", "program", "implementation", "evaluation", "tiltak", "intervensjon", "evaluering"]
+"Suicidforebygging" = ["suicide prevention", "suicidal ideation", "suicide attempt", "selvmordsforebygging", "selvmordstanker"]
+
+[om]
+domeneprofil = """
+Denne profilen samler forskning om psykisk helse, helsefremming, forebygging og
+psykososiale forhold. [fag] viser til et gjenkjent fagmiljø eller tidsskrift.
+[tema?] betyr at artikkelens tittel/abstract ikke inneholder profilens måltermer;
+fravær av treff er ikke bevis på manglende relevans. Temaer og akser er
+nøkkelordssignaler for videre lesing, ikke kvalitetsvurderinger eller kliniske råd.
+"""
+
+[sprak]
+norske_ord = [
+  "psykisk helse", "psykologi", "psykologisk", "psykososial", "helsefremming",
+  "forebygging", "trivsel", "livskvalitet", "ensomhet", "tilhørighet",
+  "sosial støtte", "mestring", "selvmord", "selvmordstanker", "selvskading",
+]
