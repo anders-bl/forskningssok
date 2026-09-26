@@ -2083,16 +2083,16 @@ function renderInnsikt(d) {
   const ak = d.art_konfidens || {bekreftet: 0, usikker: 0};
   const artMerkeBetyr = (state.profil && state.profil.art_merke_betyr) || 'nevner ikke målobjektet';
   const artHtml =
-    `<div class="innsikt-rad"><span class="innsikt-label">Bekreftet</span>` +
+    `<div class="innsikt-rad"><span class="innsikt-label">Treff på måltermer</span>` +
     `<span class="innsikt-bar innsikt-bar-god" style="width:${total ? Math.round(ak.bekreftet/total*100) : 0}%"></span>` +
     `<span class="innsikt-tall">${ak.bekreftet}</span></div>` +
-    `<div class="innsikt-rad"><span class="innsikt-label" title="${escapeHtml(artMerkeBetyr)}">Usikker</span>` +
+    `<div class="innsikt-rad"><span class="innsikt-label" title="${escapeHtml(artMerkeBetyr)}">Ingen målterm-treff</span>` +
     `<span class="innsikt-bar innsikt-bar-usikker" style="width:${total ? Math.round(ak.usikker/total*100) : 0}%"></span>` +
     `<span class="innsikt-tall">${ak.usikker}</span></div>`;
 
   return `<h4>Publikasjonstidslinje (${total} kandidater)</h4><div class="innsikt-graf">${tidslinjeHtml}</div>` +
     `<h4>Dekning på tvers av akser</h4><div class="innsikt-graf">${akseHtml}</div>` +
-    `<h4>Art-konfidens</h4><div class="innsikt-graf">${artHtml}</div>`;
+    `<h4>Dekning av profilens måltermer</h4><div class="innsikt-graf">${artHtml}</div>`;
 }
 
 // Sitasjonsgraf mellom dossierets EGNE kandidater (M4, prosjekt/forskningssok-dossier-
