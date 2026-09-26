@@ -172,9 +172,11 @@ ikke deployet») — `docker inspect` viste kun Basic Auth-labelen, ingen
 
 `docker-compose.yml` definerer BEGGE, Dokploys Domains-fane refererer kun den ene:
 
-- **`forskningssok-auth@docker`** (Basic Auth, delt statisk credential) — live nå.
-  Fungerer uten portal-konto, for enhver som har credentialet.
+- **`forskningssok-auth@docker`** (Basic Auth, delt statisk credential) —
+  definert i compose, men ikke observert som aktiv ved live-kontrollen 2026-09-24.
 - **`forskningssok-forwardauth@docker`** (ekte portal-SSO, lagt til 2026-09-04) —
+  observert aktiv ved live-kontrollen 2026-09-24: uautorisert kall ga JSON
+  `401 {"detail":"Ikke autentisert"}` uten `WWW-Authenticate: Basic`.
   Traefik spør `/api/auth/forward` FØR proxy, samme endepunkt ADR-042 bruker for
   wiki-instanser. Ingen credentials for en innlogget, grantet bruker. Krever en
   ekte portal-konto med `app_access="forskningssok"` — Ulvens Basic Auth-lenke
@@ -701,7 +703,9 @@ linser, **Sitatbank** (alt du har sitert) og **Dokument** (det du skriver).
   Lisenser MIT (tiptap, tiptap-markdown, prosemirror).
 - **Et sitat er en egen node i teksten**, ikke en markering. Den bærer sitat-id, papir,
   tekst og kildelinje; klikk åpner papiret. «Sett inn» i sitatbanken legger det der
-  markøren står, og Sitér i leseflaten gjør det samme når dokumentet er åpent.
+  markøren står, og Sitér i leseflaten gjør det samme når dokumentet er åpent. Fra
+  sitatbanken kan kortet også dras til Dokument-fanen; skuffen åpnes, et dokument
+  opprettes hvis nødvendig, og samme sitat-node settes inn og autolagres.
 - **Lagring er Markdown med `[@sitat:ID]`** i `utkast.innhold`, autolagret 1,2 s etter siste
   tastetrykk. Ved åpning byttes markøren til en `<sitat-ref>` med tekst og kilde fra banken
   FØR markdown-parseren, så noden kommer tilbake hel. Et sitat som er slettet fra banken
@@ -716,8 +720,8 @@ Live-verifisert i Chrome mot ekte cache: nytt dokument, tittel, tekst, «Sett in
 banken, autolagring, reload med noden intakt (id, papir, kildelinje), Sitér-mens-åpent,
 PDF og Markdown lest tilbake med sitatet mellom de to setningene det sto mellom.
 
-**Ikke bygget, sagt høyt:** dra-og-slipp fra banken inn i teksten (klikk er veien nå),
-fet/kursiv i PDF (markdown-lite, fase 5), deling av dokumenter (ren enkeltbruker).
+**Ikke bygget, sagt høyt:** fet/kursiv i PDF (markdown-lite, fase 5), deling av dokumenter
+(ren enkeltbruker).
 
 ## PDF-motor: Typst bak Blokk-modellen (2026-09-06, gren `rapportmotor-typst`)
 

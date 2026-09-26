@@ -1,9 +1,8 @@
 """Nettverksfri kontrakts-smoke for Ulvens viktigste lesereise.
 
-Dette er ikke en nettleserregresjonstest. Den sikrer at API-kontrakten og de
-synlige DOM-landemerkene som nettlesertesten skal bruke ikke forsvinner stille.
-Selve desktop-/mobilrunden kjøres mot en autentisert deploy når tilgangsveien
-er tilgjengelig.
+Den sikrer API-kontrakten og DOM-landemerkene nettlesertesten bruker.
+Desktop-/mobilatferden ligger i test_ulven_browser.py; produksjonstilgang
+verifiseres separat.
 """
 
 from pathlib import Path
