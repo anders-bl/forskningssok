@@ -65,3 +65,23 @@ bge-m3-utdrag: kryss-vektorrom). Så terskelen må måles PÅ mistral, ikke lån
   rate-limits (kalibrering er et bulk-embed - ett pass, ikke en løkke).
 - Alternativet (kjøre bge-m3 ende-til-ende i prod) er et større infra-valg, ikke
   denne avgrensede oppgaven.
+
+## Første måling (2026-09-26)
+
+Kjørte én Mistral-passering over hele utdraget: 4 732 chunks / 68 dokumenter, 1 310 853
+input-token, 242 API-kall, estimert USD 0,1311 etter publisert pris på USD 0,10 per
+million token. Målemetrikken er samme sqlite-vec L2 som søkeveien bruker.
+
+Det foreløpige settet ligger i `data/mistral_bank_kalibrering.json`; alle spørsmål og
+målinger ligger i `data/mistral_bank_kalibrering_2026-09-26.json`.
+
+- Dekkede: min 0,395824, median 0,503500, maks 0,517202.
+- Fjerne: min 0,618867, median 0,653449, maks 0,686889.
+- Gap mellom dekket-maks og fjern-min: 0,101665.
+- Forventet dokument var nærmeste for 2/10 dekkede spørsmål.
+
+Avstanden alene gir et lovende kandidatområde, men den dårlige dokument-topp1-raten
+viser at de positive fasitene eller selve relevanskravet ikke er gode nok. Dette må
+gjennomgås mot de faktiske nærmeste chunkene før en terskel kan ratifiseres. Ingen
+Mistral-terskel er aktivert; prod failer fortsatt lukket. Dermed er de opprinnelige
+akseptkriteriene ikke oppfylt ennå.

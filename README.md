@@ -755,12 +755,17 @@ To veier, samme utdata (`bank_bakgrunn.py`):
 |---|---|---|
 | Kilde | `boker.db`, hele banken | `bank_utdrag.db`, utdrag i volumet |
 | Embedder | bge-m3 (Ollama) | mistral-embed (ai-proxy), samme som cachen |
-| Terskel | kalibrerte bånd, MØRKT slippes ikke inn | ingen kalibrerte bånd: rangering + maks 2 chunks per bok |
-| På når | `--bank` / `bank_bakgrunn=True` | automatisk når `bank_utdrag.db` er bygget |
+| Terskel | kalibrerte bånd, MØRKT slippes ikke inn | ikke kalibrert ennå: fail-closed, ingen bankposter slippes inn |
+| På når | `--bank` / `bank_bakgrunn=True` | utdraget kan bygges, men bakgrunn holdes stengt til terskelen er validert |
 
 Prod har ikke `boker.db`, og bankens bge-m3-vektorer kan ikke brukes med mistral-embed
 (annet vektorrom). Derfor tas TEKSTEN til fagfeltets del av banken med
 (`bank_proveniens` i profilen) og embeddes på nytt der søket kjører. Ingen ny inngående flate.
+Første Mistral-måling (2026-09-26) fant et avstandsgap mellom 10 dekkede og 10 fjerne
+spørringer, men bare 2/10 dekkede spørringer fant forventet dokument som nærmeste treff.
+Dette er et kandidatresultat, ikke en akseptert kalibrering; se
+`data/mistral_bank_kalibrering_2026-09-26.json`. Fail-closed forblir aktiv til spørringer
+og relevansfasit er gjennomgått.
 
 ```bash
 # 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit

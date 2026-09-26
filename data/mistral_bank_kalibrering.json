@@ -1,0 +1,29 @@
+{
+  "modell": "mistral-embed",
+  "avstand": "sqlite-vec L2; lavere er nærmere",
+  "merknad": "Foreløpig målesett. Positive fasiter er dokumenter i det godkjente utdraget; fjern-kontroller er bevisst utenfor akvakultur/fiskehelse. Ikke bruk terskler i prod før dette settet er faglig gjennomgått og målingen viser separasjon.",
+  "dekket": [
+    {"sporring": "Hvordan påvirker sykdom og stress fiskevelferd, atferd og fôropptak?", "forventet_bok": "Editorial: Fish Welfare in Aquaculture and Research-Where Are We Going?"},
+    {"sporring": "Hvilke tiltak kan begrense parasitter i oppdrett uten å skade fisken?", "forventet_bok": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture."},
+    {"sporring": "Hvordan påvirker bedøving og slaktemetode velferden hos oppdrettsfisk?", "forventet_bok": "Stunning methods in aquaculture slaughter and their implications for fish welfare."},
+    {"sporring": "Hvordan henger tarmmikrobiota sammen med virusinfeksjon hos fisk?", "forventet_bok": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions."},
+    {"sporring": "Kan ammoniakkstress måles gjennom hornhinnen hos ørret i resirkuleringsanlegg?", "forventet_bok": "Look Trout in the Eye: Corneal Biomarkers of Ammonia Stress in Recirculating Aquaculture Systems Treated with TiO2 Photo"},
+    {"sporring": "Hvordan påvirker injeksjonssted og vaksinasjonsmåte immunrespons mot lakselus?", "forventet_bok": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus "},
+    {"sporring": "Hvordan endrer gjær-beta-glukaner immunrespons og sykdomsresistens hos seabass?", "forventet_bok": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac"},
+    {"sporring": "Hvordan henger klimaendringer sammen med sedimentmikrobiom og økosystemfunksjoner i akvakultur?", "forventet_bok": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems."},
+    {"sporring": "Hvilke diagnostiske utfordringer finnes ved nefrokalsinose hos oppdrettslaks?", "forventet_bok": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality."},
+    {"sporring": "Hvordan kan datasyn brukes til å oppdage og telle fisk under vann?", "forventet_bok": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments"}
+  ],
+  "fjern": [
+    "Hvordan bygger jeg en trådløs skriver inn i hjemmenettverket?",
+    "Hva er den skattemessige behandlingen av aksjeutbytte fra utlandet?",
+    "Hvilket treningsprogram passer for å løpe maraton under fire timer?",
+    "Hvordan bytter jeg strenger og justerer halsen på en elektrisk gitar?",
+    "Hvordan lager jeg surdeigsbrød med rugmel og lang kaldheving?",
+    "Hvilke vaksiner trenger jeg før en ferie til Brasil?",
+    "Hvordan stemmer jeg en fiolin etter å ha byttet strengene?",
+    "Hva er hovedstaden i Paraguay og hvor mange bor der?",
+    "Hvordan planter og beskjærer jeg tulipaner i en liten hage?",
+    "Hvordan beregner jeg boliglånsrente og nedbetalingstid?"
+  ]
+}
