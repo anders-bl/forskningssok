@@ -771,6 +771,15 @@ irrelevant treff. Målesettet mangler tilgrensende kontroller, så det fastsette
 tre bånd; fail-closed forblir aktiv. Spørringer og vurderinger:
 `data/mistral_bank_kalibrering_2026-09-26.json`.
 
+En lokal sammenligning på samme 4 732 chunks testet også BGE-M3, multilingual E5 og Nomic
+Embed v2 MoE. Nomic brukte `search_document:`/`search_query:`-prefiksene og ga 768-dimensjonale
+vektorer. På de 10 dekkede spørsmålene lå forventet kilde øverst i 7 tilfeller; etter
+normalisering av sluttpunktum var kilden i topp 5 i 8 av 10. Manuell vurdering av toppchunkene
+ga 7 direkte og 3 delvise svar. Avstandsintervallet for fjerne spørsmål lå over de dekkede i
+dette forsøket, men nabokandidatene overlapper og er ikke en ren negativ kontrollgruppe.
+Resultatene er utforskende og aktiverer ingen produksjonsterskel. Fullt målesett, topp 5 og
+manuelle vurderinger: `data/nomic_bank_kalibrering_2026-09-26.json`.
+
 ```bash
 # 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit
 venv/bin/python bank_utdrag.py eksporter

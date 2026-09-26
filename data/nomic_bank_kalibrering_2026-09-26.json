@@ -1,0 +1,1041 @@
+{
+  "modell": "nomic-embed-text-v2-moe",
+  "maalt": "2026-09-26",
+  "korpus_chunks": 4732,
+  "dimensjoner": 768,
+  "normaliserte_vektorer": true,
+  "metrik": "L2-avstand, lavere er nærmere; bare sammenlign innen samme modell",
+  "input_prefikser": {
+    "documents": "search_document: ",
+    "queries": "search_query: "
+  },
+  "utvalg": {
+    "dekket": 10,
+    "fjern": 10,
+    "nabokandidater": 8
+  },
+  "avstandsintervaller": {
+    "covered": {
+      "n": 10,
+      "min": 0.7511935234069824,
+      "median": 0.8799507319927216,
+      "max": 0.9643020629882812
+    },
+    "far": {
+      "n": 10,
+      "min": 1.1093841791152954,
+      "median": 1.1655119061470032,
+      "max": 1.2344815731048584
+    },
+    "neighbor": {
+      "n": 8,
+      "min": 0.8303199410438538,
+      "median": 0.9448139071464539,
+      "max": 1.0313869714736938
+    }
+  },
+  "dekket_topp1_forventet_tittel_eksakt": 7,
+  "dekket_forventet_tittel_i_topp5": 7,
+  "manuell_topp1_dekket": {
+    "direkte": 7,
+    "delvis": 3,
+    "irrelevant": 0
+  },
+  "manuell_topp1_nabo": {
+    "direkte": 2,
+    "delvis": 4,
+    "irrelevant": 2
+  },
+  "begrensninger": [
+    "Eksperimentelt sammenligningssett, ikke blindt annotert gold standard.",
+    "Nomic-kontekstvinduet er 512 tokens; tokenlengder ble ikke målt. Fire korpustekster oversteg 2000 tegn og kan ha blitt avkortet av embedderen.",
+    "Nabokandidatene er ikke en ren negativgruppe: noen spørsmål er faktisk besvart av korpuset.",
+    "Avstandsverdier kan ikke sammenlignes på tvers av ulike embedding-modeller.",
+    "Dette kalibrerer ikke mistral-embed, som fortsatt mangler egen nabokontrollgruppe."
+  ],
+  "sammenligning_fra_tidligere_kjoringer": {
+    "bge-m3": {
+      "dimensjoner": 1024,
+      "dekket_intervall": [
+        0.716782,
+        0.851113
+      ],
+      "fjern_intervall": [
+        0.997967,
+        1.139525
+      ],
+      "nabo_intervall": [
+        0.791389,
+        0.965754
+      ],
+      "forventet_tittel_topp1_eksakt": "8/10; manuelt var to tittelavvik direkte svar, inkludert YOLO-treff med tegnsettingsavvik"
+    },
+    "multilingual-e5-large": {
+      "dimensjoner": 1024,
+      "dekket_intervall": [
+        0.441647,
+        0.542537
+      ],
+      "fjern_intervall": [
+        0.587816,
+        0.729548
+      ],
+      "nabo_intervall": [
+        0.447188,
+        0.554861
+      ],
+      "forventet_tittel_topp1_eksakt": "2/10; toppresultatene ble dominert av den brede fiskevelferdshåndboka"
+    },
+    "mistral-embed": {
+      "dimensjoner": 1024,
+      "dekket_intervall": [
+        0.395824,
+        0.517202
+      ],
+      "fjern_intervall": [
+        0.618867,
+        0.686889
+      ],
+      "forventet_tittel_topp1_eksakt": "2/10",
+      "status": "terskler fortsatt av; ingen målt nabokontrollgruppe"
+    }
+  },
+  "sporringer": [
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan påvirker sykdom og stress fiskevelferd, atferd og fôropptak?",
+      "topp5": [
+        {
+          "id": 231716,
+          "title": "Editorial: Fish Welfare in Aquaculture and Research-Where Are We Going?",
+          "distance": 0.8460277318954468
+        },
+        {
+          "id": 231722,
+          "title": "Editorial: Fish Welfare in Aquaculture and Research-Where Are We Going?",
+          "distance": 0.8719289898872375
+        },
+        {
+          "id": 235363,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8803884387016296
+        },
+        {
+          "id": 235372,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8856614828109741
+        },
+        {
+          "id": 235376,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8857099413871765
+        }
+      ],
+      "forventet_dokument": "Editorial: Fish Welfare in Aquaculture and Research-Where Are We Going?",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Korrekt editorial-chunk svarer eksplisitt om sykdom, stress, atferd og fôropptak.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvilke tiltak kan begrense parasitter i oppdrett uten å skade fisken?",
+      "topp5": [
+        {
+          "id": 231956,
+          "title": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture.",
+          "distance": 0.9046056270599365
+        },
+        {
+          "id": 235339,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9352496862411499
+        },
+        {
+          "id": 231953,
+          "title": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture.",
+          "distance": 0.943540632724762
+        },
+        {
+          "id": 231955,
+          "title": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture.",
+          "distance": 0.9490315318107605
+        },
+        {
+          "id": 235764,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9527712464332581
+        }
+      ],
+      "forventet_dokument": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture.",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Forventet review-artikkel er toppresultat; treffet beskriver parasittbehandlinger og deres velferdskostnader.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan påvirker bedøving og slaktemetode velferden hos oppdrettsfisk?",
+      "topp5": [
+        {
+          "id": 235873,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8725095391273499
+        },
+        {
+          "id": 235874,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8832952380180359
+        },
+        {
+          "id": 235887,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9298655390739441
+        },
+        {
+          "id": 235565,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9306913614273071
+        },
+        {
+          "id": 235881,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.940486490726471
+        }
+      ],
+      "forventet_dokument": "Stunning methods in aquaculture slaughter and their implications for fish welfare.",
+      "forventet_tittel_topp1_eksakt": false,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Håndbokchunk beskriver elektrisk bedøving og slagbedøving samt velferdsrisiko.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": null
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan henger tarmmikrobiota sammen med virusinfeksjon hos fisk?",
+      "topp5": [
+        {
+          "id": 232547,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 0.8836124539375305
+        },
+        {
+          "id": 232515,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 0.8928471803665161
+        },
+        {
+          "id": 232531,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 0.9072812795639038
+        },
+        {
+          "id": 232516,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 0.9106430411338806
+        },
+        {
+          "id": 232526,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 0.9127739071846008
+        }
+      ],
+      "forventet_dokument": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Forventet review-artikkel er toppresultat og omtaler samspillet mellom tarmmikrobiota og virus.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Kan ammoniakkstress måles gjennom hornhinnen hos ørret i resirkuleringsanlegg?",
+      "topp5": [
+        {
+          "id": 235534,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9205871820449829
+        },
+        {
+          "id": 235531,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9272666573524475
+        },
+        {
+          "id": 235529,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9331182241439819
+        },
+        {
+          "id": 235528,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9458397626876831
+        },
+        {
+          "id": 235527,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9495234489440918
+        }
+      ],
+      "forventet_dokument": "Look Trout in the Eye: Corneal Biomarkers of Ammonia Stress in Recirculating Aquaculture Systems Treated with TiO2 Photo",
+      "forventet_tittel_topp1_eksakt": false,
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Håndbokchunk dekker ammoniakkmåling, men ikke korneale biomarkører eller hornhinnen.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": null
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan påvirker injeksjonssted og vaksinasjonsmåte immunrespons mot lakselus?",
+      "topp5": [
+        {
+          "id": 233364,
+          "title": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "distance": 0.8762890100479126
+        },
+        {
+          "id": 233360,
+          "title": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "distance": 0.8794028162956238
+        },
+        {
+          "id": 233323,
+          "title": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "distance": 0.8797087669372559
+        },
+        {
+          "id": 233327,
+          "title": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "distance": 0.9120596647262573
+        },
+        {
+          "id": 233363,
+          "title": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "distance": 0.9131985902786255
+        }
+      ],
+      "forventet_dokument": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Forventet artikkel er toppresultat og chunk knytter injeksjonssted til lokal immunrespons ved lakselus.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan endrer gjær-beta-glukaner immunrespons og sykdomsresistens hos seabass?",
+      "topp5": [
+        {
+          "id": 233050,
+          "title": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+          "distance": 0.8019015192985535
+        },
+        {
+          "id": 233054,
+          "title": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+          "distance": 0.8288413882255554
+        },
+        {
+          "id": 233025,
+          "title": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+          "distance": 0.8320966362953186
+        },
+        {
+          "id": 233024,
+          "title": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+          "distance": 0.8384090065956116
+        },
+        {
+          "id": 233070,
+          "title": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+          "distance": 0.8396324515342712
+        }
+      ],
+      "forventet_dokument": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Forventet artikkel er toppresultat, men chunk er figurtekst med markører; alene svarer den ikke på samlet effekt på sykdomsresistens.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan henger klimaendringer sammen med sedimentmikrobiom og økosystemfunksjoner i akvakultur?",
+      "topp5": [
+        {
+          "id": 234735,
+          "title": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems.",
+          "distance": 0.7511935234069824
+        },
+        {
+          "id": 234738,
+          "title": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems.",
+          "distance": 0.8069261908531189
+        },
+        {
+          "id": 234736,
+          "title": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems.",
+          "distance": 0.8433706760406494
+        },
+        {
+          "id": 234775,
+          "title": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems.",
+          "distance": 0.8454000949859619
+        },
+        {
+          "id": 234759,
+          "title": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems.",
+          "distance": 0.8654313683509827
+        }
+      ],
+      "forventet_dokument": "Climate-driven restructuring of sediment microbiomes and ecosystem functions in aquaculture systems.",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Forventet artikkel er toppresultat og innledning dekker klima, sediment og økosystemfunksjoner.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvilke diagnostiske utfordringer finnes ved nefrokalsinose hos oppdrettslaks?",
+      "topp5": [
+        {
+          "id": 236973,
+          "title": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "distance": 0.9434815049171448
+        },
+        {
+          "id": 236949,
+          "title": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "distance": 0.9582230448722839
+        },
+        {
+          "id": 236963,
+          "title": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "distance": 0.9942193031311035
+        },
+        {
+          "id": 236975,
+          "title": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "distance": 0.9974973201751709
+        },
+        {
+          "id": 236974,
+          "title": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "distance": 0.998247504234314
+        }
+      ],
+      "forventet_dokument": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+      "forventet_tittel_topp1_eksakt": true,
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Forventet diagnostikkartikkel er toppresultat og diskusjonen dekker differensialdiagnostikk.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 1
+    },
+    {
+      "gruppe": "covered",
+      "sporring": "Hvordan kan datasyn brukes til å oppdage og telle fisk under vann?",
+      "topp5": [
+        {
+          "id": 286971,
+          "title": "Application of Artificial Intelligence and Computer Vision for Measuring and Counting Oysters.",
+          "distance": 0.9643020629882812
+        },
+        {
+          "id": 286881,
+          "title": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments.",
+          "distance": 0.9724451303482056
+        },
+        {
+          "id": 286931,
+          "title": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments.",
+          "distance": 0.9746074080467224
+        },
+        {
+          "id": 286933,
+          "title": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments.",
+          "distance": 0.9870852828025818
+        },
+        {
+          "id": 286892,
+          "title": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments.",
+          "distance": 0.9882642030715942
+        }
+      ],
+      "forventet_dokument": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments",
+      "forventet_tittel_topp1_eksakt": false,
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Toppresultatet handler om datasyn og telling av østers; YOLO-CBNet om fisk under vann ligger som nummer to.",
+      "forventet_kilde_rangertopp5_tittel_normalisert": 2
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvordan bygger jeg en trådløs skriver inn i hjemmenettverket?",
+      "topp5": [
+        {
+          "id": 234364,
+          "title": "Back to basics: locally produced vaccines offer a practical alternative to antibiotics for prevention of streptococcosis",
+          "distance": 1.16232430934906
+        },
+        {
+          "id": 233282,
+          "title": "An Intelligent IoT-Based Predictive Control System for Water Quality and Energy Management in Koi Aquaculture.",
+          "distance": 1.173430323600769
+        },
+        {
+          "id": 232993,
+          "title": "DNA Vaccination in Farmed Fish with a Focus on Salmonid Alphavirus Infection in Atlantic Salmon (Salmo salar",
+          "distance": 1.1750738620758057
+        },
+        {
+          "id": 234362,
+          "title": "Back to basics: locally produced vaccines offer a practical alternative to antibiotics for prevention of streptococcosis",
+          "distance": 1.17948317527771
+        },
+        {
+          "id": 233242,
+          "title": "An Intelligent IoT-Based Predictive Control System for Water Quality and Energy Management in Koi Aquaculture.",
+          "distance": 1.1799513101577759
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hva er den skattemessige behandlingen av aksjeutbytte fra utlandet?",
+      "topp5": [
+        {
+          "id": 235318,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1847517490386963
+        },
+        {
+          "id": 235913,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1904131174087524
+        },
+        {
+          "id": 235899,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1934031248092651
+        },
+        {
+          "id": 235316,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1996883153915405
+        },
+        {
+          "id": 233868,
+          "title": "Phage Therapy for Sustainable Sea Cucumber Aquaculture.",
+          "distance": 1.2035794258117676
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvilket treningsprogram passer for å løpe maraton under fire timer?",
+      "topp5": [
+        {
+          "id": 235965,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.2104307413101196
+        },
+        {
+          "id": 235556,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.2135045528411865
+        },
+        {
+          "id": 235843,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.2156070470809937
+        },
+        {
+          "id": 236022,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.2157660722732544
+        },
+        {
+          "id": 235856,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.2167127132415771
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvordan bytter jeg strenger og justerer halsen på en elektrisk gitar?",
+      "topp5": [
+        {
+          "id": 235875,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.12228524684906
+        },
+        {
+          "id": 232058,
+          "title": "Stunning methods in aquaculture slaughter and their implications for fish welfare.",
+          "distance": 1.127142071723938
+        },
+        {
+          "id": 235874,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1409926414489746
+        },
+        {
+          "id": 235873,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1426806449890137
+        },
+        {
+          "id": 232073,
+          "title": "Stunning methods in aquaculture slaughter and their implications for fish welfare.",
+          "distance": 1.1460007429122925
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvordan lager jeg surdeigsbrød med rugmel og lang kaldheving?",
+      "topp5": [
+        {
+          "id": 233028,
+          "title": "Dietary 1.3-1.6 yeast β-glucans enhance immune response and disease resilience in European seabass challenged with Tenac",
+          "distance": 1.1638898849487305
+        },
+        {
+          "id": 235887,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1832014322280884
+        },
+        {
+          "id": 235875,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1942830085754395
+        },
+        {
+          "id": 235777,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1954987049102783
+        },
+        {
+          "id": 234706,
+          "title": "Partial fishmeal replacement with poultry by-product meal and yeast enhances growth and health in Clarias gariepinus, wh",
+          "distance": 1.1960734128952026
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvilke vaksiner trenger jeg før en ferie til Brasil?",
+      "topp5": [
+        {
+          "id": 235927,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1093841791152954
+        },
+        {
+          "id": 235928,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1112611293792725
+        },
+        {
+          "id": 235451,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1179404258728027
+        },
+        {
+          "id": 235930,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.127444863319397
+        },
+        {
+          "id": 233335,
+          "title": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "distance": 1.1318821907043457
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvordan stemmer jeg en fiolin etter å ha byttet strengene?",
+      "topp5": [
+        {
+          "id": 235925,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1671339273452759
+        },
+        {
+          "id": 235875,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1761250495910645
+        },
+        {
+          "id": 235484,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1796410083770752
+        },
+        {
+          "id": 235397,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1805527210235596
+        },
+        {
+          "id": 235876,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1825103759765625
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hva er hovedstaden i Paraguay og hvor mange bor der?",
+      "topp5": [
+        {
+          "id": 235196,
+          "title": "Assessment of water quality of the Halda River using multiple WQI approaches: Implications for Riverine Ecosystem and Su",
+          "distance": 1.2344815731048584
+        },
+        {
+          "id": 234107,
+          "title": "Detection of zoonotic protozoa in raccoons (Procyon lotor) from aquaculture zones in Saxony (Germany): One health perspe",
+          "distance": 1.2442952394485474
+        },
+        {
+          "id": 234122,
+          "title": "Detection of zoonotic protozoa in raccoons (Procyon lotor) from aquaculture zones in Saxony (Germany): One health perspe",
+          "distance": 1.2486218214035034
+        },
+        {
+          "id": 234126,
+          "title": "Detection of zoonotic protozoa in raccoons (Procyon lotor) from aquaculture zones in Saxony (Germany): One health perspe",
+          "distance": 1.248744010925293
+        },
+        {
+          "id": 234121,
+          "title": "Detection of zoonotic protozoa in raccoons (Procyon lotor) from aquaculture zones in Saxony (Germany): One health perspe",
+          "distance": 1.2510124444961548
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvordan planter og beskjærer jeg tulipaner i en liten hage?",
+      "topp5": [
+        {
+          "id": 232917,
+          "title": "A bioeconomic performance index for comparison of an experimental intensive aquaponic system with tilapia and tomato ver",
+          "distance": 1.180908203125
+        },
+        {
+          "id": 235876,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1942239999771118
+        },
+        {
+          "id": 233859,
+          "title": "Phage Therapy for Sustainable Sea Cucumber Aquaculture.",
+          "distance": 1.1947988271713257
+        },
+        {
+          "id": 232916,
+          "title": "A bioeconomic performance index for comparison of an experimental intensive aquaponic system with tilapia and tomato ver",
+          "distance": 1.1967570781707764
+        },
+        {
+          "id": 232915,
+          "title": "A bioeconomic performance index for comparison of an experimental intensive aquaponic system with tilapia and tomato ver",
+          "distance": 1.2017532587051392
+        }
+      ]
+    },
+    {
+      "gruppe": "far",
+      "sporring": "Hvordan beregner jeg boliglånsrente og nedbetalingstid?",
+      "topp5": [
+        {
+          "id": 235920,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1416051387786865
+        },
+        {
+          "id": 235393,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1492996215820312
+        },
+        {
+          "id": 235570,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1496219635009766
+        },
+        {
+          "id": 235479,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1536977291107178
+        },
+        {
+          "id": 235844,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.1538376808166504
+        }
+      ]
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Hvordan påvirker fotoperiode smoltifisering hos laks?",
+      "topp5": [
+        {
+          "id": 235561,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.914436399936676
+        },
+        {
+          "id": 235418,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9186120629310608
+        },
+        {
+          "id": 235816,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9743763208389282
+        },
+        {
+          "id": 235560,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9997484683990479
+        },
+        {
+          "id": 235562,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0197080373764038
+        }
+      ],
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Håndbokchunk beskriver fotoperioderegimer og smoltifisering."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Kan genetisk seleksjon redusere lakselusfølsomhet hos oppdrettslaks?",
+      "topp5": [
+        {
+          "id": 235400,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0097439289093018
+        },
+        {
+          "id": 235399,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0232977867126465
+        },
+        {
+          "id": 236029,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.033349871635437
+        },
+        {
+          "id": 235401,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0404908657073975
+        },
+        {
+          "id": 235489,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0463838577270508
+        }
+      ],
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Chunk beskriver lakselusvirkning på fisk, men ikke genetisk seleksjon for lusefølsomhet."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Hvordan påvirker mikroplast tarmmikrobiota hos oppdrettsfisk?",
+      "topp5": [
+        {
+          "id": 232356,
+          "title": "Comparison of Morphological Characteristics, Histological Tissue Structures, and Intestinal Function Among Eight Ornamen",
+          "distance": 0.9742619395256042
+        },
+        {
+          "id": 232504,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 1.009303092956543
+        },
+        {
+          "id": 232506,
+          "title": "The Role of Gut Microbiota in Fish Viral Infection: Mechanisms and Microbiota-Targeted Interventions.",
+          "distance": 1.0093660354614258
+        },
+        {
+          "id": 231741,
+          "title": "Editorial: Fish Welfare in Aquaculture and Research-Where Are We Going?",
+          "distance": 1.009411096572876
+        },
+        {
+          "id": 232305,
+          "title": "Comparison of Morphological Characteristics, Histological Tissue Structures, and Intestinal Function Among Eight Ornamen",
+          "distance": 1.0156757831573486
+        }
+      ],
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Chunk dekker tarmmikrobiota, men ikke mikroplast eller dens effekt."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Kan akustisk telemetri vise laksens vandringsmønster?",
+      "topp5": [
+        {
+          "id": 235857,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0313869714736938
+        },
+        {
+          "id": 235584,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0486936569213867
+        },
+        {
+          "id": 235337,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.053425908088684
+        },
+        {
+          "id": 235393,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0559711456298828
+        },
+        {
+          "id": 235392,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0588369369506836
+        }
+      ],
+      "manuell_topp1_relevans": "irrelevant",
+      "begrunnelse": "Chunk handler om gjellelokkfrekvens og stress, ikke akustisk telemetri eller vandring."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Hvordan påvirker skadelige algeoppblomstringer gjellene hos fisk?",
+      "topp5": [
+        {
+          "id": 235439,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9153658747673035
+        },
+        {
+          "id": 235793,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9309596419334412
+        },
+        {
+          "id": 235404,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9342880249023438
+        },
+        {
+          "id": 235388,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9568546414375305
+        },
+        {
+          "id": 235764,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9662451148033142
+        }
+      ],
+      "manuell_topp1_relevans": "irrelevant",
+      "begrunnelse": "Chunk handler om gjellelokkdeformiteter, ikke skadelige algeoppblomstringer."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Hvordan skiller ferskvannsbad seg fra termisk avlusing når det gjelder fiskevelferd?",
+      "topp5": [
+        {
+          "id": 236003,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8916022181510925
+        },
+        {
+          "id": 236007,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9428839683532715
+        },
+        {
+          "id": 236006,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9638962149620056
+        },
+        {
+          "id": 236005,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9668753147125244
+        },
+        {
+          "id": 236024,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9768950343132019
+        }
+      ],
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Chunk dekker termisk/mekanisk avlusing og velferd, men ikke ferskvannsbad-sammenligningen."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Hva er sammenhengen mellom oksygenovermetning og gassblæresyke hos fisk?",
+      "topp5": [
+        {
+          "id": 235741,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8303199410438538
+        },
+        {
+          "id": 235719,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.8975260257720947
+        },
+        {
+          "id": 235523,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9030470848083496
+        },
+        {
+          "id": 235522,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9076449871063232
+        },
+        {
+          "id": 235742,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 0.9103702902793884
+        }
+      ],
+      "manuell_topp1_relevans": "direkte",
+      "begrunnelse": "Chunk knytter gassovermetning til gassblæresyke og nevner oksygen."
+    },
+    {
+      "gruppe": "neighbor",
+      "sporring": "Kan miljø-DNA brukes til å måle lakselus i oppdrettsanlegg?",
+      "topp5": [
+        {
+          "id": 233290,
+          "title": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "distance": 0.9746560454368591
+        },
+        {
+          "id": 233309,
+          "title": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "distance": 1.005454182624817
+        },
+        {
+          "id": 235402,
+          "title": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "distance": 1.0058759450912476
+        },
+        {
+          "id": 233289,
+          "title": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "distance": 1.0167934894561768
+        },
+        {
+          "id": 234117,
+          "title": "Detection of zoonotic protozoa in raccoons (Procyon lotor) from aquaculture zones in Saxony (Germany): One health perspe",
+          "distance": 1.020025610923767
+        }
+      ],
+      "manuell_topp1_relevans": "delvis",
+      "begrunnelse": "Chunk bruker miljø-DNA i avlusingskontekst, men studerer patogenovervåking, ikke måling av lakselus."
+    }
+  ],
+  "dekket_forventet_tittel_i_topp5_normalisert": 8,
+  "dekket_gap_fjern_min_minus_dekket_maks": 0.145082
+}
