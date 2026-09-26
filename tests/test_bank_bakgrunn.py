@@ -7,6 +7,7 @@ er en egen live-måling (se commit-meldingen).
 import sqlite3
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import sqlite_vec
@@ -28,6 +29,23 @@ def _vec(*komponenter):
 
 def _embed(tekster):
     return [_vec(1.0) for _ in tekster]
+
+
+# Den ekte kalibreringen bor i søsterrepoet bøker/, som CI ikke sjekker ut: suiten var rød
+# fire kjøringer på rad 2026-09-26 fordi importen bare lyktes på Anders' Mac. Dette er
+# fixturens EGNE bånd, ikke husets tall: avstandene i boker_db (0.6 / 0.9 / 1.41) er lagt
+# slik at de faller i hvert sitt bånd. Endres husets bånd, skal ikke denne suiten merke det.
+def _fixture_band(d: float) -> str:
+    return "skarpt" if d < FIXTURE_KALIBRERING.SKARPT else (
+        "delvis" if d < FIXTURE_KALIBRERING.MORKT else "MØRKT")
+
+
+FIXTURE_KALIBRERING = SimpleNamespace(SKARPT=0.85, MORKT=0.93, band=_fixture_band)
+
+
+@pytest.fixture(autouse=True)
+def _hermetisk_kalibrering(monkeypatch):
+    monkeypatch.setattr(bank_bakgrunn, "_kalibrering", lambda: FIXTURE_KALIBRERING)
 
 
 @pytest.fixture
@@ -114,6 +132,16 @@ def test_manglende_db_gir_arsak_ikke_stille_tom_liste(tmp_path):
     assert poster == []
     assert status["tilgjengelig"] is False
     assert "boker.db" in status["arsak"]
+
+
+def test_manglende_kalibrering_gir_arsak_ikke_stille_tom_liste(boker_db, monkeypatch):
+    def _mangler():
+        raise ModuleNotFoundError(name="bok_kalibrering")
+    monkeypatch.setattr(bank_bakgrunn, "_kalibrering", _mangler)
+    poster, status = bank_bakgrunn.hent_bakgrunn("nephrocalcinosis", db_path=boker_db, embed_fn=_embed)
+    assert poster == []
+    assert status["tilgjengelig"] is False
+    assert "bok_kalibrering" in status["arsak"]
 
 
 def test_alle_treff_morkt_gir_tilgjengelig_men_tom_med_arsak(boker_db):
