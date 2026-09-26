@@ -108,3 +108,16 @@ midterste verdiene; raamalingene er uendret.
 
 Ingen Mistral-terskel er aktivert; prod failer fortsatt lukket. De opprinnelige
 akseptkriteriene er ikke oppfylt ennaa.
+
+## Nomic-kontekstrevisjon (2026-09-26)
+
+Alle 4 732 chunks ble sendt gjennom Ollama-koordinatoren med `truncate=false`. Partier som
+feilet ble delt til hver enkelt overskridende chunk var identifisert. 4 723 chunks passerte;
+ni overskred modellens 512-tokenvindu. `llama-tokenize` mot installert GGUF, med
+`search_document:`-prefiks og BOS/EOS, maalte dem til 586-4 103 tokens. Standardoppsettet
+`truncate=true` i den forrige Nomic-embeddingpasseringen avkortet dermed disse ni stille.
+Ingen av ID-ene finnes i topp-5-resultatene som er lagret fra kalibreringsspoerringene, men
+det fulle korpuset er ikke representert uten tap. Detaljer: `data/nomic_context_audit_2026-09-26.json`.
+
+Dette lukker selve maalehullet, ikke modellens egnethet: Nomic maa enten faa en eksplisitt
+re-chunkingstrategi eller holdes ute av produksjon. Mistral-beslutningen er uendret.

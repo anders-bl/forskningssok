@@ -1,0 +1,67 @@
+{
+  "model": "nomic-embed-text-v2-moe",
+  "mode": "search_document prefix; truncate=false",
+  "source": "data/bank_utdrag.jsonl",
+  "ollama_version": "0.30.10",
+  "model_digest": "sha256:a5db3381f2e514d3490a3a31fe70eb1a65e95016c85c6c2c23223b810806594f",
+  "chunks": 4732,
+  "verified_within_context": 4723,
+  "over_context": [
+    {
+      "id": 232926,
+      "chars": 1589,
+      "tokens_with_prefix_and_special_tokens": 727
+    },
+    {
+      "id": 232927,
+      "chars": 5596,
+      "tokens_with_prefix_and_special_tokens": 2960
+    },
+    {
+      "id": 232929,
+      "chars": 3619,
+      "tokens_with_prefix_and_special_tokens": 2030
+    },
+    {
+      "id": 232930,
+      "chars": 6015,
+      "tokens_with_prefix_and_special_tokens": 3482
+    },
+    {
+      "id": 232936,
+      "chars": 1545,
+      "tokens_with_prefix_and_special_tokens": 708
+    },
+    {
+      "id": 233095,
+      "chars": 1939,
+      "tokens_with_prefix_and_special_tokens": 744
+    },
+    {
+      "id": 233613,
+      "chars": 8838,
+      "tokens_with_prefix_and_special_tokens": 4103
+    },
+    {
+      "id": 233820,
+      "chars": 1376,
+      "tokens_with_prefix_and_special_tokens": 680
+    },
+    {
+      "id": 235997,
+      "chars": 1228,
+      "tokens_with_prefix_and_special_tokens": 586
+    }
+  ],
+  "unresolved_errors": [],
+  "successful_batch_prompt_eval_tokens_including_prefixes": 1197562,
+  "api_jobs": 117,
+  "expected_context_rejections": 58,
+  "context_length": 512,
+  "token_count_method": "Ollama queue embed requests used truncate=false; failed batches were bisected to identify all overlength chunks. llama-tokenize counted each flagged chunk against the installed model GGUF, including search_document prefix, BOS and EOS.",
+  "prior_top5_impact": "None of the nine IDs appears in the top-five results recorded in the Nomic calibration or near-control report. The full Nomic pass nevertheless silently truncated these inputs because the default embedding request uses truncate=true.",
+  "limitations": [
+    "The other 4723 chunks were confirmed to fit by successful truncate=false batch requests; individual token counts were not exported.",
+    "No embeddings or source text are included in this audit artifact."
+  ]
+}
