@@ -127,7 +127,11 @@ def _rader_boker(sti: Path, emne: str, k: int, embed_fn, kal, prefikser) -> list
         # NULL, NULL: art_niva/tema lagres ikke i boker.db (klassifiseres live i
         # _art_og_tema); utdrag-veien bærer dem ferdig. Samme radform beggeveis så
         # hent_bakgrunn pakker ut likt.
-        limit = min(total_count, max(k * 6, k))
+        # sqlite-vec avviser K over 4096 selv om indeksen er større. Etter at
+        # grensen er nådd, bruk de beste kandidatene vi kan hente; ikke la en
+        # stor bokbank gjøre bakgrunnssøket utilgjengelig.
+        maks_knn = min(total_count, 4096)
+        limit = min(maks_knn, max(k * 6, k))
         qblob = sqlite_vec.serialize_float32(qvec)
         while True:
             rader = db.execute(
@@ -147,9 +151,9 @@ def _rader_boker(sti: Path, emne: str, k: int, embed_fn, kal, prefikser) -> list
                 antall_brukbare += 1
                 if antall_brukbare >= k:
                     break
-            if antall_brukbare >= k or limit >= total_count:
+            if antall_brukbare >= k or limit >= maks_knn:
                 return rader
-            limit = min(total_count, limit * 2)
+            limit = min(maks_knn, limit * 2)
     finally:
         db.close()
 

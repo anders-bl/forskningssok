@@ -780,6 +780,24 @@ i dette forsoeket, men nabokandidatene overlapper og er ikke en ren negativ kont
 Resultatene er utforskende og aktiverer ingen produksjonsterskel. Fullt maalesett, topp 5 og
 manuelle vurderinger: `data/nomic_bank_kalibrering_2026-09-26.json`.
 
+En paret syntesepilot paa to historiske queryer fra Ulven-profilens logg fant henholdsvis
+tre og to lokale banktreff, men ingen av de fire svarene siterte en bankpost. Loggen
+identifiserer ikke hvem som utforte sokene. En blind Opus-vurdering
+foretrakk svaret uten bank for "nephrocalcinosis salmon" og svaret med bank for
+"nephrocalcinosis"; det viser ingen konsistent fordel. Setningsdeleren er rettet for
+referanser etter punktum, men maalet vurderer sitat-ID-er, ikke om kilden faktisk stoetter
+paastanden. Utvalget er for lite for en generell nyttekonklusjon. Metode, raa svar og
+vurdering: `data/ulven_syntese_bank_pilot_2026-09-27.json`.
+
+En utvidet runde med full synteseflyt ble startet 2026-09-27. Forste paret fullforte, men
+bankarmen returnerte tom fortelling og bare status/kildeliste. Kvalitetsmaalertallet
+behandlet tom tekst som 100 prosent sitatdekning; dette er rettet, med regresjonstest.
+Etter klarering fullforte en dekket velferdskontroll begge armer; bankarmen hadde en setning
+uten kilde etter reparasjon, mens kontrollarmen uten bank hadde ingen. En ny bankgenerering
+ble deretter stoppet av Ollama-vernet ved kritisk minnetrykk. Den neste kontrollen har bare
+uten-bank-arm; slakte- og eDNA-parene er ikke startet. Delresultat og forhaandsdekning:
+`data/ulven_syntese_bank_round2_2026-09-27.json`.
+
 En full kontekstrevisjon med `truncate=false` fant 9 av 4 732 dokumentchunks over Nomic sitt
 512-tokenvindu. De var 586-4 103 tokens med `search_document:`-prefiks og BOS/EOS; Ollama ville
 ellers avkortet dem stille med standard `truncate=true`. Ingen av de ni ligger i topp 5 i de

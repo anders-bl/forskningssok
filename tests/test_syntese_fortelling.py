@@ -87,6 +87,32 @@ def test_evaluer_kvalitet_skiller_kildehull_fra_dekket_setning():
     assert måling["lenkedekning"] == pytest.approx(1 / 2)
 
 
+def test_evaluer_kvalitet_deler_setninger_etter_referanse_i_lopende_avsnitt():
+    papirer = [{"id": 1, "kilde_url": "https://example.org/1"},
+               {"id": 2, "kilde_url": "https://example.org/2"}]
+    tekst = (
+        "Funn en. [#1] Funn to. [#2] "
+        "Ingen kilder i utvalget dekker dette\n---\n## Kildeliste"
+    )
+
+    måling = syntese_fortelling.evaluer_kvalitet(tekst, papirer)
+
+    assert måling["faktiske_enheter"] == 3
+    assert måling["dekket_enheter"] == 3
+    assert måling["mangler_kilde_enheter"] == 0
+    assert måling["eksplisitte_kildehull"] == 1
+
+
+def test_evaluer_kvalitet_markere_tom_fortelling_som_null_dekning():
+    måling = syntese_fortelling.evaluer_kvalitet(
+        "\n---\n## Kildeliste", [{"id": 1, "doi": "10.1/example"}]
+    )
+
+    assert måling["tom_fortelling"] is True
+    assert måling["faktiske_enheter"] == 0
+    assert måling["sitatdekning"] == 0.0
+
+
 def test_evaluer_kvalitet_fanger_ukjent_kilde_id():
     måling = syntese_fortelling.evaluer_kvalitet(
         "Påstand [#999].", [{"id": 1, "kilde_url": "https://example.org/1"}]
@@ -392,3 +418,16 @@ def test_lag_syntese_fortelling_reparerer_ukildet_faktasetning(tmp_path, monkeyp
     ut = syntese_fortelling.lag_syntese_fortelling("Ekte", db_path)
 
     assert "mangler verifiserbar kildehenvisning" not in ut
+
+
+def test_lag_syntese_fortelling_reparerer_tomt_forsteutkast(tmp_path, monkeypatch):
+    db_path = tmp_path / "cache.db"
+    _lagre(db_path, tittel="Ekte papir")
+    [papir] = syntese_fortelling.hent_fra_cache("Ekte", db_path)
+    svar = iter(("", f"Et dokumentert funn [#{papir['id']}]."))
+    monkeypatch.setattr(syntese_fortelling, "kall_llm", lambda _prompt: next(svar))
+
+    ut = syntese_fortelling.lag_syntese_fortelling("Ekte", db_path)
+
+    assert "Et dokumentert funn" in ut
+    assert "syntesen returnerte ingen fortelling" not in ut

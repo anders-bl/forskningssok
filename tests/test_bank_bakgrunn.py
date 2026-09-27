@@ -258,3 +258,47 @@ def test_adaptiv_overfetch_finner_flere_boker_forbi_tett_forste_bok(tmp_path):
     assert len(poster) == 5
     assert boker.count("Dominerende bok") == 2
     assert set(boker) == {"Dominerende bok", "Bok B", "Bok C", "Bok D"}
+
+
+def test_adaptiv_overfetch_holder_seg_under_sqlite_vec_knn_grensen(monkeypatch):
+    kallte_k = []
+    treff = [(1, "Bok A", "epmc", None, "relevant tekst", "epmc:test:", 0.6, None, None)]
+
+    class Resultat:
+        def __init__(self, *, verdi=None, rader=()):
+            self.verdi = verdi
+            self.rader = rader
+
+        def fetchone(self):
+            return (self.verdi,)
+
+        def fetchall(self):
+            return self.rader
+
+    class Database:
+        def enable_load_extension(self, _enabled):
+            pass
+
+        def execute(self, sql, parametre=()):
+            if "SELECT count(*)" in sql and "JOIN book_chunks" in sql:
+                return Resultat(verdi=4500)
+            if "SELECT count(*)" in sql:
+                return Resultat(verdi=5000)
+            k = parametre[1]
+            kallte_k.append(k)
+            assert k <= 4096
+            return Resultat(rader=treff if k == 4096 else ())
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(bank_bakgrunn.sqlite3, "connect", lambda *_a, **_k: Database())
+    monkeypatch.setattr(sqlite_vec, "load", lambda _db: None)
+
+    rader = bank_bakgrunn._rader_boker(
+        Path("fake.db"), "query", 1, _embed, FIXTURE_KALIBRERING, ("epmc:",)
+    )
+
+    assert rader == treff
+    assert kallte_k[-1] == 4096
+    assert max(kallte_k) == 4096

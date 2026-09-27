@@ -197,6 +197,7 @@ def evaluer_kvalitet(fortelling_tekst: str, papirer: list[dict]) -> dict:
     kildebelagt påstand.
     """
     narrativ = fortelling_tekst.split("\n---", 1)[0]
+    tom_fortelling = not narrativ.strip()
     enheter: list[str] = []
     for avsnitt in narrativ.splitlines():
         linje = avsnitt.strip()
@@ -232,10 +233,11 @@ def evaluer_kvalitet(fortelling_tekst: str, papirer: list[dict]) -> dict:
     antall = len(enheter)
     return {
         "faktiske_enheter": antall,
+        "tom_fortelling": tom_fortelling,
         "dekket_enheter": dekket,
         "mangler_kilde_enheter": mangler,
         "eksplisitte_kildehull": eksplisitte_hull,
-        "sitatdekning": dekket / antall if antall else 1.0,
+        "sitatdekning": dekket / antall if antall else (0.0 if tom_fortelling else 1.0),
         "ugyldige_kilde_ider": ugyldige,
         "listede_kilder": len(papirer),
         "brukte_kilder": len(brukte),
@@ -246,8 +248,9 @@ def evaluer_kvalitet(fortelling_tekst: str, papirer: list[dict]) -> dict:
 
 
 def del_i_setninger(tekst: str) -> list[str]:
-    """Del en narrativ linje grovt i setninger for observasjonsmålingen."""
-    return [bit.strip() for bit in re.split(r"(?<=[.!?])\s+(?=[A-ZÆØÅ])", tekst) if bit.strip()]
+    """Del fortellinger i setninger også når referansemerket står etter punktum."""
+    mønster = r"(?<=[.!?])\s+(?=[A-ZÆØÅ])|(?<=\])\s+(?=[A-ZÆØÅ])"
+    return [bit.strip() for bit in re.split(mønster, tekst) if bit.strip()]
 
 
 # Lokal Ollama-modell — samme som dossier.py bruker (gpt-oss:agent, num_ctx=16384)
@@ -453,7 +456,15 @@ def lag_syntese_fortelling(emne: str, db_path: Path = DB, *, bank_bakgrunn: bool
     # Én brukerinitiert syntese kan få ett ekstra reparasjonskall. Det hindrer at en
     # kjent sitatbrist bare blir en passiv advarsel, men unngår også retry-loop og beholder
     # førsteutkastet dersom reparasjonen ikke faktisk forbedrer målingen.
-    if kvalitetsmåling["mangler_kilde_enheter"]:
+    if kvalitetsmåling["tom_fortelling"]:
+        reparert_rått = kall_llm(bygg_reparasjons_prompt(emne, papirer, renset))
+        reparert, reparert_avvist = verifiser_kilder(reparert_rått, papirer)
+        reparert_måling = evaluer_kvalitet(reparert, papirer)
+        if not reparert_måling["tom_fortelling"]:
+            renset = reparert
+            avvist = reparert_avvist
+            kvalitetsmåling = reparert_måling
+    elif kvalitetsmåling["mangler_kilde_enheter"]:
         reparert_rått = kall_llm(bygg_reparasjons_prompt(emne, papirer, renset))
         reparert, reparert_avvist = verifiser_kilder(reparert_rått, papirer)
         reparert_måling = evaluer_kvalitet(reparert, papirer)
@@ -468,7 +479,9 @@ def lag_syntese_fortelling(emne: str, db_path: Path = DB, *, bank_bakgrunn: bool
             f"\n---\n[ADVARSEL: {len(avvist)} kildehenvisning(er) fantes ikke i "
             f"kildesettet og ble fjernet: {', '.join(avvist)}]"
         )
-    if kvalitetsmåling["mangler_kilde_enheter"]:
+    if kvalitetsmåling["tom_fortelling"]:
+        ut.append("\n---\n[ADVARSEL: syntesen returnerte ingen fortelling]")
+    elif kvalitetsmåling["mangler_kilde_enheter"]:
         ut.append(
             "\n---\n[ADVARSEL: "
             f"{kvalitetsmåling['mangler_kilde_enheter']} faktiske setning(er) mangler "

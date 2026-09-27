@@ -1,0 +1,228 @@
+{
+  "tittel": "Pilotmåling av bok-bankens nytte i Ulven-syntese",
+  "dato": "2026-09-27",
+  "sporring": "nephrocalcinosis salmon",
+  "grunnlag": "Sokeloggen i cache.db har 427 oppforinger: 425 for «nephrocalcinosis salmon» og en hver for «nephrocalcinosis» og «calcitonin osteoporosis treatment». Revisjonen identifiserer ikke hvem som utforte sokene.",
+  "modell": "gpt-oss:agent via lokal Ollama; AI_PROXY_URL og OLLAMA_TUNNEL_URL fjernet fra prosessen.",
+  "design": "Parede lokale førsteutkast fra gpt-oss:agent ved temperatur 0.2. Samme cache per sporring; med-bank-armen la til lokalt boker.db. Svar ble kontrollert med kilde-ID-gaten og evaluer_kvalitet. Reparasjonskallet var utelatt. Queryene finnes i sok_logg i cache.db.",
+  "bankstatus": {
+    "kilde": "boker.db",
+    "treff": 3,
+    "beste_avstand": 0.8761,
+    "forkastet_morkt": 2259,
+    "direkte_kandidat": 2,
+    "bakgrunn": 1
+  },
+  "tolkning": "Ingen bankchunk ble sitert i noen av de fire svarene. Uten bank ble 12 og 13 faktapåstander sitert i de to queryene; med bank ble 13 og 15 sitert. Med-bank-svaret hadde fem usiterte påstander i den første queryen og ingen i den andre. En blind Opus-vurdering foretrakk uten-bank-svaret for nephrocalcinosis salmon og med-bank-svaret for nephrocalcinosis. Det viser ingen konsistent behandlingseffekt. Bankens faglige bidrag er ikke påvist, og to nære queryer gir ikke generaliserbart resultat.",
+  "begrensninger": [
+    "Kun to historiske queryer fra samme emnefamilie.",
+    "En enkelt generering per arm; lokal modell er stokastisk.",
+    "Førsteutkast uten reparasjonskall.",
+    "Måleren vurderer sitat-ID-dekning, ikke om kilden faktisk støtter påstanden.",
+    "Blind vurdering fra én modell; kildetekstene ble ikke gitt til vurdereren.",
+    "Lokal boker.db-vei; produksjonsutdraget er ikke målt."
+  ],
+  "maalinger": [
+    {
+      "sporring": "nephrocalcinosis salmon",
+      "kildeloggtreff": 425,
+      "resultater": {
+        "uten_bank": {
+          "tekst": "Nephrocalcinosis is a frequent production disorder in farmed Atlantic salmon, characterized by mineral deposits within the kidney. [#10.1111/jfd.13815] Histopathological examinations reveal amorphous calcium‑rich apatite (amCAP) crystals as the predominant mineral in affected kidneys. [#10.1016/j.aquaculture.2022.738104] Affected fish display low plasma chloride and sodium, while calcium and magnesium concentrations are elevated, with magnesium increasing proportionally to disease severity. [#https://core.ac.uk/works/295422684] Plasma glucose rises from mild to moderate cases but falls in severe nephrocalcinosis, indicating metabolic disturbance. [#https://core.ac.uk/works/295422684] Expression of the Na⁺/K⁺‑ATPase α‑subunits and sulfate transporter genes decreases as nephrocalcinosis severity increases. [#https://core.ac.uk/works/295422684] Gene expression profiling shows widespread downregulation of metabolic pathways, upregulation of tissue repair signalling, and heightened inflammatory responses in severely affected kidneys. [#10.1111/jfd.13687] Environmental salinity supplementation during smolt production is the strongest predictor of nephrocalcinosis prevalence, with mismatched salinity and photoperiod signals elevating risk. [#10.1111/jfd.13815] Salinity fluctuations before smoltification induce chronic hypercalcaemia and hypermagnesaemia, overloading renal excretion pathways and promoting calcium deposition. [#10.1111/jfd.13815] Elevated CO₂ levels in intensive culture cause respiratory acidosis; abrupt reductions to normocapnia trigger rapid pH rises that precipitate mineral deposits, especially at higher temperatures. [#10.1016/j.aquaculture.2017.09.012][#https://europepmc.org/article/AGR/IND609398381] In a field survey, 68 % of sampled fish exhibited mild nephrocalcinosis, while severe cases involved extensive loss of kidney structure. [#10.1016/j.aquaculture.2022.738104] Radiographic techniques can detect renal mineralization but are limited by low resolution and lack of widespread validation. [#10.1111/jfd.13704] Similar mineral deposits have been documented in aquacultured Brazilian sardine, indicating that nephrocalcinosis may arise from comparable environmental or nutritional stressors across teleost species. [#10.1111/jfd.70081] Ingen kilder i utvalget dekker dette\n",
+          "kontroll": {
+            "rejected": [],
+            "quality": {
+              "faktiske_enheter": 1,
+              "dekket_enheter": 1,
+              "mangler_kilde_enheter": 0,
+              "eksplisitte_kildehull": 0,
+              "sitatdekning": 1.0,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 25,
+              "brukte_kilder": 8,
+              "ubrukte_kilder": 17,
+              "kilder_med_ekstern_lenke": 25,
+              "lenkedekning": 1.0
+            },
+            "refs": [
+              "10.1016/j.aquaculture.2017.09.012",
+              "10.1016/j.aquaculture.2022.738104",
+              "10.1111/jfd.13687",
+              "10.1111/jfd.13704",
+              "10.1111/jfd.13815",
+              "10.1111/jfd.70081",
+              "https://core.ac.uk/works/295422684",
+              "https://europepmc.org/article/AGR/IND609398381"
+            ],
+            "quality_etter_setningsfiksen": {
+              "faktiske_enheter": 13,
+              "dekket_enheter": 13,
+              "mangler_kilde_enheter": 0,
+              "eksplisitte_kildehull": 1,
+              "sitatdekning": 1.0,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 25,
+              "brukte_kilder": 8,
+              "ubrukte_kilder": 17,
+              "kilder_med_ekstern_lenke": 25,
+              "lenkedekning": 1.0
+            }
+          }
+        },
+        "med_bank": {
+          "tekst": "Nephrocalcinosis is a common production disorder in farmed Atlantic salmon, causing kidney mineral deposits and affecting welfare. [#10.1111/jfd.13815]  \nThe condition has been linked to osmotic stress induced by salinity changes during smolt production, leading to chronic hypercalcaemia and hypermagnesaemia. [#10.1111/jfd.13815]  \nHistopathological examination shows calcium‑phosphate deposits mainly as amorphous apatite in the kidney cortex. [#10.1016/j.aquaculture.2022.738104]  \nPlasma chemistry of affected fish reveals low chloride and sodium, elevated calcium and magnesium, with magnesium increasing with severity. [#https://core.ac.uk/works/295422684]  \nGene expression analysis indicates a progressive downregulation of Na⁺/K⁺‑ATPase α‑subunits and sulfate transporters as nephrocalcinosis worsens. [#https://core.ac.uk/works/295422684]  \nMagnesium transporter genes show heterogeneous responses, with some upregulated in mild to moderate cases but downregulated in severe disease. [#https://core.ac.uk/works/295422684]  \nTranscriptomic profiling of severely affected kidneys reveals massive suppression of metabolic and energy‑production pathways, alongside activation of tissue‑repair and inflammatory signaling. [#10.1111/jfd.13687]  \nThe prevalence survey across eleven Norwegian hatcheries found that 68 % of fish had mild nephrocalcinosis, while severe forms caused near‑complete loss of kidney structure. [#10.1016/j.aquaculture.2022.738104]  \nSalinity supplementation prior to smoltification was identified as the most influential environmental factor for disease prevalence. [#10.1111/jfd.13815]  \nExperimental exposure to elevated CO₂ partial pressures in seawater increased nephrocalcinosis incidence at high supersaturation levels, suggesting a role of acid‑base disturbances. [#10.1016/j.aquaculture.2017.09.012]  \nIn vitro modelling demonstrated that abrupt reductions in dissolved CO₂ can trigger mineral precipitation in synthetic pre‑urine, especially at higher temperatures. [#https://europepmc.org/article/AGR/IND609398381]  \nThese findings imply that both osmotic and acid–base stressors may converge to precipitate calcium‑phosphate crystals in the renal tubules of salmon. Ingen kilder i utvalget dekker dette  \nNephrocalcinosis is uncommon in wild Atlantic salmon populations. [#10.1111/jfd.13815]  \nThe disease has been associated with significant welfare concerns in salmon farming, including reduced growth and increased mortality risk. [#10.1016/j.aquaculture.2022.738104]  \nCurrent diagnostic approaches rely on histopathology; radiological detection methods are being explored but lack published validation data for salmon. Ingen kilder i utvalget dekker dette  \nEarly monitoring of environmental parameters such as salinity and CO₂ levels could help mitigate disease risk, yet systematic prevention strategies remain underdeveloped. Ingen kilder i utvalget dekker dette  \nThe interplay between endocrine regulation during smoltification and susceptibility to nephrocalcinosis is poorly understood, as indicated by conflicting gene expression patterns in gill Na⁺/K⁺‑ATPase subunits among stunted versus normal fish. Ingen kilder i utvalget dekker dette  \nFurther research is needed to elucidate the causal pathways linking environmental stressors, ion regulation, and kidney mineral deposition in Atlantic salmon. Ingen kilder i utvalget dekker dette\n",
+          "kontroll": {
+            "rejected": [],
+            "quality": {
+              "faktiske_enheter": 23,
+              "dekket_enheter": 18,
+              "mangler_kilde_enheter": 5,
+              "eksplisitte_kildehull": 5,
+              "sitatdekning": 0.782608695652174,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 28,
+              "brukte_kilder": 6,
+              "ubrukte_kilder": 22,
+              "kilder_med_ekstern_lenke": 28,
+              "lenkedekning": 1.0
+            },
+            "refs": [
+              "10.1016/j.aquaculture.2017.09.012",
+              "10.1016/j.aquaculture.2022.738104",
+              "10.1111/jfd.13687",
+              "10.1111/jfd.13815",
+              "https://core.ac.uk/works/295422684",
+              "https://europepmc.org/article/AGR/IND609398381"
+            ],
+            "quality_etter_setningsfiksen": {
+              "faktiske_enheter": 23,
+              "dekket_enheter": 18,
+              "mangler_kilde_enheter": 5,
+              "eksplisitte_kildehull": 5,
+              "sitatdekning": 0.782608695652174,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 28,
+              "brukte_kilder": 6,
+              "ubrukte_kilder": 22,
+              "kilder_med_ekstern_lenke": 28,
+              "lenkedekning": 1.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "sporring": "nephrocalcinosis",
+      "kildeloggtreff": 1,
+      "bankstatus": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 2,
+        "beste_avstand": 0.9034,
+        "forkastet_morkt": 930
+      },
+      "resultater": {
+        "uten_bank": {
+          "tekst": "Nephrocalcinosis er en vanlig forurensning hos oppdrettslaks som kjennetegnes ved mineralavsetninger i nyrene. [#10.1016/j.aquaculture.2022.738104] Histopatologisk analyse viser amorf, kalcium‑rik apatitt og de fleste fisk har milde lesjoner mens alvorlige tilfeller kan nesten fullstendig ødelegge nyrestrukturen. [#10.1016/j.aquaculture.2022.738104] Plasma kjemi hos berørte salmon indikerer hyperkalsemi, og i moderate til alvorlige tilfeller også hypermagnesemi, glukosevariasjoner og forhøyet AST, som tyder på systemisk stress. [#10.1016/j.aquaculture.2022.738104] Svaret av nyrenes Na⁺/K⁺ ATPase α‑subenheter reduseres progresivt med økende alvorlighetsgrad, noe som antyder nedsatt iontransport. [#https://core.ac.uk/works/295422684] Genuttrykkprofilering av alvorlig påvirkede fisk avslører omfattende nedregulering av metabolske veier og oppregulering av vevsreparasjon, betennelse og akutte faseproteiner. [#10.1111/jfd.13687] Miljøfaktorer er sterkt involvert; en multivariat analyse over norske oppdrettsanlegg identifiserte tilsetning av sjøvann under smoltproduksjon som den mest innflytelsesrike variabelen for nephrocalcinosis‑forekomst. [#10.1111/jfd.13815] Salinitetsvariasjoner før smoltifikasjon gir kronisk hyperkalsemi og hypermagnesemi, noe som kan oversaturere urinen ved utskillelse og føre til kalciumavsetning i nyretubuli. [#10.1111/jfd.13815] Økt oppløst CO₂ har også blitt knyttet til nephrocalcinosis; eksponering for partialtrykk over ca. 8 mmHg resulterte i sykdom hos en del post‑smolt fisk. [#10.1016/j.aquaculture.2017.09.012] I en fullskala recirkulerende oppdrettsanlegg viste moduler med høyere CO₂-konsentrasjoner en markant større prevalens (73 %) sammenlignet med lav‑CO₂-moduler (11 %), som støtter CO₂s rolle i sykdomsrisiko. [#10.1016/j.aquaeng.2024.102442] Omvendt viste et langtidsstudie i ferskvann-RAS, der fisk ble eksponert for opptil 20 mg L⁻¹ CO₂ over 384 dager, ingen nephrocalcinosis, noe som indikerer at CO₂ alene kan være utilstrekkelig uten andre stressfaktorer. [#10.1016/j.aquaculture.2018.08.075] Disse funnene antyder en multifaktorisk etiologi der osmotiske og syre‑base‑forstyrrelser samvirker for å fremme mineralavsetning i nyrene. [Ingen kilder i utvalget dekker dette] En hypotese basert på studier av andre arter er at raske reduksjoner i blodets CO₂ etter hyperkapnisk eksponering fører til en pH‑økning som får kalciumfosfat til å avsette seg, men denne mekanismen er ennå ikke demonstrert hos salmon. [#10.1111/jfd.70081] Tilsvarende kan mineralernæring påvirke mottakeligheten; høyt kosthold med kalsium eller magnesium kunne teoretisk forverre avsetning, selv om direkte bevis for Atlantic salmon mangler. [Ingen kilder i utvalget dekker dette] Tilstanden kompromitterer også velferden og veksten, ettersom alvorlig nephrocalcinosis er assosiert med nesten fullstendig tap av nyrestruktur og nedsatt metabolsk funksjon. [#10.1016/j.aquaculture.2022.738104] Det finnes ingen konsensus om effektive forebyggings- eller behandlingsstrategier, delvis fordi den underliggende patogenesen fortsatt er ufullstendig forstått. [Ingen kilder i utvalget dekker dette] Kryss‑arts analogier, som nephrocalcinosis hos brasiliansk sardine og syre‑base‑forstyrrelser hos ferskvannsfisk, fremhever potensielle felles veier men kan ikke direkte overføres til Atlantic salmon uten videre forskning. [#10.1111/jfd.70081][#10.3389/fphys.2023.1226068] Integrasjonen av fysiologisk overvåkning (f.eks. plasmaionkonsentrasjoner), molekylærdiagnostikk (genuttrykkpaneler) og miljøkontroll (salinitet, CO₂) gir et lovende tverrfaglig bro for fremtidige studier. [Ingen kilder i utvalget dekker dette] Nåværende hull inkluderer de eksakte terskelnivåene av salinitet eller CO₂ som trigger nephrocalcinosis, den langsiktige påvirkningen på overlevelse og potensielle interaksjoner med andre stressfaktorer som temperatur eller ernæring. [Ingen kilder i utvalget dekker dette] Å adressere disse spørsmålene vil kreve koordinert forskning på tvers av oppdrettsanlegg, ved å kombinere feltovervåkning og kontrollerte laboratorieeksperimenter for å skille årsaksmekanismer. [Ingen kilder i utvalget dekker dette]",
+          "kontroll": {
+            "quality": {
+              "faktiske_enheter": 19,
+              "dekket_enheter": 19,
+              "mangler_kilde_enheter": 0,
+              "eksplisitte_kildehull": 6,
+              "sitatdekning": 1.0,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 25,
+              "brukte_kilder": 9,
+              "ubrukte_kilder": 16,
+              "kilder_med_ekstern_lenke": 25,
+              "lenkedekning": 1.0
+            },
+            "rejected": [],
+            "quality_etter_setningsfiksen": {
+              "faktiske_enheter": 19,
+              "dekket_enheter": 19,
+              "mangler_kilde_enheter": 0,
+              "eksplisitte_kildehull": 6,
+              "sitatdekning": 1.0,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 25,
+              "brukte_kilder": 9,
+              "ubrukte_kilder": 16,
+              "kilder_med_ekstern_lenke": 25,
+              "lenkedekning": 1.0
+            }
+          }
+        },
+        "med_bank": {
+          "tekst": "Nephrocalcinosis i Atlantisk laks er preget av kalsium‑rike mineralavleiringer innenfor nyreparenchymet. [#10.1016/j.aquaculture.2022.738104] Histopatologiske undersøkelser viser at opptil 68 % av fiskene har mild form, mens alvorlige tilfeller kan føre til nesten fullstendig tap av nyrefunksjon. [#10.1016/j.aquaculture.2022.738104] Fisk med lidelsen viser konsekvent hyperkalsiemi og, i moderate til alvorlige former, forhøyede plasma‑magnesium-, glukose- og aspartataminotransferase‑nivåer. [#10.1016/j.aquaculture.2022.738104] Plasma‑klorid og natrium er redusert, mens kalsium og magnesium øker med sykdomsgrad. [#https://core.ac.uk/works/295422684] Uttrykket av Na⁺/K⁺ ATPase α‑subenheter i nyren synker etter hvert som nefrokalsinose forverres. [#https://core.ac.uk/works/295422684] Sulfattransportere (SLC26a1a, SLC26a1b, SLC26a6a1) viser en tilsvarende nedregulering med sykdomsgrad. [#https://core.ac.uk/works/295422684] Magnesiumtransportere reagerer heterogene; noen forblir uendret mens andre øker eller synker avhengig av nefrokalsinose‑stadiet. [#https://core.ac.uk/works/295422684] En viktig miljømessig risikofaktor er osmotisk stress fra mismatchet salinitetsendring under smoltifikasjon, som forårsaker kronisk hyperkalsiemi og hypermagnesiemi. [#10.1111/jfd.13815] Den resulterende oversatureringen av urin med kalsium og magnesium fremmer mineralavleiringer i nyren. [#10.1111/jfd.13815] Økte oppløste CO₂‑konsentrasjoner fører til hyperkapni, respiratorisk acidos, bikarbonatkompensasjon, en økning i blod‑pH og deretter kalsiumfosfat‑precipitasjon. [#10.1016/j.aquaculture.2017.09.012] Recirculerende oppdrettssystemer som holder høye CO₂‑nivåer viser en høyere forekomst av nefrokalsinose sammenlignet med systemer med lavere CO₂. [#10.1016/j.aquaeng.2024.102442] På den annen side resulterte langtidseksponering til 20 mg L⁻¹ CO₂ i ferskvann‑RAS over 384 dager ikke i synlig nefrokalsinose. [#10.1016/j.aquaeng.2018.01.003] Alvorlig nefrokalsinose er assosiert med omfattende nedregulering av metabolske og energiproduserende gener, samtidig som reparasjons-, vedlikeholds- og inflammatoriske baner opphøyes. [#10.1111/jfd.13687] Røntgenavbildning kan oppdage mineralavleiringer i nyren, men dens diagnostiske nytte er begrenset på grunn av mangel på detaljert valideringsdata. [#10.1111/jfd.13704] Haemorrhagisk smolt‑syndrom forekommer ofte sammen med nefrokalsinose og er knyttet til svekket humoral immunrespons i Atlantisk laks. [#10.3390/biology9010001] Ingen kilder i utvalget dekker dette.",
+          "kontroll": {
+            "quality": {
+              "faktiske_enheter": 16,
+              "dekket_enheter": 16,
+              "mangler_kilde_enheter": 0,
+              "eksplisitte_kildehull": 1,
+              "sitatdekning": 1.0,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 27,
+              "brukte_kilder": 9,
+              "ubrukte_kilder": 18,
+              "kilder_med_ekstern_lenke": 27,
+              "lenkedekning": 1.0
+            },
+            "rejected": [],
+            "quality_etter_setningsfiksen": {
+              "faktiske_enheter": 16,
+              "dekket_enheter": 16,
+              "mangler_kilde_enheter": 0,
+              "eksplisitte_kildehull": 1,
+              "sitatdekning": 1.0,
+              "ugyldige_kilde_ider": [],
+              "listede_kilder": 27,
+              "brukte_kilder": 9,
+              "ubrukte_kilder": 18,
+              "kilder_med_ekstern_lenke": 27,
+              "lenkedekning": 1.0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "blind_vurdering": {
+    "vurderer": "Claude Opus via en separat Claude Code-sesjon",
+    "blinding": "Ny isolert sesjon fikk bare anonymiserte svar og queryer; referanser var erstattet med S-ID-er. Et tidligere vurderingsforsøk ble forkastet fordi blindingen ikke kunne bekreftes.",
+    "kilder_tilgjengelig": false,
+    "resultat": [
+      {
+        "sporring": "nephrocalcinosis salmon",
+        "X": "uten_bank",
+        "X_nytte": 4,
+        "X_evidensdisiplin": 4,
+        "Y": "med_bank",
+        "Y_nytte": 3,
+        "Y_evidensdisiplin": 2,
+        "foretrukket": "uten_bank",
+        "begrunnelse": "Med-bank-svaret la til flere udokumenterte påstander og generisk fyllstoff; begge svar hadde overtolkede eller foreldreløse elementer."
+      },
+      {
+        "sporring": "nephrocalcinosis",
+        "X": "med_bank",
+        "X_nytte": 4,
+        "X_evidensdisiplin": 3,
+        "Y": "uten_bank",
+        "Y_nytte": 3,
+        "Y_evidensdisiplin": 2,
+        "foretrukket": "med_bank",
+        "begrunnelse": "Vurdereren foretrakk X, men påpekte overdrivelse av CO2-mekanisme og prevalenstall; Y hadde andre feil og mer usitert fyllstoff."
+      }
+    ],
+    "samlet": "Ingen konsistent fordel for bankarmen. Én rater, to par og ingen tilgang til kildetekstene; vurderingen kan ikke bekrefte faktastøtte."
+  },
+  "proveniensforbehold": "Queryene kommer fra loggen i forskningssok under Ulven-profilen, men sokeloggen har ikke brukeridentitet. De er historiske queryer i domeneflaten, ikke bekreftet som Ulven-formulerte.",
+  "implementasjonskontroll": {
+    "bankoppslag": "Etter KNN-grensen var begrenset til sqlite-vecs maksimum, returnerte boker.db 3 treff for «nephrocalcinosis salmon» og 2 for «nephrocalcinosis».",
+    "test_suite": "./venv/bin/python -m pytest -q: 790 passed, including two new regression tests."
+  }
+}
