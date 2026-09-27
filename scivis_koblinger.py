@@ -51,64 +51,42 @@ import domeneprofil
 # Importer forskningssøk sine adaptere
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
-from adapters import core_sok, europe_pmc_sok
+from adapters import core_sok, europe_pmc_sok, openalex_sok
+
+
+def _rad(p, kilde: str) -> dict:
+    """PaperDossier -> radformen resten av fila (og HTML-en) bruker.
+
+    Adapterne returnerer dataklasser, ikke dicts. Til 2026-09-27 kalte denne fila `.get()`
+    på dem, hver kilde kastet AttributeError inni sin egen `except`, og verktøyet fant
+    alltid 0 papirer. `forfattere` er én streng i PaperDossier; HTML-en gjør
+    `d.forfattere.join(", ")`, så den pakkes i en liste. Adapterne leverer ingen
+    embeddings; layouten faller da til metadata, som main() allerede sier høyt."""
+    return {
+        "id": p.doi or p.pmid or p.kilde_url,
+        "tittel": p.tittel,
+        "forfattere": [p.forfattere] if p.forfattere else [],
+        "aar": p.aar,
+        "kilde": kilde,
+        "abstract": p.abstract,
+        "doi": p.doi or "",
+        "embeddings": None,
+    }
 
 
 def hent_papirer(query: str, limit: int = 50) -> list[dict]:
-    """Hent papirer fra flere kilder."""
+    """Hent papirer fra flere kilder. En kilde som feiler, logges og hoppes over."""
+    kilder = [
+        ("CORE", lambda: core_sok(query)),                  # norske institusjonelle arkiv
+        ("Europe PMC", lambda: europe_pmc_sok(query)),      # biomedisin
+        ("OpenAlex", lambda: openalex_sok(query, limit=10)),  # generell akademisk
+    ]
     alle_papirer = []
-    
-    # CORE (norske institusjonelle arkiv)
-    try:
-        core_result = core_sok(query)
-        for p in core_result:
-            alle_papirer.append({
-                "id": p.get("id", ""),
-                "tittel": p.get("tittel", ""),
-                "forfattere": p.get("forfattere", []),
-                "aar": p.get("aar", None),
-                "kilde": "CORE",
-                "abstract": p.get("abstract", ""),
-                "doi": p.get("doi", ""),
-                "embeddings": p.get("embedding", None),
-            })
-    except Exception as e:
-        print(f"CORE feilet: {e}")
-    
-    # Europe PMC (biomedisin)
-    try:
-        pmc_result = europe_pmc_sok(query)
-        for p in pmc_result:
-            alle_papirer.append({
-                "id": p.get("id", ""),
-                "tittel": p.get("tittel", ""),
-                "forfattere": p.get("forfattere", []),
-                "aar": p.get("aar", None),
-                "kilde": "Europe PMC",
-                "abstract": p.get("abstract", ""),
-                "doi": p.get("doi", ""),
-                "embeddings": p.get("embedding", None),
-            })
-    except Exception as e:
-        print(f"Europe PMC feilet: {e}")
-    
-    # OpenAlex (generell akademisk)
-    try:
-        alex_result = openalex_sok(query, limit=10)
-        for p in alex_result:
-            alle_papirer.append({
-                "id": p.get("id", ""),
-                "tittel": p.get("tittel", ""),
-                "forfattere": p.get("forfattere", []),
-                "aar": p.get("aar", None),
-                "kilde": "OpenAlex",
-                "abstract": p.get("abstract", ""),
-                "doi": p.get("doi", ""),
-                "embeddings": p.get("embedding", None),
-            })
-    except Exception as e:
-        print(f"OpenAlex feilet: {e}")
-    
+    for navn, hent in kilder:
+        try:
+            alle_papirer += [_rad(p, navn) for p in hent()]
+        except Exception as e:
+            print(f"{navn} feilet: {e}")
     return alle_papirer
 
 
