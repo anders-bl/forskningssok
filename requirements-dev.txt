@@ -10,3 +10,6 @@ pytest
 # httpx2 — den er utelukkende testklientens avhengighet og hører ikke hjemme i imaget.
 httpx2
 playwright
+# ruff: den globale navne-vakten (silverbullet githooks/navn_sjekk.py) og plattform merge
+# sin «statisk»-konsoll bruker repoets egen ruff først. Lånt fra lauvasdata til 2026-09-27.
+ruff==0.16.8
