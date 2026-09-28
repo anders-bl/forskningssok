@@ -196,6 +196,9 @@ def prioriter_spesifikke(ord: list[str], maks: int = 5) -> list[str]:
 # egne spørsmål). Bare nøkler på minst 4 tegn brukes i sammensetninger, så korte ord ikke
 # treffer tilfeldig inne i andre.
 FAGTERM_LIKHET = 0.85
+# Skrivefeiltoleranse bare for lange fagtermer: på korte ord treffer likhet andre ord
+# («levere» mot «leveren» = 0.92), for nefrokalsinose-lengde er den trygg.
+FAGTERM_LIKHET_MIN_LENGDE = 8
 MIN_TREFF_FOR_TILBAKEFALL = 5
 MAKS_TILBAKEFALL = 2
 MAKS_ENGELSK_TERMER = 3
@@ -213,16 +216,81 @@ def fagterm(ord_: str) -> tuple[str, str] | None:
     for nokkel in sorted(termer, key=len, reverse=True):
         if len(nokkel) >= 4 and len(ord_) > len(nokkel) and (ord_.startswith(nokkel) or ord_.endswith(nokkel)):
             return nokkel, termer[nokkel]
-    naer = difflib.get_close_matches(ord_, list(termer), n=1, cutoff=FAGTERM_LIKHET)
+    lange = [t for t in termer if len(t) >= FAGTERM_LIKHET_MIN_LENGDE]
+    naer = difflib.get_close_matches(ord_, lange, n=1, cutoff=FAGTERM_LIKHET)
     return (naer[0], termer[naer[0]]) if naer else None
 
 
-def bygg_sokefraser(tekst: str) -> dict[str, str]:
+def bygg_sokefraser(tekst: str, kontekst: str = "") -> dict[str, str]:
     """Se bygg_sokeledd(); denne gir frasene som strenger (API-kontrakten)."""
-    return {sprak: " ".join(ledd) for sprak, ledd in bygg_sokeledd(tekst).items()}
+    return {sprak: " ".join(ledd) for sprak, ledd in bygg_sokeledd(tekst, kontekst).items()}
 
 
-def bygg_sokeledd(tekst: str) -> dict[str, list[str]]:
+KORT_OPPFOLGING_ORD = 4
+
+
+def les_tvetydige(tekst: str) -> tuple[str, list[dict]]:
+    """Avgjør tvetydige ord (domeneprofil.TVETYDIGE) ut fra konteksten. REN.
+
+    -> (tekst med avgjorte forekomster skrevet om til entydig form, tolkninger).
+    Hver forekomst gir én tolkning: lest som profilens lesning, lest som noe annet, eller
+    uavgjort. Uavgjort oversettes ikke -- ingen stille gjetning -- men erklæres, så
+    brukeren ser at ordet ikke ble søkt på og kan presisere."""
+    regler = domeneprofil.TVETYDIGE
+    if not regler or not tekst:
+        return tekst, []
+    tokens = re.findall(r"[\wøæåØÆÅ]+", tekst.lower())
+    alle = set(tokens)
+    tolkninger, erstatt = [], {}
+    for i, t in enumerate(tokens):
+        regel = regler.get(t)
+        if not regel:
+            continue
+        foran = tokens[i - 1] if i > 0 else ""
+        etter = tokens[i + 1] if i + 1 < len(tokens) else ""
+        if foran in regel.get("foran_gir_annet", []):
+            tolkninger.append({"ord": t, "lest_som": "annet", "grunn": f"«{foran} {t}»"})
+            erstatt.setdefault(t, "")
+        elif etter in regel.get("etter_gir_annet", []):
+            tolkninger.append({"ord": t, "lest_som": "annet", "grunn": f"«{t} {etter}»"})
+            erstatt.setdefault(t, "")
+        elif foran in regel.get("foran_gir_lesning", []):
+            tolkninger.append({"ord": t, "lest_som": regel["lesning"], "grunn": f"«{foran} {t}»"})
+            erstatt[t] = regel["organform"]
+        else:
+            signal = sorted(alle & set(regel.get("i_teksten_gir_lesning", [])))
+            if signal:
+                tolkninger.append({"ord": t, "lest_som": regel["lesning"], "grunn": f"«{signal[0]}» i spørsmålet"})
+                erstatt[t] = regel["organform"]
+            else:
+                tolkninger.append({"ord": t, "lest_som": "uavgjort", "grunn": "ingen kontekst avgjør"})
+                erstatt.setdefault(t, "")
+    # Annet/uavgjort fjernes fra søket (tom erstatning); én organ-lesning i teksten vinner.
+    for t, ny in erstatt.items():
+        tekst = re.sub(rf"(?i)(?<![\wøæå]){t}(?![\wøæå])", ny, tekst)
+    return tekst, tolkninger
+
+
+def bygg_sokeledd(tekst: str, kontekst: str = "") -> dict[str, list[str]]:
+    """Kontekst (2026-09-28): forrige brukerspørsmål i samme samtale. En kort oppfølging
+    (høyst KORT_OPPFOLGING_ORD innholdsord og høyst én fagterm) låner kontekstens MEST
+    SPESIFIKKE fagterm som ikke alt står i teksten -- «hvorfor radiologi» etter et
+    spørsmål om nefrokalsinose søkte ellers på «radiology» alene, uten emne. Bare én
+    lånt term: oppfølgingen skal fortsatt styre. Lengre spørsmål, eller spørsmål med
+    flere egne fagtermer, står på egne ben og ignorerer konteksten."""
+    tekst, _ = les_tvetydige(tekst)
+    if kontekst:
+        ord_ = ekstraher_innholdsord(tekst)
+        egne = {fagterm(o)[0] for o in ord_ if fagterm(o)}
+        if len(ord_) <= KORT_OPPFOLGING_ORD and len(egne) <= 1:
+            laan = [fagterm(o)[0] for o in ekstraher_innholdsord(kontekst) if fagterm(o)]
+            laan = sorted({t for t in laan if t not in egne}, key=len, reverse=True)
+            if laan:
+                tekst = f"{laan[0]} {tekst}"
+    return _bygg_sokeledd(tekst)
+
+
+def _bygg_sokeledd(tekst: str) -> dict[str, list[str]]:
     """fritekst → {"norsk": "...", "engelsk": "..."}. Tom streng for et tomt
     bucket — ÆRLIG fravær (ingen søk kjøres for den siden), ikke et tomt/meningsløst
     søk kjørt likevel. SPRÅKSEGREGERT, ikke oversatt eller blandet (se roadmapens
@@ -263,12 +331,12 @@ def bygg_sokeledd(tekst: str) -> dict[str, list[str]]:
 # 2026-09-14 samme kveld, commit 21b3033 — retningssamtalen arver den fiksen gratis).
 # ---------------------------------------------------------------------------------
 
-def hent_kilder(fritekst: str, page_size: int = 20):
+def hent_kilder(fritekst: str, page_size: int = 20, kontekst: str = ""):
     """Kjører sok_og_ranger() for hver ikke-tomme språk-segregerte søkefrase, slår
     sammen og dedupliserer. LIVE multi-kilde-søk, IKKE hent_fra_cache() (den er
     cache-only LIKE-søk — se roadmapens egen begrunnelse for hvorfor det er feil
     verktøy for en fritekst-drevet retningssamtale)."""
-    ledd = bygg_sokeledd(fritekst)
+    ledd = bygg_sokeledd(fritekst, kontekst)
     fraser = {sprak: " ".join(l) for sprak, l in ledd.items()}
     alle = []
     sok_detaljer: dict[str, dict] = {}
@@ -304,7 +372,13 @@ def hent_kilder(fritekst: str, page_size: int = 20):
         sok_detaljer[sprak] = {"sokefrase": frase, "kjort": True, "treff": len(rangert),
                                 "forkastet_uten_sokeord": forkastet, "forsok": forsok,
                                 "revisjon": revisjon}
-    return dedupliser(alle), fraser, sok_detaljer
+    # Artsnære først, stabilt (2026-09-28). Tilbakefallet til en bar fagterm slapp inn
+    # human-litteratur øverst (målt i prod: «Sotos Syndrome and Nephrocalcinosis» som
+    # treff 1 på et laksespørsmål). Ingenting fjernes -- arts_naer_tekst er et flagg,
+    # aldri et filter (domeneprofil.py) -- men de rykker bak artsnære treff.
+    samlet = dedupliser(alle)
+    samlet.sort(key=lambda p: not domeneprofil.arts_naer_tekst(f"{p.tittel or ''} {p.abstract or ''}"))
+    return samlet, fraser, sok_detaljer
 
 
 def _nevner_noe(p, sokeord: set[str]) -> bool:
@@ -474,7 +548,7 @@ def lag_retningsrapport(fritekst: str) -> str:
     return lag_review(fritekst)["rapport"]
 
 
-def lag_review(fritekst: str) -> dict:
+def lag_review(fritekst: str, kontekst: str = "") -> dict:
     """Lag den delbare Review-kontrakten for både arbeidsflaten og Smartsøk.
 
     Kontrakten holder søkeproveniens, mekaniske linser og eventuell AI-kontekst i
@@ -488,16 +562,16 @@ def lag_review(fritekst: str) -> dict:
             "kontrakt": "review.v1",
             "status": "tomt_input",
             "input": {"fritekst": ""},
-            "sok": {"fraser": {}, "detaljer": {}},
+            "sok": {"fraser": {}, "detaljer": {}, "tolkninger": []},
             "kilder": [],
             "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {}},
             "ai": {"brukt": False, "avvist": []},
             "rapport": "Ingen tekst å jobbe med.",
         }
 
-    papirer_obj, fraser, sok_detaljer = hent_kilder(fritekst)
+    papirer_obj, fraser, sok_detaljer = hent_kilder(fritekst, kontekst=kontekst)
     papirer_obj = papirer_obj[:MAKS_KILDER]
-    sok_meta = {"fraser": fraser, "detaljer": sok_detaljer}
+    sok_meta = {"fraser": fraser, "detaljer": sok_detaljer, "tolkninger": les_tvetydige(fritekst)[1]}
     if not papirer_obj:
         sokt = ", ".join(f'{s}="{d["sokefrase"]}"' for s, d in sok_detaljer.items() if d["kjort"])
         if not sokt:

@@ -354,7 +354,8 @@ def test_hent_kilder_forkaster_treff_uten_sokeord_og_legger_engelsk_forst(monkey
 
     def fake_sok(q, page_size=20):
         if "nephrocalcinosis" in q:
-            return ([_p(f"e{i}", tittel=f"Nephrocalcinosis study {i}") for i in range(6)] + [stoy],
+            # Nevner laks, som det norske treffet: testen gjelder språkrekkefølgen, ikke artsrekkefølgen.
+            return ([_p(f"e{i}", tittel=f"Nephrocalcinosis in salmon, study {i}") for i in range(6)] + [stoy],
                     None, {"kilder": {}, "treff_per_kilde": {}})
         return [stoy, _p("n1", tittel="Nefrokalsinose hos laks")], None, {"kilder": {}, "treff_per_kilde": {}}
 
@@ -381,3 +382,56 @@ def test_hent_kilder_tilbakefall_kutter_minst_spesifikke_ledd(monkeypatch):
     assert len(engelske) <= 1 + rs.MAKS_TILBAKEFALL
     assert detaljer["engelsk"]["sokefrase"] == "nephrocalcinosis"
     assert len(papirer) == 6
+
+
+# ---------- kontekst for korte oppfølginger og artsrekkefølge (2026-09-28) ----------
+
+def test_kort_oppfolging_laaner_mest_spesifikke_fagterm_fra_kontekst():
+    k = "Dersom ultralyd skal brukes for detektere graden av nefrokalsinose, hvilke deler av nyren?"
+    assert rs.bygg_sokefraser("hvorfor radiologi")["engelsk"] == "radiology"
+    assert rs.bygg_sokefraser("hvorfor radiologi", k)["engelsk"] == "nephrocalcinosis radiology"
+
+
+def test_langt_sporsmal_med_egne_fagtermer_ignorerer_kontekst():
+    q = "Finnes det studier som sammenligner ultralyd med røntgen for å gradere nefrokalsinose?"
+    assert rs.bygg_sokefraser(q, "noe om hyperkapni og histologi") == rs.bygg_sokefraser(q)
+
+
+def test_artsnaere_treff_rykker_foran_uten_at_noe_fjernes(monkeypatch):
+    menneske = _p("m", tittel="Sotos syndrome and nephrocalcinosis in children")
+    laks = _p("l", tittel="Nephrocalcinosis in farmed Atlantic salmon")
+
+    def fake_sok(q, page_size=20):
+        return [menneske, laks], None, {"kilder": {}, "treff_per_kilde": {}}
+
+    monkeypatch.setattr(rs, "sok_og_ranger", fake_sok)
+    papirer, _, _ = rs.hent_kilder("nephrocalcinosis")
+    assert [p.id for p in papirer] == ["l", "m"]
+
+
+# ---------- tvetydige ord: avgjøres av kontekst, tolkningen erklæres (2026-09-28) ----------
+
+def test_lever_som_organ_naar_konteksten_sier_det():
+    for q, grunn in [("Hva med ultralyd av lever?", "«av lever»"), ("Kan man se lever og nyre?", "«nyre» i spørsmålet")]:
+        _, tolk = rs.les_tvetydige(q)
+        assert tolk == [{"ord": "lever", "lest_som": "organ (liver)", "grunn": grunn}]
+        assert "liver" in rs.bygg_sokefraser(q)["engelsk"]
+
+
+def test_lever_som_verb_eller_uavgjort_sokes_ikke_men_erklaeres():
+    for q, lest in [("Hvor lenge lever laksen?", "annet"), ("Laksen som lever i merden", "annet"), ("lever", "uavgjort")]:
+        _, tolk = rs.les_tvetydige(q)
+        assert tolk[0]["lest_som"] == lest
+        fraser = rs.bygg_sokefraser(q)
+        assert "liver" not in fraser["engelsk"] and "lever" not in fraser["engelsk"].split()
+
+
+def test_kort_ord_faar_ikke_skrivefeiltoleranse():
+    assert rs.fagterm("levere") is None
+    assert rs.fagterm("nerfokalsinose") == ("nefrokalsinose", "nephrocalcinosis")
+
+
+def test_review_erklaerer_tolkninger(monkeypatch):
+    monkeypatch.setattr(rs, "sok_og_ranger", lambda q, page_size=20: ([], None, {"kilder": {}, "treff_per_kilde": {}}))
+    review = rs.lag_review("Hva med ultralyd av lever?")
+    assert review["sok"]["tolkninger"][0]["lest_som"] == "organ (liver)"

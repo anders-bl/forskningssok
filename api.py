@@ -1060,8 +1060,11 @@ def api_review(body: dict):
     fritekst = (body.get("fritekst") or "").strip()
     if not fritekst:
         raise HTTPException(400, "tom fritekst")
+    # Valgfri: forrige brukerspørsmål i samtalen (Belegg). Brukes bare til fagtermer når
+    # fritekst mangler egne, se retningssamtale.bygg_sokeledd. Kappet: kontekst, ikke korpus.
+    kontekst = str(body.get("kontekst") or "")[:1000]
     try:
-        return retningssamtale_modul.lag_review(fritekst)
+        return retningssamtale_modul.lag_review(fritekst, kontekst=kontekst)
     except RuntimeError as e:
         raise HTTPException(502, str(e))
 

@@ -38,17 +38,23 @@ RELEVANT = re.compile(r"nephro|calc|kidney|renal|urolith|mineral", re.IGNORECASE
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--etikett", required=True)
+    ap.add_argument("--kontekst", action="store_true", help="send de tre forrige spørsmålene som kontekst")
     a = ap.parse_args()
     rader = []
-    for q in SPORSMAL:
-        papirer, fraser, _ = r.hent_kilder(q)
+    for i, q in enumerate(SPORSMAL):
+        # Kontekst som Belegg sender: de tre forrige brukerspørsmålene i samtalen.
+        kontekst = " ".join(SPORSMAL[max(0, i - 3):i]) if a.kontekst else ""
+        papirer, fraser, _ = r.hent_kilder(q, kontekst=kontekst)
         topp = papirer[:10]
         treff = sum(1 for p in topp if RELEVANT.search(f"{p.tittel or ''} {p.abstract or ''}"))
+        art = sum(1 for p in topp if r.domeneprofil.arts_naer_tekst(f"{p.tittel or ''} {p.abstract or ''}"))
         rader.append({"q": q, "fraser": fraser, "antall": len(papirer), "relevante_topp10": treff,
+                      "artsnaere_topp10": art,
                       "topp3": [(p.tittel or "")[:80] for p in topp[:3]]})
-        print(f"{treff:>2}/10  n={len(papirer):>2}  {fraser}  <- {q[:60]}")
+        print(f"{treff:>2}/10 art {art:>2}/10  n={len(papirer):>2}  {fraser}  <- {q[:60]}")
     snitt = sum(x["relevante_topp10"] for x in rader) / len(rader)
-    print(f"[{a.etikett}] snitt relevante av topp 10: {snitt:.1f}")
+    art_snitt = sum(x["artsnaere_topp10"] for x in rader) / len(rader)
+    print(f"[{a.etikett}] snitt relevante av topp 10: {snitt:.1f}, artsnaere: {art_snitt:.1f}")
     ut = ROT / "data" / f"fagterm_eval_{a.etikett}_{datetime.now(timezone.utc):%Y-%m-%d}.json"
     ut.write_text(json.dumps({"etikett": a.etikett, "snitt": snitt, "rader": rader}, ensure_ascii=False, indent=1))
     print("skrevet:", ut.relative_to(ROT))

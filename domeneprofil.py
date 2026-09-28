@@ -85,6 +85,8 @@ NORSKE_DOMENEORD: tuple[str, ...] = tuple(PROFIL.get("sprak", {}).get("norske_or
 # «nephrocalcinosis» i den ENGELSKE frasen. Hver frase forblir enspråklig (eksperiment 7).
 # Bare spesifikke fagtermer, ikke art/fisk: arten forankres allerede i sok_og_ranger().
 FAGTERMER: dict[str, str] = {k.lower(): v for k, v in PROFIL.get("sprak", {}).get("fagtermer", {}).items()}
+# Tvetydige ord med kontekstsignaler (§sprak.tvetydige). Tom når profilen ikke har dem.
+TVETYDIGE: dict[str, dict] = {k.lower(): v for k, v in PROFIL.get("sprak", {}).get("tvetydige", {}).items()}
 
 # Evaluerings-kontroll (evaluer.py): den positive kontrollens spørring + de to papir-id-ene.
 # Domenekunnskap, lest herfra så evaluer.py forblir fagfelt-agnostisk. Tom dict hvis profilen
