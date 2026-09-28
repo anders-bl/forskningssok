@@ -80,6 +80,12 @@ AKSER: dict[str, tuple[str, ...]] = {k: tuple(v) for k, v in PROFIL["akser"].ite
 # dette bor her og ikke som strengliteraler i retningssamtale.py.
 NORSKE_DOMENEORD: tuple[str, ...] = tuple(PROFIL.get("sprak", {}).get("norske_ord", []))
 
+# Norsk fagterm -> engelsk søketerm (valgfritt, profiler/fiskehelse.toml §sprak.fagtermer).
+# Brukes av retningssamtale.bygg_sokefraser() så en norsk forskers «nefrokalsinose» gir
+# «nephrocalcinosis» i den ENGELSKE frasen. Hver frase forblir enspråklig (eksperiment 7).
+# Bare spesifikke fagtermer, ikke art/fisk: arten forankres allerede i sok_og_ranger().
+FAGTERMER: dict[str, str] = {k.lower(): v for k, v in PROFIL.get("sprak", {}).get("fagtermer", {}).items()}
+
 # Evaluerings-kontroll (evaluer.py): den positive kontrollens spørring + de to papir-id-ene.
 # Domenekunnskap, lest herfra så evaluer.py forblir fagfelt-agnostisk. Tom dict hvis profilen
 # ikke definerer den — da kjører evaluer uten kontroll (gyldig=None), ikke med en gjettet.

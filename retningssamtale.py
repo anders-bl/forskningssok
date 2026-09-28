@@ -38,6 +38,7 @@ Bruk:
 from __future__ import annotations
 
 import argparse
+import difflib
 import re
 import sys
 from collections import Counter
@@ -189,18 +190,72 @@ def prioriter_spesifikke(ord: list[str], maks: int = 5) -> list[str]:
     return sorted(ord, key=len, reverse=True)[:maks]
 
 
+# Fagterm-oppslag (2026-09-28). Norsk fagterm -> engelsk søketerm fra domeneprofilen.
+# Treffer eksakt, som start/slutt på et sammensatt ord («ultralydscreening», «hodenyren»),
+# eller med en liten skrivefeil («nerfokalsinose», «nefrokalsinonse» -- begge fra Ulvens
+# egne spørsmål). Bare nøkler på minst 4 tegn brukes i sammensetninger, så korte ord ikke
+# treffer tilfeldig inne i andre.
+FAGTERM_LIKHET = 0.85
+MIN_TREFF_FOR_TILBAKEFALL = 5
+MAKS_TILBAKEFALL = 2
+MAKS_ENGELSK_TERMER = 3
+# Bokstaver/par som nesten aldri står i norske ord, men ofte i engelske/latinske fagord.
+_ENGELSK_PREG = re.compile(r"[cqwxz]|ph|th")
+
+
+def fagterm(ord_: str) -> tuple[str, str] | None:
+    """ord -> (norsk nøkkel, engelsk term), eller None. REN."""
+    termer = domeneprofil.FAGTERMER
+    if not termer:
+        return None
+    if ord_ in termer:
+        return ord_, termer[ord_]
+    for nokkel in sorted(termer, key=len, reverse=True):
+        if len(nokkel) >= 4 and len(ord_) > len(nokkel) and (ord_.startswith(nokkel) or ord_.endswith(nokkel)):
+            return nokkel, termer[nokkel]
+    naer = difflib.get_close_matches(ord_, list(termer), n=1, cutoff=FAGTERM_LIKHET)
+    return (naer[0], termer[naer[0]]) if naer else None
+
+
 def bygg_sokefraser(tekst: str) -> dict[str, str]:
+    """Se bygg_sokeledd(); denne gir frasene som strenger (API-kontrakten)."""
+    return {sprak: " ".join(ledd) for sprak, ledd in bygg_sokeledd(tekst).items()}
+
+
+def bygg_sokeledd(tekst: str) -> dict[str, list[str]]:
     """fritekst → {"norsk": "...", "engelsk": "..."}. Tom streng for et tomt
     bucket — ÆRLIG fravær (ingen søk kjøres for den siden), ikke et tomt/meningsløst
     søk kjørt likevel. SPRÅKSEGREGERT, ikke oversatt eller blandet (se roadmapens
     eksperiment 7 — blanding "forgifter" Europe PMC/OpenAlex sin matching selv når
-    de riktige ordene er til stede)."""
+    de riktige ordene er til stede).
+
+    Norskdominert tekst (2026-09-28): når teksten har norske fagtermer eller flere
+    norske enn engelskpregede ord, går ukjente ord IKKE lenger til den engelske frasen.
+    Målt på Ulvens spørsmål: den engelske frasen ble «detektere eventuelt ultralyd
+    hvilket» og ga 0 relevante av topp 10 på alle åtte. Nå består den engelske frasen
+    av oversatte fagtermer pluss ord med tydelig engelsk preg (calcium, co2), maks
+    MAKS_ENGELSK_TERMER -- lange fraser druknet de relevante treffene i samme måling.
+    Engelsk tekst uten norske signaler behandles som før."""
     innholdsord = ekstraher_innholdsord(tekst)
     norske, andre = segreger_sprak(innholdsord)
-    return {
-        "norsk": " ".join(prioriter_spesifikke(norske)),
-        "engelsk": " ".join(prioriter_spesifikke(andre)),
-    }
+    fag = [(o, fagterm(o)) for o in innholdsord]
+    fag = [(o, t) for o, t in fag if t]
+    engelskpreg = [o for o in andre if _ENGELSK_PREG.search(o) and not fagterm(o)]
+    norskdominert = bool(fag) or len(norske) > len(engelskpreg)
+    if not norskdominert:
+        return {"norsk": prioriter_spesifikke(norske), "engelsk": prioriter_spesifikke(andre)}
+    fag_norsk, fag_engelsk = [], []
+    for _, (nokkel, eng) in fag:
+        if nokkel not in fag_norsk:
+            fag_norsk.append(nokkel)
+        if eng not in fag_engelsk:
+            fag_engelsk.append(eng)
+    ovrige_norske = [o for o in norske if o not in fag_norsk and not fagterm(o)]
+    norsk = fag_norsk + prioriter_spesifikke(ovrige_norske, maks=max(0, 3 - len(fag_norsk)))
+    # Mest spesifikke fagterm først: tilbakefallet i hent_kilder() kutter bakfra.
+    fag_engelsk = sorted(fag_engelsk, key=len, reverse=True)
+    engelsk = (fag_engelsk + [o for o in engelskpreg if o not in fag_engelsk])[:MAKS_ENGELSK_TERMER]
+    return {"norsk": norsk[:5], "engelsk": engelsk}
 
 
 # ---------------------------------------------------------------------------------
@@ -213,18 +268,48 @@ def hent_kilder(fritekst: str, page_size: int = 20):
     sammen og dedupliserer. LIVE multi-kilde-søk, IKKE hent_fra_cache() (den er
     cache-only LIKE-søk — se roadmapens egen begrunnelse for hvorfor det er feil
     verktøy for en fritekst-drevet retningssamtale)."""
-    fraser = bygg_sokefraser(fritekst)
+    ledd = bygg_sokeledd(fritekst)
+    fraser = {sprak: " ".join(l) for sprak, l in ledd.items()}
     alle = []
     sok_detaljer: dict[str, dict] = {}
-    for sprak, frase in fraser.items():
+    sokeord = {o for frase in fraser.values() for o in frase.split() if len(o) > 3}
+    # Engelsk først (2026-09-28): den norske frasen ga 0 treff i Europe PMC og de samme
+    # 12 generelle lakseartiklene fra CORE uansett spørsmål, og siden den kom først i
+    # lista fylte de topp 10 alene (data/fagterm_eval_*_2026-09-28.json).
+    for sprak in ("engelsk", "norsk"):
+        frase = fraser[sprak]
         if not frase:
             sok_detaljer[sprak] = {"sokefrase": "", "kjort": False}
             continue
-        rangert, _, revisjon = sok_og_ranger(frase, page_size=page_size)
+        # Et treff må nevne minst ett av søkeordene i tittel eller abstract. CORE matcher
+        # løst på artsankeret og returnerer ellers generell laksefaglitteratur (lakselus,
+        # muskelkvalitet) på alt, målt på begge språk.
+        ledd_na = list(ledd[sprak])
+        forsok = []
+        while True:
+            rangert, _, revisjon = sok_og_ranger(" ".join(ledd_na), page_size=page_size)
+            beholdt = [p for p in rangert if _nevner_noe(p, sokeord)]
+            forsok.append({"sokefrase": " ".join(ledd_na), "beholdt": len(beholdt)})
+            # Tilbakefall bare for engelsk: for mange ledd gir 0 i Europe PMC. Kutt den
+            # minst spesifikke bakfra, høyst MAKS_TILBAKEFALL ganger (snill mot kildene).
+            if (sprak != "engelsk" or len(beholdt) >= MIN_TREFF_FOR_TILBAKEFALL
+                    or len(ledd_na) <= 1 or len(forsok) > MAKS_TILBAKEFALL):
+                break
+            ledd_na = ledd_na[:-1]
+        forkastet = len(rangert) - len(beholdt)
+        rangert = beholdt
+        if len(forsok) > 1:
+            frase = " ".join(ledd_na)
         alle.extend(rangert)
         sok_detaljer[sprak] = {"sokefrase": frase, "kjort": True, "treff": len(rangert),
+                                "forkastet_uten_sokeord": forkastet, "forsok": forsok,
                                 "revisjon": revisjon}
     return dedupliser(alle), fraser, sok_detaljer
+
+
+def _nevner_noe(p, sokeord: set[str]) -> bool:
+    tekst = f"{p.tittel or ''} {p.abstract or ''}".lower()
+    return any(o.lower() in tekst for o in sokeord)
 
 
 # ---------------------------------------------------------------------------------
