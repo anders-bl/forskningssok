@@ -26,7 +26,8 @@ from resolve import resolve
 from schemas import PaperDossier
 
 
-def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], str | None, dict]:
+def sok_og_ranger(query: str, page_size: int = 20, *, epmc_paakrevd: bool = True
+                  ) -> tuple[list[PaperDossier], str | None, dict]:
     """Europe PMC ER resolve-steget for oppdagelses-søk (fritekst-relevans mot en
     hel korpusindeks) — resolve.py sin substreng-kandidat-gren passer et NAVN (kort
     streng), ikke en emnesetning mot lange papirtitler, og ville feilaktig meldt
@@ -36,6 +37,10 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     alltid, rangert av ranking.py.
 
     Europe PMC er PÅKREVD kilde — en feil der forplantes uendret (uendret oppførsel).
+    Unntak (2026-09-28): `epmc_paakrevd=False` (Review/Belegg) lar søket gå videre på CORE
+    og OpenAlex og merker `kilder["europe_pmc"] = False`. Målt samme dag: Europe PMC svarte
+    503/tidsavbrudd, og hele Review falt -- Belegg viste «Kanalen ble ikke sjekket» selv om
+    to av tre kilder var oppe. Er ALLE tre nede, kastes feilen fortsatt.
     CORE og OpenAlex er TILLEGGSKILDER (institusjonsarkiv/gråtekst Europe PMC ikke
     indekserer, se adapters/core.py; bred akademisk dekning uten nøkkel/kostnad — det
     dekningshullet Google Scholar/SerpAPI opprinnelig var tenkt til å fylle, se
@@ -72,8 +77,15 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
     alder = europe_pmc_cache_alder(epmc_query, page_size)
     start = time.perf_counter()
 
-    epmc = sok(epmc_query, page_size=page_size)
     kilder = {"europe_pmc": True, "core": True, "openalex": True}
+    epmc_feil = None
+    try:
+        epmc = sok(epmc_query, page_size=page_size)
+    except RuntimeError as e:
+        if epmc_paakrevd:
+            raise
+        epmc, epmc_feil = [], e
+        kilder["europe_pmc"] = False
     kjerne = []
     try:
         kjerne = core_adapter.sok(vedheng_query, limit=page_size)
@@ -84,6 +96,8 @@ def sok_og_ranger(query: str, page_size: int = 20) -> tuple[list[PaperDossier], 
         alex = openalex_adapter.sok(vedheng_query, limit=page_size)
     except RuntimeError:
         kilder["openalex"] = False
+    if epmc_feil is not None and not kilder["core"] and not kilder["openalex"]:
+        raise RuntimeError(f"alle kilder utilgjengelige ({epmc_feil})") from epmc_feil
     kandidater = dedupliser(epmc + kjerne + alex)
     rangert = ranger(kandidater, query=query)
     resultat = resolve(query, rangert, tekst=lambda p: p.tittel)
