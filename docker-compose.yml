@@ -77,6 +77,10 @@ services:
       # trafikk) — ALDRI en oppstartsblokkering. Samme Dokploy-felle som CORE_API_KEY
       # over: satt i UI-panelet ALENE gjør ingenting uten denne linja.
       SEMANTIC_SCHOLAR_API_KEY: ${SEMANTIC_SCHOLAR_API_KEY:-}
+      # OpenAlex-nøkkel (adapters/openalex.py, 2026-09-28): anonym søking får 429 fra
+      # noden under last. Usatt = anonym, ingen oppstartsblokkering. Samme Dokploy-felle
+      # som over: UI-panelet alene gjør ingenting uten denne linja.
+      OPENALEX_API_KEY: ${OPENALEX_API_KEY:-}
       # FDR-106 fase 1 (2026-09-20): Ollama-tunnel-URL for en AVTALT Ulven-demo-økt —
       # se syntese_fortelling.py::kall_llm. Usatt = uendret rute (AI_PROXY_URL avgjør,
       # som før denne FDR-en). Lagt til HER FØR første forsøk på å bruke den, ikke

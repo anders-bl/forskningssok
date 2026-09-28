@@ -93,7 +93,12 @@ def sok_og_ranger(query: str, page_size: int = 20, *, epmc_paakrevd: bool = True
         kilder["core"] = False
     alex = []
     try:
-        alex = openalex_adapter.sok(vedheng_query, limit=page_size)
+        # Boolsk forankring også for OpenAlex (2026-09-28): søket krever nå ALLE ord
+        # (x_query: «full text has (...)»), så vedhengte artsord ga count 0 på hvert
+        # eneste søk i dag -- kilden så frisk ut og bidro ingenting. Samme form som
+        # Europe PMC. [OBS] At OpenAlex tolker AND/OR/parenteser er ikke live-bekreftet
+        # ennå (anonym søking var sperret da dette ble skrevet).
+        alex = openalex_adapter.sok(epmc_query, limit=page_size)
     except RuntimeError:
         kilder["openalex"] = False
     if epmc_feil is not None and not kilder["core"] and not kilder["openalex"]:

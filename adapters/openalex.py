@@ -22,6 +22,7 @@ Enhetsregisteret-oppslaget i dybdesøk-relasjonsryggrad).
 ADR-004-disiplin: spørretid + TTL-cache, ingen crawler, ingen full korpus-indeksering.
 """
 import json
+import os
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -37,6 +38,20 @@ BASE = "https://api.openalex.org"
 # høflighets-prinsipp som Europe PMC-adapteren og hoster.py sin arXiv-UA.
 UA = "lauvasdata-research (mailto:kontakt@lauvasdata.no)"
 TTL_SEKUNDER = 24 * 3600
+# API-nøkkel (2026-09-28). OpenAlex har gått over til kredittmodell: anonym søking får
+# 429 «temporarily rate-limited while the search cluster is under elevated load ... use a
+# free API key for uninterrupted access», målt fra noden hele dagen (anonym kvote er
+# 1000 kreditter/døgn, et søk koster 10). Sendes som header, aldri i URL-en (den havner i
+# logger og i cache-nøkler). Usatt = anonym, som før.
+API_KEY_ENV = "OPENALEX_API_KEY"
+
+
+def _headers() -> dict:
+    h = {"User-Agent": UA}
+    nokkel = os.environ.get(API_KEY_ENV, "").strip()
+    if nokkel:
+        h["Authorization"] = f"Bearer {nokkel}"
+    return h
 # Delt av verk_for_emne() og sok() — begge bygger PaperDossier via samme _parse().
 _SELECT_FELTER = ("id,title,publication_year,doi,cited_by_count,open_access,"
                    "authorships,primary_location,abstract_inverted_index")
@@ -58,7 +73,7 @@ def _hent_med_tid(key: str, url: str, params: dict | None, *, tving_fersk: bool 
             db.close()
             return json.loads(rad[1]), datetime.fromtimestamp(rad[0], timezone.utc).isoformat()
     try:
-        r = httpx.get(url, params=params, headers={"User-Agent": UA}, timeout=30)
+        r = httpx.get(url, params=params, headers=_headers(), timeout=30)
         r.raise_for_status()
     except (httpx.HTTPError, httpx.TimeoutException) as e:
         db.close()
