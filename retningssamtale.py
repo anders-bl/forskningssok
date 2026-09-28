@@ -49,7 +49,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import domeneprofil  # noqa: E402
 import scoping  # noqa: E402
 import syntese_fortelling  # noqa: E402
-from cli import sok_og_ranger  # noqa: E402
+from cli import sok_og_ranger as _sok_og_ranger_cli  # noqa: E402
+
+
+def sok_og_ranger(query: str, page_size: int = 20):
+    """Review-varianten: Europe PMC er ikke påkrevd (se cli.sok_og_ranger). Et Review med
+    to av tre kilder, ærlig merket i revisjonen, er bedre enn intet Review."""
+    return _sok_og_ranger_cli(query, page_size=page_size, epmc_paakrevd=False)
 from dedup import dedupliser  # noqa: E402
 
 # Kappet likt dossier.py/syntese_fortelling.py sin egen MAKS_KILDER — samme grunn

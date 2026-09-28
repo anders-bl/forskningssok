@@ -163,3 +163,45 @@ def test_cache_alder_leses_FOR_soket_ellers_er_den_alltid_null(tmp_path):
          patch("cli.openalex_adapter.sok", return_value=[]), patch("cli.lagre"):
         sok_og_ranger("noe")
     assert rekkefolge == ["alder", "sok"]
+
+
+# ---------- Europe PMC nede: Review degraderer, CLI er uendret (2026-09-28) ----------
+
+def _nede(*a, **k):
+    raise RuntimeError("Europe PMC utilgjengelig: 503")
+
+
+def test_epmc_nede_kaster_fortsatt_som_standard():
+    import pytest
+    with patch("cli.sok", side_effect=_nede), patch("cli.core_adapter.sok", return_value=[_p("c", "Core")]), \
+         patch("cli.openalex_adapter.sok", return_value=[]):
+        with pytest.raises(RuntimeError):
+            sok_og_ranger("nephrocalcinosis")
+
+
+def test_epmc_nede_uten_krav_gir_core_og_openalex_og_merker_kilden():
+    with patch("cli.sok", side_effect=_nede), \
+         patch("cli.core_adapter.sok", return_value=[_p("c", "Nephrocalcinosis in salmon, CORE")]), \
+         patch("cli.openalex_adapter.sok", return_value=[_p("o", "Nephrocalcinosis, OpenAlex")]):
+        papirer, _, revisjon = sok_og_ranger("nephrocalcinosis", epmc_paakrevd=False)
+    assert {p.pmid for p in papirer} == {"c", "o"}
+    assert revisjon["kilder"] == {"europe_pmc": False, "core": True, "openalex": True}
+    assert revisjon["treff_per_kilde"]["europe_pmc"] == 0
+
+
+def test_alle_kilder_nede_kaster_ogsaa_uten_krav():
+    import pytest
+    with patch("cli.sok", side_effect=_nede), patch("cli.core_adapter.sok", side_effect=_nede), \
+         patch("cli.openalex_adapter.sok", side_effect=_nede):
+        with pytest.raises(RuntimeError, match="alle kilder utilgjengelige"):
+            sok_og_ranger("nephrocalcinosis", epmc_paakrevd=False)
+
+
+def test_review_bruker_varianten_uten_epmc_krav():
+    import retningssamtale as rs
+    with patch("cli.sok", side_effect=_nede), \
+         patch("cli.core_adapter.sok", return_value=[_p("c", "Nephrocalcinosis in salmon")]), \
+         patch("cli.openalex_adapter.sok", return_value=[]):
+        papirer, _, detaljer = rs.hent_kilder("nefrokalsinose hos laks")
+    assert [p.pmid for p in papirer] == ["c"]
+    assert detaljer["engelsk"]["revisjon"]["kilder"]["europe_pmc"] is False
