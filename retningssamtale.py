@@ -554,7 +554,7 @@ def lag_retningsrapport(fritekst: str) -> str:
     return lag_review(fritekst)["rapport"]
 
 
-def lag_review(fritekst: str, kontekst: str = "") -> dict:
+def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict:
     """Lag den delbare Review-kontrakten for både arbeidsflaten og Smartsøk.
 
     Kontrakten holder søkeproveniens, mekaniske linser og eventuell AI-kontekst i
@@ -600,6 +600,26 @@ def lag_review(fritekst: str, kontekst: str = "") -> dict:
     hull = linse_hull(papirer_obj)
     ai_brukt = False
     avvist: list[str] = []
+
+    # uten_ai (2026-09-28): kallere som lager sitt eget svar (Belegg) trenger kildene og
+    # linsene, ikke Reviews AI-sammendrag. Målt i prod: sammendraget tok median 19 s via
+    # Mistral og 111 s via Ollama-tunnelen, mot Beleggs 75 s grense for hele Review; Belegg
+    # bruker det ikke som svar. Da hoppes modellkallet over og rapporten blir mekanisk.
+    if uten_ai:
+        ut = [_mekanisk_sammendrag(aktuelle, glemte, hull, len(papirer))]
+        ut.append(f"\n---\n## Kildeliste ({len(papirer)} kilder)\n"
+                  f"{syntese_fortelling.lag_referanseliste(papirer)}")
+        return {
+            "kontrakt": "review.v1",
+            "status": "fullfort",
+            "input": {"fritekst": fritekst},
+            "sok": sok_meta,
+            "kilder": papirer,
+            "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull,
+                       "domenetreff": linse_domenetreff(papirer_obj)},
+            "ai": {"brukt": False, "avvist": [], "hoppet_over": "etter_foresporsel"},
+            "rapport": "\n".join(ut),
+        }
 
     try:
         prompt = bygg_prompt(fritekst, aktuelle, glemte, hull, len(papirer))

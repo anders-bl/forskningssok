@@ -49,7 +49,7 @@ def test_runtime_error_gir_502_ikke_500(monkeypatch):
 
 def test_review_eksponerer_stabil_kontrakt(monkeypatch):
     monkeypatch.setattr(api.retningssamtale_modul, "lag_review",
-                        lambda fritekst, kontekst="": {"kontrakt": "review.v1", "status": "fullfort",
+                        lambda fritekst, kontekst="", uten_ai=False: {"kontrakt": "review.v1", "status": "fullfort",
                                           "input": {"fritekst": fritekst}})
     r = _client().post("/api/review", json={"fritekst": "noe"})
     assert r.status_code == 200
@@ -60,8 +60,9 @@ def test_review_eksponerer_stabil_kontrakt(monkeypatch):
 def test_review_sender_kontekst_videre_kappet(monkeypatch):
     fanget = {}
 
-    def fake(fritekst, kontekst=""):
+    def fake(fritekst, kontekst="", uten_ai=False):
         fanget["kontekst"] = kontekst
+        fanget["uten_ai"] = uten_ai
         return {"kontrakt": "review.v1"}
 
     monkeypatch.setattr(api.retningssamtale_modul, "lag_review", fake)
@@ -73,3 +74,13 @@ def test_review_sender_kontekst_videre_kappet(monkeypatch):
 
 def test_review_tom_fritekst_gir_400():
     assert _client().post("/api/review", json={"fritekst": ""}).status_code == 400
+
+
+def test_review_sender_uten_ai_bare_naar_det_er_eksplisitt_true(monkeypatch):
+    fanget = []
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review",
+                        lambda fritekst, kontekst="", uten_ai=False: fanget.append(uten_ai) or {"kontrakt": "review.v1"})
+    _client().post("/api/review", json={"fritekst": "x", "uten_ai": True})
+    _client().post("/api/review", json={"fritekst": "x", "uten_ai": "ja"})
+    _client().post("/api/review", json={"fritekst": "x"})
+    assert fanget == [True, False, False]

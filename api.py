@@ -1064,7 +1064,9 @@ def api_review(body: dict):
     # fritekst mangler egne, se retningssamtale.bygg_sokeledd. Kappet: kontekst, ikke korpus.
     kontekst = str(body.get("kontekst") or "")[:1000]
     try:
-        return retningssamtale_modul.lag_review(fritekst, kontekst=kontekst)
+        # uten_ai: kalleren lager eget svar (Belegg); hopp over Reviews AI-sammendrag.
+        return retningssamtale_modul.lag_review(fritekst, kontekst=kontekst,
+                                                uten_ai=body.get("uten_ai") is True)
     except RuntimeError as e:
         raise HTTPException(502, str(e))
 

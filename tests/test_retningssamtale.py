@@ -435,3 +435,29 @@ def test_review_erklaerer_tolkninger(monkeypatch):
     monkeypatch.setattr(rs, "sok_og_ranger", lambda q, page_size=20: ([], None, {"kilder": {}, "treff_per_kilde": {}}))
     review = rs.lag_review("Hva med ultralyd av lever?")
     assert review["sok"]["tolkninger"][0]["lest_som"] == "organ (liver)"
+
+
+# ---------- uten_ai: kalleren lager eget svar (Belegg, 2026-09-28) ----------
+
+def test_uten_ai_kaller_aldri_modellen_og_gir_mekanisk_rapport(monkeypatch):
+    ekte = _p("e", tittel="Nephrocalcinosis in salmon", aar=2024, abstract="calcium")
+    monkeypatch.setattr(rs, "sok_og_ranger", lambda q, page_size=20: ([ekte], None, {"kilder": {}, "treff_per_kilde": {}}))
+
+    def forbudt(prompt):
+        raise AssertionError("modellen skal ikke kalles med uten_ai")
+
+    monkeypatch.setattr(rs.syntese_fortelling, "kall_llm", forbudt)
+    review = rs.lag_review("nefrokalsinose calcium", uten_ai=True)
+    assert review["status"] == "fullfort"
+    assert review["ai"] == {"brukt": False, "avvist": [], "hoppet_over": "etter_foresporsel"}
+    assert [k["id"] for k in review["kilder"]] == ["e"]
+    assert "Kildeliste (1 kilder)" in review["rapport"]
+
+
+def test_uten_flagg_kalles_modellen_som_foer(monkeypatch):
+    ekte = _p("e", tittel="Nephrocalcinosis in salmon", aar=2024, abstract="calcium")
+    monkeypatch.setattr(rs, "sok_og_ranger", lambda q, page_size=20: ([ekte], None, {"kilder": {}, "treff_per_kilde": {}}))
+    kalt = []
+    monkeypatch.setattr(rs.syntese_fortelling, "kall_llm", lambda prompt: kalt.append(1) or "Funn [#e].")
+    review = rs.lag_review("nefrokalsinose calcium")
+    assert kalt == [1] and review["ai"]["brukt"] is True
