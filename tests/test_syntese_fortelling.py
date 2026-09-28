@@ -431,3 +431,30 @@ def test_lag_syntese_fortelling_reparerer_tomt_forsteutkast(tmp_path, monkeypatc
 
     assert "Et dokumentert funn" in ut
     assert "syntesen returnerte ingen fortelling" not in ut
+
+
+# ---------- synlig rute (2026-09-28): hvilken rute svarte, og hvorfor fallback ----------
+
+def test_tunnelfeil_gir_synlig_fallback_til_ai_proxy(monkeypatch):
+    import syntese_fortelling as sf
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://127.0.0.1:18711")
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+
+    def tunnel_nede(prompt):
+        raise RuntimeError("Ollama-tunnel utilgjengelig: [Errno 111] Connection refused")
+
+    monkeypatch.setattr(sf, "_kall_llm_tunnel", tunnel_nede)
+    monkeypatch.setattr(sf, "_kall_llm_ai_proxy", lambda prompt: "svar")
+    assert sf.kall_llm("p") == "svar"
+    rute = sf.siste_rute()
+    assert rute["rute"] == "ai-proxy" and rute["fallback_fra"] == "tunnel"
+    assert "Connection refused" in rute["grunn"]
+    assert sf.siste_rute() is None  # nullstilt etter lesing
+
+
+def test_fungerende_tunnel_rapporterer_tunnel(monkeypatch):
+    import syntese_fortelling as sf
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://172.17.0.1:18712")
+    monkeypatch.setattr(sf, "_kall_llm_tunnel", lambda prompt: "lokalt svar")
+    assert sf.kall_llm("p") == "lokalt svar"
+    assert sf.siste_rute() == {"rute": "tunnel"}

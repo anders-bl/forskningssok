@@ -273,6 +273,23 @@ def tilgjengelig() -> bool:
     return bool(os.environ.get("AI_PROXY_URL"))
 
 
+# Synlig rute (2026-09-28, konsepter/feil-synlighet §Sju på én dag): Ollama-tunnelen kunne
+# ikke virke i prod siden 2026-09-20, og det eneste sporet var en [OBS]-linje i stderr fordi
+# fallbacken til ai-proxy lyktes. kall_llm noterer nå hvilken rute som svarte og hvorfor det
+# ble fallback; lag_review legger det i ai.rute. Tråd-lokal: sync-endepunkter kjører i en
+# trådpool, og samtidige forespørsler skal ikke lese hverandres rute.
+import threading as _threading
+
+_RUTE = _threading.local()
+
+
+def siste_rute() -> dict | None:
+    """Ruten forrige kall_llm i DENNE tråden tok, og nullstill. None hvis ingen kall."""
+    r = getattr(_RUTE, "siste", None)
+    _RUTE.siste = None
+    return r
+
+
 def kall_llm(prompt: str) -> str:
     """Det ENESTE stedet i denne fila som avgjør HVOR en modell nås. Ruten speiler
     embedder-splitten husets øvrige kode allerede bruker (bank._hus_embed,
@@ -290,14 +307,20 @@ def kall_llm(prompt: str) -> str:
     AUTOMATISK videre til ai-proxy (obligatorisk fallback, FDR-106 §Foreslått funksjon)
     — Ulven skal ALDRI se en feilmelding fordi Anders' Mac var av eller nett var nede."""
     import os
+    fallback: dict = {}
     if os.environ.get("OLLAMA_TUNNEL_URL"):
         try:
-            return _kall_llm_tunnel(prompt)
+            svar = _kall_llm_tunnel(prompt)
+            _RUTE.siste = {"rute": "tunnel"}
+            return svar
         except RuntimeError as e:
             import sys
             print(f"[OBS] Ollama-tunnel feilet, faller til ai-proxy: {e}", file=sys.stderr)
+            fallback = {"fallback_fra": "tunnel", "grunn": str(e)[:200]}
     if os.environ.get("AI_PROXY_URL"):
+        _RUTE.siste = {"rute": "ai-proxy", **fallback}
         return _kall_llm_ai_proxy(prompt)
+    _RUTE.siste = {"rute": "lokal", **fallback}
     return _kall_llm_lokal_ollama(prompt)
 
 

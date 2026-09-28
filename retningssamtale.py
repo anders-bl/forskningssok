@@ -600,6 +600,7 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
     hull = linse_hull(papirer_obj)
     ai_brukt = False
     avvist: list[str] = []
+    rute: dict | None = None
 
     # uten_ai (2026-09-28): kallere som lager sitt eget svar (Belegg) trenger kildene og
     # linsene, ikke Reviews AI-sammendrag. Målt i prod: sammendraget tok median 19 s via
@@ -624,13 +625,15 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
     try:
         prompt = bygg_prompt(fritekst, aktuelle, glemte, hull, len(papirer))
         rått_svar = syntese_fortelling.kall_llm(prompt)
+        rute = syntese_fortelling.siste_rute()
         renset, avvist = syntese_fortelling.verifiser_kilder(rått_svar, papirer)
         ai_brukt = True
         ut = [renset]
         if avvist:
             ut.append(f"\n---\n[ADVARSEL: {len(avvist)} kildehenvisning(er) fantes ikke i "
                        f"kildesettet og ble fjernet: {', '.join(avvist)}]")
-    except RuntimeError:
+    except RuntimeError as e:
+        rute = {**(syntese_fortelling.siste_rute() or {}), "feil": str(e)[:200]}
         ut = [_mekanisk_sammendrag(aktuelle, glemte, hull, len(papirer))]
 
     ut.append(f"\n---\n## Kildeliste ({len(papirer)} kilder)\n"
@@ -643,7 +646,7 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
         "kilder": papirer,
         "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull,
                    "domenetreff": linse_domenetreff(papirer_obj)},
-        "ai": {"brukt": ai_brukt, "avvist": avvist},
+        "ai": {"brukt": ai_brukt, "avvist": avvist, **({"rute": rute} if rute else {})},
         "rapport": "\n".join(ut),
     }
 

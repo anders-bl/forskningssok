@@ -461,3 +461,18 @@ def test_uten_flagg_kalles_modellen_som_foer(monkeypatch):
     monkeypatch.setattr(rs.syntese_fortelling, "kall_llm", lambda prompt: kalt.append(1) or "Funn [#e].")
     review = rs.lag_review("nefrokalsinose calcium")
     assert kalt == [1] and review["ai"]["brukt"] is True
+
+
+def test_review_viser_ruten_ai_sammendraget_tok(monkeypatch):
+    ekte = _p("e", tittel="Nephrocalcinosis in salmon", aar=2024, abstract="calcium")
+    monkeypatch.setattr(rs, "sok_og_ranger", lambda q, page_size=20: ([ekte], None, {"kilder": {}, "treff_per_kilde": {}}))
+    monkeypatch.setenv("OLLAMA_TUNNEL_URL", "http://127.0.0.1:18711")
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+
+    def tunnel_nede(prompt):
+        raise RuntimeError("Connection refused")
+
+    monkeypatch.setattr(rs.syntese_fortelling, "_kall_llm_tunnel", tunnel_nede)
+    monkeypatch.setattr(rs.syntese_fortelling, "_kall_llm_ai_proxy", lambda prompt: "Funn [#e].")
+    review = rs.lag_review("nefrokalsinose calcium")
+    assert review["ai"]["rute"] == {"rute": "ai-proxy", "fallback_fra": "tunnel", "grunn": "Connection refused"}
