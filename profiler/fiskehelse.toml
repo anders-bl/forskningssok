@@ -256,6 +256,23 @@ tubuli = "tubules"
 histologi = "histology"
 histopatologi = "histopathology"
 osmoregulering = "osmoregulation"
+# Organformen av det tvetydige «lever» (se [sprak.tvetydige] under); bestemt form er entydig.
+leveren = "liver"
+
+# Tvetydige ord (2026-09-28): oversettes BARE når konteksten avgjør lesningen, og
+# tolkningen erklæres i Review (sok.tolkninger) -- også når den står uavgjort. Et
+# spørsmål er en gaffel, ikke en kontrakt (konsepter/informasjonsproblemer §Lag 1):
+# en stille gjetning blir trodd, en erklært tolkning kan rettes.
+[sprak.tvetydige.lever]
+lesning = "organ (liver)"
+organform = "leveren"
+foran_gir_lesning = ["av", "i", "på", "og", "fra", "med"]
+i_teksten_gir_lesning = ["nyre", "nyren", "nyrer", "ultralyd", "vev", "biopsi", "histologi",
+  "histopatologi", "gjelle", "gjellene", "organ", "organer", "hjerte", "milt"]
+foran_gir_annet = ["som", "den", "det", "de", "han", "hun", "vi", "dere", "fisken", "laksen",
+  "fisk", "laks", "smolten"]
+# Omvendt ordstilling i spørsmål: «hvor lenge lever laksen».
+etter_gir_annet = ["den", "det", "de", "han", "hun", "vi", "dere", "fisken", "laksen", "smolten"]
 
 [evaluering]
 # Positiv kontroll for evaluer.py: dommeren MÅ gi det ekte fiskehelse-papiret høyere grad

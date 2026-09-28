@@ -49,12 +49,26 @@ def test_runtime_error_gir_502_ikke_500(monkeypatch):
 
 def test_review_eksponerer_stabil_kontrakt(monkeypatch):
     monkeypatch.setattr(api.retningssamtale_modul, "lag_review",
-                        lambda fritekst: {"kontrakt": "review.v1", "status": "fullfort",
+                        lambda fritekst, kontekst="": {"kontrakt": "review.v1", "status": "fullfort",
                                           "input": {"fritekst": fritekst}})
     r = _client().post("/api/review", json={"fritekst": "noe"})
     assert r.status_code == 200
     assert r.json() == {"kontrakt": "review.v1", "status": "fullfort",
                         "input": {"fritekst": "noe"}}
+
+
+def test_review_sender_kontekst_videre_kappet(monkeypatch):
+    fanget = {}
+
+    def fake(fritekst, kontekst=""):
+        fanget["kontekst"] = kontekst
+        return {"kontrakt": "review.v1"}
+
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review", fake)
+    _client().post("/api/review", json={"fritekst": "hvorfor radiologi", "kontekst": "x" * 5000})
+    assert fanget["kontekst"] == "x" * 1000
+    _client().post("/api/review", json={"fritekst": "noe"})
+    assert fanget["kontekst"] == ""
 
 
 def test_review_tom_fritekst_gir_400():
