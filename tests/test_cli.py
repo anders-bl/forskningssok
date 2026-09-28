@@ -92,10 +92,12 @@ def test_soek_forankres_med_artstermer_for_hver_kilde(tmp_path):
     # Europe PMC: Lucene AND/OR-struktur, kjerneordet fortsatt ordrett til stede
     assert "nephrocalcinosis" in kalt["epmc"]
     assert " AND (" in kalt["epmc"]
-    # CORE/OpenAlex: enkel mellomromsvedheng, ingen boolsk syntaks
-    for kilde in ("core", "openalex"):
-        assert kalt[kilde].startswith("nephrocalcinosis ")
-        assert "AND" not in kalt[kilde] and "OR" not in kalt[kilde]
+    # CORE: enkel mellomromsvedheng, ingen boolsk syntaks
+    assert kalt["core"].startswith("nephrocalcinosis ")
+    assert "AND" not in kalt["core"] and "OR" not in kalt["core"]
+    # OpenAlex: boolsk som Europe PMC fra 2026-09-28. Vedhengte artsord ga count 0 på
+    # hvert søk i prod-cachen den dagen (søket krever nå alle ord).
+    assert kalt["openalex"] == kalt["epmc"]
     # Samme artsterm skal faktisk finnes i alle tre (stikkprøve: "salmon")
     assert "salmon" in kalt["epmc"] and "salmon" in kalt["core"] and "salmon" in kalt["openalex"]
 
@@ -205,3 +207,12 @@ def test_review_bruker_varianten_uten_epmc_krav():
         papirer, _, detaljer = rs.hent_kilder("nefrokalsinose hos laks")
     assert [p.pmid for p in papirer] == ["c"]
     assert detaljer["engelsk"]["revisjon"]["kilder"]["europe_pmc"] is False
+
+
+def test_openalex_faar_boolsk_artsforankring_ikke_vedhengte_ord():
+    """2026-09-28: vedhengte artsord ga count 0 på hvert OpenAlex-søk (søket krever alle ord)."""
+    with patch("cli.sok", return_value=[]), patch("cli.core_adapter.sok", return_value=[]), \
+         patch("cli.openalex_adapter.sok", return_value=[]) as alex:
+        sok_og_ranger("nephrocalcinosis")
+    q = alex.call_args.args[0]
+    assert q.startswith("(nephrocalcinosis) AND (") and " OR " in q

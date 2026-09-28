@@ -191,3 +191,21 @@ def test_verk_uten_referenced_works_gir_aerlig_tom_liste(tmp_path):
     db = tmp_path / "cache.db"
     with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data={"title": "x"})):
         assert openalex.referanser("10.1111/jfd.70099", db_path=db) == []
+
+
+# ---------- API-nøkkel (2026-09-28): header, aldri URL ----------
+
+def test_nokkel_sendes_som_header_ikke_i_url(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENALEX_API_KEY", "test-nokkel-123")
+    with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data={"results": [], "meta": {"count": 0}})) as m:
+        openalex.sok("nephrocalcinosis", db_path=tmp_path / "c.db")
+    args, kwargs = m.call_args
+    assert kwargs["headers"]["Authorization"] == "Bearer test-nokkel-123"
+    assert "test-nokkel-123" not in str(args) + str(kwargs.get("params"))
+
+
+def test_uten_nokkel_er_anonym_som_foer(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENALEX_API_KEY", raising=False)
+    with patch("adapters.openalex.httpx.get", return_value=_mock_get(json_data={"results": [], "meta": {"count": 0}})) as m:
+        openalex.sok("nephrocalcinosis", db_path=tmp_path / "c.db")
+    assert "Authorization" not in m.call_args.kwargs["headers"]
