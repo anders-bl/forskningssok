@@ -792,10 +792,13 @@ vurdering: `data/ulven_syntese_bank_pilot_2026-09-27.json`.
 En utvidet runde med full synteseflyt ble startet 2026-09-27. Forste paret fullforte, men
 bankarmen returnerte tom fortelling og bare status/kildeliste. Kvalitetsmaalertallet
 behandlet tom tekst som 100 prosent sitatdekning; dette er rettet, med regresjonstest.
-Etter klarering fullforte en dekket velferdskontroll begge armer; bankarmen hadde en setning
-uten kilde etter reparasjon, mens kontrollarmen uten bank hadde ingen. En ny bankgenerering
-ble deretter stoppet av Ollama-vernet ved kritisk minnetrykk. Den neste kontrollen har bare
-uten-bank-arm; slakte- og eDNA-parene er ikke startet. Delresultat og forhaandsdekning:
+Den dekkede velferdskontrollen ga 1 faktisk enhet med bank, hvor 1 manglet kilde etter
+reparasjon, mot 14 uten bank og 0 som manglet kilde. Slaktekontrollen ga 1 enhet med bank
+(1 uten kilde etter reparasjon, 0 bankreferanser) mot 9 uten bank og 0 som manglet kilde.
+eDNA-nabokontrollen ga 3 enheter med bank og 6 uten bank; begge hadde 0 manglende kilder,
+og bankarmen siterte ingen bankpost. Resultatene viser ingen tydelig nytte av bank i disse
+tre kontrollene. Trykkvakten stanset enkelte modellkall; modellene ble kjørt sekvensielt, og
+reparasjoner ventet til swap var under 85 prosent. Måledata og råsvar:
 `data/ulven_syntese_bank_round2_2026-09-27.json`.
 
 En full kontekstrevisjon med `truncate=false` fant 9 av 4 732 dokumentchunks over Nomic sitt
