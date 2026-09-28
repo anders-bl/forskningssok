@@ -227,6 +227,36 @@ norske_ord = [
   "anlegg", "anlegget", "merd", "merden", "kar", "karet", "tank", "tanken",
 ]
 
+# Norsk fagterm -> engelsk søketerm (2026-09-28). Målt på Ulvens egne spørsmål fra
+# samtalen 21.09: uten denne gikk «nefrokalsinose» inn i den engelske frasen uoversatt
+# og ga 0 relevante av topp 10 på alle åtte (data/fagterm_eval_foer_2026-09-28.json).
+# Nøkkelen matcher også som start/slutt på sammensatte ord (ultralydscreening, hodenyren)
+# og med små skrivefeil (nerfokalsinose). Ikke «laks»/«fisk»: arten forankres i søket.
+[sprak.fagtermer]
+nefrokalsinose = "nephrocalcinosis"
+urolitiasis = "urolithiasis"
+urocystolitiasis = "urocystolithiasis"
+nyre = "kidney"
+nyren = "kidney"
+nyrer = "kidney"
+hodenyre = "head kidney"
+ultralyd = "ultrasound"
+"røntgen" = "radiography"
+radiologi = "radiology"
+radiologisk = "radiological"
+utfelling = "precipitation"
+mineralisering = "mineralization"
+forkalkning = "calcification"
+kalsium = "calcium"
+fosfat = "phosphate"
+karbondioksid = "carbon dioxide"
+hyperkapni = "hypercapnia"
+tubuli = "tubules"
+"samlerør" = "collecting duct"
+histologi = "histology"
+histopatologi = "histopathology"
+osmoregulering = "osmoregulation"
+
 [evaluering]
 # Positiv kontroll for evaluer.py: dommeren MÅ gi det ekte fiskehelse-papiret høyere grad
 # enn species-trap-fella (samme ord «nephrocalcinosis», feil art) på denne spørringen.

@@ -140,7 +140,8 @@ def test_hent_kilder_hopper_over_tomt_bucket_uten_a_kalle_sok(monkeypatch):
 
 
 def test_hent_kilder_dedupliserer_pa_tvers_av_sprak(monkeypatch):
-    felles = _p("felles-id", tittel="Samme papir begge veier", doi="10.1/felles")
+    # Tittelen nevner søkeordet: hent_kilder forkaster treff uten søkeord (2026-09-28).
+    felles = _p("felles-id", tittel="Samme calcium-papir begge veier", doi="10.1/felles")
 
     def fake_sok(q, page_size=20):
         return [felles], None, {"kilder": {}, "treff_per_kilde": {}}
@@ -244,7 +245,7 @@ def test_lag_retningsrapport_degraderer_til_mekanisk_naar_llm_feiler(monkeypatch
     lag 2 (Ollama wedget/ai-proxy nede), skal retningssamtalen fortsatt gi
     kildespråk-treff via lag 1 alene, ikke feile helt." Mekanisk henting/linser skal
     IKKE forsvinne bare fordi AI-kallet feiler."""
-    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="abstract")
+    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="calcium abstract")
     monkeypatch.setattr(rs, "sok_og_ranger",
                          lambda q, page_size=20: ([ekte], None, {"kilder": {}, "treff_per_kilde": {}}))
 
@@ -259,7 +260,7 @@ def test_lag_retningsrapport_degraderer_til_mekanisk_naar_llm_feiler(monkeypatch
 
 
 def test_lag_review_beholder_proveniens_og_ai_status(monkeypatch):
-    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="abstract")
+    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="calcium abstract")
     monkeypatch.setattr(rs, "sok_og_ranger",
                         lambda q, page_size=20: ([ekte], None, {"kilder": {"core": True},
                                                                  "treff_per_kilde": {"core": 1}}))
@@ -277,7 +278,7 @@ def test_lag_review_beholder_proveniens_og_ai_status(monkeypatch):
 
 
 def test_lag_retningsrapport_advarer_ved_konfabulert_referanse(monkeypatch):
-    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="abstract")
+    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="calcium abstract")
     monkeypatch.setattr(rs, "sok_og_ranger",
                          lambda q, page_size=20: ([ekte], None, {"kilder": {}, "treff_per_kilde": {}}))
     monkeypatch.setattr(rs.syntese_fortelling, "kall_llm",
@@ -290,8 +291,10 @@ def test_lag_retningsrapport_advarer_ved_konfabulert_referanse(monkeypatch):
     assert "ekte-id" in ut
 
 
+# Fixturene under nevner «calcium» i abstract: hent_kilder forkaster treff som ikke nevner
+# noe søkeord (2026-09-28), og testene her gjelder rapporten, ikke filteret.
 def test_lag_retningsrapport_gyldig_referanse_beholdes(monkeypatch):
-    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="abstract")
+    ekte = _p("ekte-id", tittel="Ekte papir", aar=2024, abstract="calcium abstract")
     monkeypatch.setattr(rs, "sok_og_ranger",
                          lambda q, page_size=20: ([ekte], None, {"kilder": {}, "treff_per_kilde": {}}))
     monkeypatch.setattr(rs.syntese_fortelling, "kall_llm",
@@ -302,7 +305,7 @@ def test_lag_retningsrapport_gyldig_referanse_beholdes(monkeypatch):
 
 
 def test_lag_retningsrapport_kapper_ved_maks_kilder(monkeypatch):
-    mange = [_p(f"id{i}", tittel=f"Papir {i}", aar=2020)
+    mange = [_p(f"id{i}", tittel=f"Calcium-papir {i}", aar=2020)
              for i in range(rs.MAKS_KILDER + 10)]
     monkeypatch.setattr(rs, "sok_og_ranger",
                          lambda q, page_size=20: (mange, None, {"kilder": {}, "treff_per_kilde": {}}))
@@ -319,3 +322,62 @@ def test_tilgjengelig_speiler_syntese_fortelling(monkeypatch):
     assert rs.tilgjengelig() is True
     monkeypatch.setattr(rs.syntese_fortelling, "tilgjengelig", lambda: False)
     assert rs.tilgjengelig() is False
+
+
+# ---------- fagtermer og støyfilter (2026-09-28, Ulvens spørsmål ga 0/10 relevante) ----------
+
+def test_fagterm_eksakt_sammensatt_og_skrivefeil():
+    assert rs.fagterm("nefrokalsinose") == ("nefrokalsinose", "nephrocalcinosis")
+    assert rs.fagterm("ultralydscreening") == ("ultralyd", "ultrasound")
+    assert rs.fagterm("nerfokalsinose") == ("nefrokalsinose", "nephrocalcinosis")
+    assert rs.fagterm("nefrokalsinonse") == ("nefrokalsinose", "nephrocalcinosis")
+    assert rs.fagterm("dersom") is None
+
+
+def test_norsk_sporsmal_gir_engelsk_frase_av_fagtermer_ikke_norske_restord():
+    fraser = rs.bygg_sokefraser(
+        "Dersom ultralyd skal brukes for detektere graden av nerfokalsinose, hvilket deler av nyren bør scannes?")
+    eng = fraser["engelsk"].split()
+    assert eng[0] == "nephrocalcinosis"
+    assert "ultrasound" in eng and "kidney" in eng
+    for norsk in ("dersom", "detektere", "hvilket", "ultralyd", "nerfokalsinose"):
+        assert norsk not in eng
+    assert len(eng) <= rs.MAKS_ENGELSK_TERMER
+
+
+def test_engelsk_tekst_uten_norske_signaler_er_uendret():
+    assert rs.bygg_sokefraser("nephrocalcinosis Atlantic salmon ultrasound")["norsk"] == ""
+
+
+def test_hent_kilder_forkaster_treff_uten_sokeord_og_legger_engelsk_forst(monkeypatch):
+    stoy = _p("lus", tittel="Temporal and spatial variations in lice numbers")
+
+    def fake_sok(q, page_size=20):
+        if "nephrocalcinosis" in q:
+            return ([_p(f"e{i}", tittel=f"Nephrocalcinosis study {i}") for i in range(6)] + [stoy],
+                    None, {"kilder": {}, "treff_per_kilde": {}})
+        return [stoy, _p("n1", tittel="Nefrokalsinose hos laks")], None, {"kilder": {}, "treff_per_kilde": {}}
+
+    monkeypatch.setattr(rs, "sok_og_ranger", fake_sok)
+    papirer, _, detaljer = rs.hent_kilder("Hvordan oppstår nefrokalsinose hos laks?")
+    ider = [p.id for p in papirer]
+    assert "lus" not in ider
+    assert ider[0] == "e0" and ider[-1] == "n1"
+    assert detaljer["engelsk"]["forkastet_uten_sokeord"] == 1
+
+
+def test_hent_kilder_tilbakefall_kutter_minst_spesifikke_ledd(monkeypatch):
+    kalt = []
+
+    def fake_sok(q, page_size=20):
+        kalt.append(q)
+        n = 6 if q == "nephrocalcinosis" else 0
+        return [_p(f"x{i}", tittel=f"nephrocalcinosis x{i}") for i in range(n)], None, {"kilder": {}, "treff_per_kilde": {}}
+
+    monkeypatch.setattr(rs, "sok_og_ranger", fake_sok)
+    papirer, _, detaljer = rs.hent_kilder("Kan ultralyd og røntgen gradere nefrokalsinose?")
+    engelske = [q for q in kalt if "nephrocalcinosis" in q]
+    assert engelske[0].startswith("nephrocalcinosis ") and engelske[-1] == "nephrocalcinosis"
+    assert len(engelske) <= 1 + rs.MAKS_TILBAKEFALL
+    assert detaljer["engelsk"]["sokefrase"] == "nephrocalcinosis"
+    assert len(papirer) == 6
