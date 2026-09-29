@@ -64,6 +64,10 @@ services:
       # GlitchTip-DSN. Tom = feilsporing AV, og appen starter helt normalt — den skal
       # aldri kunne velte oppstarten fordi en observasjonstjeneste mangler.
       GLITCHTIP_DSN: ${GLITCHTIP_DSN:-}
+      # FDR-107 M5b: delt hemmelighet med Traefik-mellomvaren og portalen. Tom = sjekken av
+      # (utrullingsrekkefølge). Satt = alle kall unntatt /health/live og /health/ready må ha
+      # headeren X-Forskningssok-Tilgang. MÅ stå her, ellers når panel-verdien aldri containeren.
+      FORSKNINGSSOK_TILGANG: ${FORSKNINGSSOK_TILGANG:-}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       AI_PROXY_WIKI_ID: ${AI_PROXY_WIKI_ID:-forskningssok}
       # CORE-nøkkel (adapters/core.py), registrert 2026-09-08. Usatt = anonym CORE-

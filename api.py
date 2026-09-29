@@ -110,6 +110,27 @@ if _GLITCHTIP_DSN:
 app = FastAPI(title="forskningssok API")
 logger = logging.getLogger("forskningssok")
 
+# FDR-107 M5b (2026-09-29): innlogging også innenfra. Traefik slipper bare portal-innloggede
+# brukere inn (forskningssok-forwardauth), men på dokploy-network kunne enhver container kalle
+# appen direkte og lese søk, utkast, sitater og opplastede dokumenter. Traefik legger nå på
+# X-Forskningssok-Tilgang etter sin egen sjekk; portalen sender den i sine interne kall.
+#
+# Av når FORSKNINGSSOK_TILGANG er tom (utrullingsrekkefølge: Traefik og portal først, så
+# settes verdien her). /health/live og /health/ready står åpne: Docker HEALTHCHECK, Kuma og
+# portalens helsesjekk bruker dem, og de lekker ingenting (se helse-kommentaren under).
+_TILGANG_HEADER = "x-forskningssok-tilgang"
+_TILGANG_UNNTAK = frozenset({"/health/live", "/health/ready"})
+
+
+@app.middleware("http")
+async def _krev_intern_tilgang(request, call_next):
+    forventet = os.environ.get("FORSKNINGSSOK_TILGANG", "")
+    if forventet and request.url.path not in _TILGANG_UNNTAK:
+        gitt = request.headers.get(_TILGANG_HEADER, "")
+        if not hmac.compare_digest(gitt.encode(), forventet.encode()):
+            return JSONResponse({"detail": "Ikke autentisert"}, status_code=401)
+    return await call_next(request)
+
 
 def _lagre_bakgrunn(papirer: list, *, ekte_bakgrunn: bool = True) -> None:
     """Wrapper rundt bank.lagre for BackgroundTasks — fanger ALT. lagre() sin egen
