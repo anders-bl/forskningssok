@@ -55,6 +55,8 @@ services:
       # Usatt = ville falt til lokal Ollama (uoppnåelig herfra) — MÅ stå her i prod.
       # Se bank.py sin moduldocstring for hele resonnementet.
       AI_PROXY_URL: ${AI_PROXY_URL:-http://ai-proxy:8000}
+      # FDR-107 M4 fase 2b: appens nøkkel mot ai-proxy (X-AI-Konsument). Tom = sendes ikke.
+      AI_KONSUMENT_NOKKEL: ${AI_KONSUMENT_NOKKEL:-}
       # Fagfeltet (profiler/*.toml, se README §Domeneprofilen som datafil). Usatt =
       # «fiskehelse», som ligger i imaget — altså uendret oppførsel for denne instansen.
       # Settes den til en sti, MÅ fila være i imaget eller på et montert volum: profilen

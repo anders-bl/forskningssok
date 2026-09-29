@@ -107,6 +107,10 @@ if _GLITCHTIP_DSN:
                     traces_sample_rate=0,
                     before_send=_skal_rapporteres)
 
+# FDR-107 M4 fase 2b: X-AI-Konsument på alle kall til ai-proxy (se ai_proxy_nokkel.py).
+import ai_proxy_nokkel as _ai_proxy_nokkel  # noqa: E402
+_ai_proxy_nokkel.installer()
+
 app = FastAPI(title="forskningssok API")
 logger = logging.getLogger("forskningssok")
 
