@@ -172,8 +172,9 @@ ikke deployet») — `docker inspect` viste kun Basic Auth-labelen, ingen
 
 `docker-compose.yml` definerer BEGGE, Dokploys Domains-fane refererer kun den ene:
 
-- **`forskningssok-auth@docker`** (Basic Auth, delt statisk credential) —
-  definert i compose, men ikke observert som aktiv ved live-kontrollen 2026-09-24.
+- **`forskningssok-auth@docker`** (Basic Auth, delt statisk credential) — **fjernet
+  2026-09-29**: ikke i bruk på noen rute, og hashen sto i dette offentlige repoet.
+  Passordet regnes som brent. En ny reserve lages som fil-middleware på noden, aldri her.
 - **`forskningssok-forwardauth@docker`** (ekte portal-SSO, lagt til 2026-09-04) —
   observert aktiv ved live-kontrollen 2026-09-24: uautorisert kall ga JSON
   `401 {"detail":"Ikke autentisert"}` uten `WWW-Authenticate: Basic`.

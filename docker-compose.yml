@@ -1,11 +1,12 @@
-# To alternative Traefik-middlewares, begge definert her (docker-provideren, ikke
-# den delte middlewares.yml-plattform-SPOF-en — se integrasjoner/dokploy). Kun ÉN
-# refereres om gangen i Dokploys Domains-fane, feltet "Middlewares":
+# Traefik-middleware definert her (docker-provideren, ikke den delte middlewares.yml-
+# plattform-SPOF-en — se integrasjoner/dokploy), referert i Dokploys Domains-fane, feltet
+# "Middlewares", sammen med forskningssok-tilgang@file (FDR-107 M5b, header innenfra; bor
+# i middlewares.yml på noden fordi den bærer en hemmelighet):
 #
-#   forskningssok-auth@docker         — Basic Auth, delt statisk credential.
-#     Passordet er IKKE i denne fila (kun hashen) — gitt til Anders direkte, aldri
-#     skrevet til fil/commit/minne (se feedback_hemmeligheter-er-midlertidige).
-#     Fungerer for ALLE som har credentialet, uten portal-konto.
+#   [FJERNET 2026-09-29] forskningssok-auth@docker (Basic Auth, delt statisk credential).
+#     Var ikke i bruk på noen rute siden portal-SSO kom, men passord-hashen sto i dette
+#     OFFENTLIGE repoet (apr1, rask å knekke offline). Passordet regnes som brent: aldri
+#     gjenbruk. Trengs en reserve igjen, lag den med ny credential i en fil-middleware på noden.
 #
 #   forskningssok-forwardauth@docker  — ekte portal-SSO (2026-09-04). Traefik
 #     spør /api/auth/forward FØR proxy — samme endepunkt ADR-042 bruker for
@@ -45,7 +46,6 @@ services:
       - "8000"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.middlewares.forskningssok-auth.basicauth.users=ulven:$$apr1$$7O6jJI49$$Fg55OoIABGWc3bH3sOIiV0"
       - "traefik.http.middlewares.forskningssok-forwardauth.forwardauth.address=http://lauvasdata-portal-xaxnqv-backend-1:8000/api/auth/forward"
     environment:
       # Volum-sti — se paths.py for hvorfor ALLE fire cache-moduler må dele denne
