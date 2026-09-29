@@ -92,10 +92,17 @@ services:
       - forskningssok_data:/data
     networks:
       - dokploy-network
+      - ai-intern   # FDR-107 M5: AI_PROXY_URL=http://ai-proxy:8000
 
 volumes:
   forskningssok_data:
 
 networks:
   dokploy-network:
+    external: true
+  # FDR-107 M5 (2026-09-29): ai-proxy står bare på ai-intern, ikke på dokploy-network.
+  # Nettet eies av ai-proxy-composen; det må finnes før denne deployer (ellers feiler
+  # deployen høylytt med «declared as external, but could not be found»).
+  ai-intern:
+    name: ai-intern
     external: true
