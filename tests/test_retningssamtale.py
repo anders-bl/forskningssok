@@ -198,6 +198,29 @@ def test_linse_domenetreff_knytter_ordtreff_til_stabile_kilde_ider():
     assert "uten-treff" not in {ident for ids in treff.values() for ident in ids}
 
 
+def test_linse_artsdekning_skiller_malart_fra_annet_og_beholder_bevis():
+    papirer = [
+        _p("salmon", tittel="Nephrocalcinosis in Atlantic salmon"),
+        _p("human", tittel="Nephrocalcinosis in pediatric patients"),
+        _p("unknown", tittel="Renal mineral deposits"),
+    ]
+    dekning = rs.linse_artsdekning(papirer)
+    assert dekning["status"] == "malt"
+    assert dekning["antall_kilder"] == 3
+    assert dekning["nivaaer"] == {"maal": 1, "naer": 0, "annet": 1, "ingen": 1}
+    assert dekning["malobjekt"] == "målarten (laksefisk)"
+    assert dekning["kilder"][0] == {
+        "id": "salmon", "niva": "maal", "grunnlag": "tittel", "bevis": ["salmon"],
+    }
+
+
+def test_linse_artsdekning_sier_ingen_kilder_i_stedet_for_nullmaal():
+    dekning = rs.linse_artsdekning([])
+    assert dekning["status"] == "ingen_kilder"
+    assert dekning["antall_kilder"] == 0
+    assert dekning["nivaaer"] == {"maal": 0, "naer": 0, "annet": 0, "ingen": 0}
+
+
 # ---------- bygg_prompt ----------
 
 def test_bygg_prompt_baerer_kilde_id_og_de_tre_linsene():
@@ -231,6 +254,21 @@ def test_lag_review_tomt_input_har_stabil_kontrakt():
     assert review["kontrakt"] == "review.v1"
     assert review["status"] == "tomt_input"
     assert review["ai"]["brukt"] is False
+
+
+def test_lag_review_eksponerer_artsdekning_og_per_kildegrunnlag(monkeypatch):
+    papirer = [
+        _p("salmon", tittel="Nephrocalcinosis in Atlantic salmon"),
+        _p("human", tittel="Nephrocalcinosis in pediatric patients"),
+    ]
+    monkeypatch.setattr(rs, "hent_kilder", lambda *args, **kwargs: (papirer, {}, {}))
+    review = rs.lag_review("nefrokalsinose", uten_ai=True)
+    dekning = review["linser"]["artsdekning"]
+    assert dekning["nivaaer"]["maal"] == 1
+    assert dekning["nivaaer"]["annet"] == 1
+    assert review["kilder"][0]["art"] == {
+        "niva": "maal", "grunnlag": "tittel", "bevis": ["salmon"],
+    }
 
 
 def test_lag_retningsrapport_ingen_treff_gir_aerlig_beskjed(monkeypatch):

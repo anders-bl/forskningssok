@@ -49,6 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import domeneprofil  # noqa: E402
 import scoping  # noqa: E402
 import syntese_fortelling  # noqa: E402
+import art_niva
 from cli import sok_og_ranger as _sok_og_ranger_cli  # noqa: E402
 
 
@@ -444,11 +445,45 @@ def linse_domenetreff(papirer: list) -> dict[str, list[str]]:
     return {akse: ids for akse, ids in treff.items() if ids}
 
 
+def linse_artsdekning(papirer: list) -> dict:
+    """Tell regelbaserte artssignaler blant treffene, uten a filtrere kilder.
+
+    Fravaer av treff pa malobjektet er bare fravaer i dette hentede utvalget. Det
+    sier ikke at relevant litteratur ikke finnes. Hvert kildeutfall beholder
+    klassifikatorens grunnlag og signalord for etterproving.
+    """
+    art = domeneprofil.PROFIL.get("art") or {}
+    niva = art.get("niva") or {}
+    merker = niva.get("merker") or {}
+    tellinger = {navn: 0 for navn in art_niva.NIVAER}
+    kilder = []
+    for papir in papirer:
+        funn = art_niva.klassifiser(papir.tittel, papir.abstract, papir.mesh)
+        tellinger[funn.niva] += 1
+        kilder.append({
+            "id": papir.id,
+            "niva": funn.niva,
+            "grunnlag": funn.kilde,
+            "bevis": list(funn.bevis),
+        })
+    return {
+        "status": "malt" if papirer else "ingen_kilder",
+        "profil": domeneprofil.NAVN,
+        "malobjekt": merker.get("maal", "malobjektet"),
+        "antall_kilder": len(papirer),
+        "nivaaer": tellinger,
+        "kilder": kilder,
+    }
+
+
 def _til_dict(p) -> dict:
     """PaperDossier → dict-shapen syntese_fortelling.py sine gjenbrukte funksjoner
     (verifiser_kilder/lag_referanseliste) forventer."""
+    artsfunn = art_niva.klassifiser(p.tittel, p.abstract, p.mesh)
     return {"id": p.id, "tittel": p.tittel, "forfattere": p.forfattere, "aar": p.aar,
             "doi": p.doi, "abstract": p.abstract, "kilde": p.kilde_kode,
+            "art": {"niva": artsfunn.niva, "grunnlag": artsfunn.kilde,
+                    "bevis": list(artsfunn.bevis)},
             "tidsskrift": p.tidsskrift, "kilde_url": p.kilde_url}
 
 
@@ -570,7 +605,8 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
             "input": {"fritekst": ""},
             "sok": {"fraser": {}, "detaljer": {}, "tolkninger": []},
             "kilder": [],
-            "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {}},
+            "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {},
+                       "artsdekning": linse_artsdekning([])},
             "ai": {"brukt": False, "avvist": []},
             "rapport": "Ingen tekst å jobbe med.",
         }
@@ -588,7 +624,8 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
             "input": {"fritekst": fritekst},
             "sok": sok_meta,
             "kilder": [],
-            "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {}},
+            "linser": {"aktuell": [], "glemt": [], "hull": {}, "domenetreff": {},
+                       "artsdekning": linse_artsdekning([])},
             "ai": {"brukt": False, "avvist": []},
             "rapport": (f"Ingen kilder funnet for dine tanker rundt dette — verken norsk eller "
                          f"engelsk søk ga treff.\nSøkefraser prøvd: {sokt}"),
@@ -617,7 +654,8 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
             "sok": sok_meta,
             "kilder": papirer,
             "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull,
-                       "domenetreff": linse_domenetreff(papirer_obj)},
+                       "domenetreff": linse_domenetreff(papirer_obj),
+                       "artsdekning": linse_artsdekning(papirer_obj)},
             "ai": {"brukt": False, "avvist": [], "hoppet_over": "etter_foresporsel"},
             "rapport": "\n".join(ut),
         }
@@ -645,7 +683,8 @@ def lag_review(fritekst: str, kontekst: str = "", uten_ai: bool = False) -> dict
         "sok": sok_meta,
         "kilder": papirer,
         "linser": {"aktuell": aktuelle, "glemt": glemte, "hull": hull,
-                   "domenetreff": linse_domenetreff(papirer_obj)},
+                   "domenetreff": linse_domenetreff(papirer_obj),
+                   "artsdekning": linse_artsdekning(papirer_obj)},
         "ai": {"brukt": ai_brukt, "avvist": avvist, **({"rute": rute} if rute else {})},
         "rapport": "\n".join(ut),
     }
