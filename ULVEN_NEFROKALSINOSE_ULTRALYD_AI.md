@@ -1,96 +1,135 @@
 ---
 type: forskning
-sist_oppdatert: 2026-09-22
+sist_oppdatert: 2026-10-02
 status: arbeidsnotat
-proveniens: forskningssamtale
+proveniens: kildesyntese
+faglig_status: ultralydprotokoll_og_score_ikke_validert
 ---
 
-# Nefrokalsinose hos laks: utfelling, ultralyd og KI-screening
+# Nefrokalsinose hos laks: kunnskapsstatus for skanning og KI
 
-## Kort konklusjon
+## Kort svar
 
-Nefrokalsinose hos oppdrettslaks er mineralavleiring i nyretubuli, samlerør og utførselsganger. Avleiringene består hovedsakelig av amorf karbonatapatitt, men andre kalsium-, fosfat- og magnesiumholdige mineraler kan forekomme.
+Det finnes laksebasert dokumentasjon for radiologisk (røntgen) påvisning og
+gradering av mineralavleiringer. Den dokumentasjonen validerer ikke ultralyd.
+Jeg fant ikke en publisert, validert ultralydprotokoll eller ultralydscore for
+nefrokalsinose hos laks i kildene gjennomgått her.
 
-For individuell gradering bør hele den eksokrine trunknyren undersøkes fra fremre til bakre ende. En skanning av bare 75 prosent kan fungere som screening, men kan ikke alene gi sikker totalscore, særlig ikke for høye grader.
+FHF-prosjektet NephroReduce beskriver utvikling av ikke-dødelig diagnostikk med
+røntgen og ultralyd, sammenholdt med histologi, og arbeid mot en felles
+klassifisering. Prosjektbeskrivelsen er dokumentasjon på et planlagt
+forskningsløp, ikke resultater som viser at ultralyd allerede kan angi
+nyredel, sykdomsgrad eller diagnostisk treffsikkerhet.
 
-Ultralyd med KI er teknisk gjennomførbart som hurtig, ikke-invasiv screening. Modellen må imidlertid trenes mot en uavhengig referanse, fortrinnsvis full nyrehistologi og radiologi på et representativt utvalg.
+## Hva lakseforsøkene faktisk viser
 
-## Hvordan utfellingen utvikler seg
+Klykken et al. undersøkte radiografi mot histologi hos oppdrettslaks. Hele
+nyrelengden ble vurdert histologisk. I den radiologiske evalueringen var 55 av
+59 histologisk positive fisk også radiologisk positive. De fire som ikke ble
+fanget opp hadde milde histologiske forandringer. Tre radiologisk positive fisk
+var histologisk negative. Radiologiens totalscore hadde en signifikant, men lav
+korrelasjon med histologiscore (R-squared 0.33). Utvalget av histologisk
+negative fisk var lite, og forfatterne etterlyste videre validering av
+scoregrenser.
 
-En sannsynlig utviklingskjede er:
+Studien foreslo radiologiske kategorier for mineralenes tetthet og utbredelse.
+Prosentintervallene under er røntgenstudiens kategorier for hvor stor del av
+nyrelengden som var berørt:
 
-1. Kalsium, fosfat, karbonat og eventuelt magnesium/ammonium blir overmettet i tubulus- og samlerørvæsken.
-2. Små amorfe mineralpartikler dannes, særlig i kanalstrukturer der væsken er konsentrert og strømmen lavere.
-3. Partiklene vokser og klumper seg sammen til synlige avleiringer.
-4. Tubulusepitelet skades, med degenerasjon, nekrose, utvidelse og etter hvert fibrose.
-5. Døde celler og organisk materiale kan fungere som nye kjernedannelsesflater.
-6. Ved alvorlig sykdom kommer interstitiell betennelse, granulomatøs reaksjon og tap av normal nyrestruktur. Avleiringer kan også finnes i urinleder og urinblære.
+- under 25 prosent
+- 25-50 prosent
+- 50-75 prosent
+- over 75 prosent
 
-Høyt CO2 og forstyrret syre-base-regulering er foreslåtte drivere, men årsaksbildet er multifaktorielt og kan også involvere osmoregulering, smoltifisering, fôr og mineralbalanse.
+Disse intervallene er ikke en ultralydscore. De skal ikke brukes til å tildele
+ultralydgrad uten egen studie som tester bildeopptak, referansestandard og
+reproduserbarhet.
 
-## Hvor i nyren bør man lete først?
+Radiologi viser mineralrelaterte funn, men kan ikke alene gradere bløtvevsskade
+eller skille alle mulige årsaker til mineralisering. Studien peker derfor på
+histologi som nødvendig for vurdering av vevsskade og sikker diagnostisk
+bekreftelse.
 
-Tidlige histologiske forandringer beskrives særlig i samlerør og utførselsganger, med avleiringer også i tubuli. Hodenyren er hovedsakelig hematopoietisk, mens trunknyren inneholder nefroner og tubuli. Det relevante ultralydområdet er derfor hele trunknyren, ikke bare en antatt «typisk» del.
+## Hva som er kjent om ultralyd
 
-Det er ikke tilstrekkelig dokumentert at avleiringene alltid starter i én bestemt fremre eller bakre sone. Et begrenset sveip kan derfor både undervurdere en fokal lesjon og gi feil bilde av totalutbredelsen.
+FHF-prosjekt 901874 beskriver et arbeid med å sammenholde makroskopisk scoring,
+histologi, røntgen og ultralyd for å utvikle en felles klassifisering. Prosjektet
+omtaler videreutvikling av røntgen og ultralyd for screening og klassifisering,
+med histologi som sammenligningsgrunnlag.
 
-## Forslag til ultralydprotokoll
+Prosjektbeskrivelsen oppgir ikke en ferdig skanneprotokoll, validerte
+ultralydkriterier, et anbefalt anatomisk skanneområde eller målt sensitivitet og
+spesifisitet for ultralyd ved nefrokalsinose hos laks. Derfor kan dette notatet
+ikke anbefale at en bestemt nyredel skannes, at hele nyren er tilstrekkelig
+avbildet med en bestemt probe, eller at en ultralydscore fra 0 til 4 brukes.
 
-For hvert individ:
+At hele nyrelengden inngikk i histologisk vurdering i røntgenstudien er et
+metodisk faktum. Det beviser ikke i seg selv hvilken ultralyddekning som er
+nødvendig. Spørsmålet om skanneområde må avgjøres med sammenkoblede bilder og
+referanseundersøkelser av samme fisk.
 
-1. Standardiser orientering, probe, frekvens, dybde, gain og vann-/bedøvingsforhold.
-2. Lokaliser ryggsøyle, overgangen til trunknyren og nyren langs hele lengden.
-3. Gjør et sammenhengende lengdesveip fra fremre til bakre nyreende.
-4. Ta tverrsnitt ved omtrent 25, 50, 75 og 100 prosent av nyrelengden.
-5. Registrer separat lengdeutbredelse, tverrsnittsutbredelse, ekkogenitet, eventuelt skyggekast, tubulus-/samlerørutvidelse og mulig påvirkning av urinleder og urinblære.
-6. Bruk hele trunknyren som nevner. Hvis en del ikke er vurdert, skal resultatet merkes som minimumsgrad eller screeningfunn.
+## KI-screening: forslag som krever utprøving
 
-## Foreløpig score 0–4
+KI-basert ultralydscreening kan undersøkes som et forskningsspørsmål, men bør
+ikke omtales som teknisk gjennomførbar eller diagnostisk nyttig før den er
+testet på representative laksebilder med uavhengig referanse. Før modellarbeid
+bør prosjektet avklare:
 
-Dette er en operasjonell arbeidshypotese, ikke en ferdig validert standard:
+1. Målvariabel: synlige mineralavleiringer, histologisk nefrokalsinosegrad,
+   vevsskade eller et annet klinisk relevant utfall.
+2. Referanse: histologi og eventuelt røntgen fra samme individ, med tydelig
+   angivelse av hvordan uenighet mellom metodene håndteres.
+3. Opptak: fiskestørrelse, probe og innstillinger, operatør, orientering,
+   skanneområde, bildekvalitet og andel av nyren som faktisk kan vurderes.
+4. Reproduserbarhet: gjentatte opptak og blindet vurdering mellom operatører.
+5. Validering: deling etter anlegg, gruppe og tidspunkt; testing på et annet
+   anlegg; usikkerhetsintervaller og rapportering av feil per relevant klasse.
 
-| Score | Foreløpig ultralyddefinisjon |
-| --- | --- |
-| 0 | Ingen sikre mineralrelaterte funn |
-| 1 | Små, fokale ekkogene foci/striper, hovedsakelig i samlerør, under 25 prosent av nyrelengden |
-| 2 | Tydelige avleiringer i 25–50 prosent av nyrelengden og/eller omtrent inntil halvparten av tilgjengelig nyretverrsnitt |
-| 3 | Multifokale eller sammenhengende avleiringer i 50–75 prosent av nyrelengden og/eller rundt 75 prosent av tverrsnittet |
-| 4 | Avleiringer i over 75 prosent av nyrelengden eller nesten hele nyretverrsnittet, eventuelt med tydelig strukturforstyrrelse |
+Dette er forslag til studiedesign, ikke en oppskrift for klinisk bruk. Et
+resultat bør kunne merkes utilstrekkelig bildekvalitet eller utilstrekkelig
+dekning, og modellen bør kunne avstå fra klassifisering.
 
-En fisk som bare er skannet over 75 prosent av nyrelengden bør ikke få «sikker score 4». Riktig rapportering er da for eksempel: «minst score 3; bakerste 25 prosent ikke vurdert».
+## Åpne spørsmål for Ulven og videre arbeid
 
-## Hvorfor radiologi er viktig som referanse
+- Hva ønsker Ulven at skanningen skal svare på: mineralfunn, utbredelse,
+  histologisk grad eller endring over tid?
+- Hvilken referansestandard og hvilket utfall vil et samarbeidende
+  forskningsprosjekt faktisk samle inn?
+- Kan hele nyren avbildes med repeterbar kvalitet hos den aktuelle fiskestørrelsen?
+- Hvilken del av variasjonen skyldes fiskebiologi, operatør, utstyr eller
+  bildekvalitet?
+- Hvilke resultater fra NephroReduce er publisert eller delt etter
+  prosjektbeskrivelsen som er sitert her?
 
-Røntgen egner seg godt til å vise kalsiumholdig mineralmateriale gjennom hele fisken og kan dokumentere både tetthet og utbredelse. En studie på laks sammenlignet radiologi med histologi og fant mineralrelaterte funn hos 55 av 59 histologisk positive fisk. De fire som ble oversett hadde milde forandringer.
+Svar på disse spørsmålene må komme fra Ulvens prosjektkontekst og oppdaterte
+resultater fra forskningsgruppen. Dette notatet setter ikke en produktretning
+for ham.
 
-Radiologi viser derimot ikke sikkert graden av epitelnekrose, betennelse eller fibrose. Histologi er derfor fortsatt nødvendig for å validere vevsskaden og selve sykdomsgraden.
+## Kilder
 
-## KI-modell for ultralydscreening
+- Klykken et al. (2022), *Radiological detection of nephrocalcinosis in farmed
+  Atlantic salmon Salmo salar L.*, Journal of Fish Diseases.
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC9804365/
+  Primærstudie av røntgen mot histologi; ikke en ultralydstudie.
+- FHF prosjekt 901874, *Risikofaktorer i norske settefiskanlegg relatert til
+  utvikling av nefrokalsinose hos atlantisk laks og regnbueørret – Reduksjon og
+  forebyggende tiltak (NephroReduce)*.
+  https://www.fhf.no/prosjekter/prosjektbasen/901874/
+  Prosjektbeskrivelse med diagnostikkutvikling via røntgen, ultralyd og
+  histologi; brukes her som plan/proveniens, ikke som dokumentasjon på oppnådde
+  ultralydresultater.
+- Klykken et al. (2023), *Gene expression patterns in Atlantic salmon
+  (Salmo salar) with severe nephrocalcinosis*.
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC9796406/
+  Histopatologi ved alvorlig sykdom; gir ikke validering av ultralyd.
+- Boissonnot et al. (2023), *Nephrocalcinosis in farmed salmonids: diagnostic
+  challenges associated with low performance and sporadic mortality*.
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC10157097/
+  Klinisk og diagnostisk kontekst; gir ikke ultralydscore.
 
-En realistisk modell bør trenes i to trinn:
+## Endringslogg
 
-1. lokalisere trunknyre og mineralrelaterte signaler i ultralydsekvensen
-2. estimere en ordinal score 0–4 med mulighet for «usikker» eller «må kontrolleres»
-
-Treningsdata bør koble hver fisk til full ultralydsekvens, individ-ID, størrelse og produksjonsforhold, nøyaktig skanneområde, uavhengig histologisk score, radiologisk utbredelse der det er mulig, samt tidspunkt og operatør/probeoppsett.
-
-Datasettet må deles etter anlegg, produksjonsgruppe og dato, ikke tilfeldig etter enkeltbilder. Ellers kan modellen lære batch- eller utstyrssignaler i stedet for nefrokalsinose.
-
-Resultatene bør rapporteres med sensitivitet og spesifisitet per score, forvekslingsmatrise, kalibrering, interobservatør-avtale og ekstern validering på et annet anlegg. Modellen bør være beslutningsstøtte og kunne avstå når bildekvaliteten eller skanneutbredelsen er utilstrekkelig.
-
-## Dokumenterte kilder og videre lesning
-
-- [Klykken et al. 2022: Radiological detection of nephrocalcinosis in farmed Atlantic salmon](https://pmc.ncbi.nlm.nih.gov/articles/PMC9804365/)
-- [Klykken et al. 2022: Physiological changes observed in farmed Atlantic salmon with nephrocalcinosis](https://doi.org/10.1016/j.aquaculture.2022.738104)
-- [Klykken et al. 2023: Gene expression patterns in Atlantic salmon with severe nephrocalcinosis](https://pmc.ncbi.nlm.nih.gov/articles/PMC9796406/)
-- [Boissonnot et al. 2023: Nephrocalcinosis in farmed salmonids](https://pmc.ncbi.nlm.nih.gov/articles/PMC10157097/)
-- [FHF prosjekt 901794: Ikke-letale diagnostiske indikatorer](https://www.fhf.no/prosjekter/prosjektbasen/901794/)
-- [GreenFox Marine: ultralyd og KI for helsescreening](https://greenfoxmarine.no/en/)
-
-## Åpne valideringsspørsmål
-
-- Hvor stor del av trunknyren er synlig med stabil kvalitet i den aktuelle linjen?
-- Hvilken del av scorevariasjonen skyldes bildeopptak versus biologisk variasjon?
-- Kan score 1 skilles fra normal variasjon uten å bruke histologi?
-- Hvor ofte ligger de mest informative avleiringene i den bakerste 25-prosenten?
-- Skal modellen predikere mineralutbredelse, histologisk sykdomsgrad eller risiko for videre utvikling? Dette er tre ulike mål.
+2026-10-02: Fjernet tidligere skanneoppskrift, foreslåtte ultralydscoregrenser
+og påstanden om teknisk gjennomførbar KI-screening. De var formulert med større
+sikkerhet enn kildene tillot. Prosentintervallene ble beholdt kun som
+røntgenstudiens metode, med eksplisitt avgrensning mot ultralyd.
