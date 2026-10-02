@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-02",
+  "environment": "user-provided forskningssok container; exact staging/production classification unknown",
+  "index": {
+    "path": "/tmp/ulven-probe.db",
+    "source": "/app/data/bank_utdrag.jsonl",
+    "chunks": 4732,
+    "documents": 68,
+    "model": "mistral-embed",
+    "dimensions": 1024,
+    "persistent_application_index_built": false
+  },
+  "scope": "Targeted retrieval probe. Raw top candidates were judged from user-provided chunk text and output. This is not an application-level bank-on/off test or a threshold calibration.",
+  "multi_query_results": [
+    {
+      "query": "How is nephrocalcinosis detected in farmed Atlantic salmon?",
+      "top_distances": [0.4747, 0.5364, 0.5429],
+      "top_documents": ["PMC10157097", "PMC12961727", "PMC11605958"]
+    },
+    {
+      "query": "Can ultrasound detect nephrocalcinosis in salmon kidney?",
+      "top_distances": [0.5358, 0.5948, 0.6048],
+      "top_documents": ["PMC10157097", "PMC12961727", "PMC11605958"],
+      "manual_top_chunk_judgment": "The first chunk describes histopathology and von Kossa staining in rainbow trout, not ultrasound detection. The sardine chunk is another-species background. No direct ultrasound evidence."
+    },
+    {
+      "query": "How accurate is radiology compared with histology for salmon nephrocalcinosis?",
+      "top_distances": [0.5159, 0.5629, 0.5719],
+      "top_documents": ["PMC10157097", "PMC12961727", "PMC11605958"],
+      "manual_top_chunk_judgment": "The first chunk describes histopathology in rainbow trout and contains no radiology-versus-histology comparison. No direct answer."
+    },
+    {
+      "query": "Is there a validated ultrasound scoring protocol for salmon kidney mineralization?",
+      "top_distances": [0.5461, 0.5761, 0.581],
+      "top_documents": ["PMC10157097", "PMC12961727", "PMC11605958"],
+      "manual_top_chunk_judgment": "Top returned documents do not provide a validated ultrasound scoring protocol."
+    },
+    {
+      "query": "Does carbon dioxide exposure increase nephrocalcinosis risk in Atlantic salmon?",
+      "top_distances": [0.3923, 0.4818, 0.511, 0.5189],
+      "top_documents": ["PMC10157097", "PMC12961727", "fiskehelse-no:98698871", "PMC11605958"],
+      "note": "Four distinct documents were returned in the printed top results."
+    }
+  ],
+  "controlled_queries": [
+    {
+      "class": "positive_background",
+      "query": "Why does alkaline pH promote calcium phosphate precipitation in salmonid nephrocalcinosis?",
+      "top_distance": 0.4363,
+      "top_document": "PMC10157097",
+      "judgment": "Pass: returned the expected pH-dependent solubility and precipitation passage. This supports mechanism background, not imaging performance."
+    },
+    {
+      "class": "positive_background",
+      "query": "How are calcium deposits visualized by von Kossa staining when diagnosing nephrocalcinosis in salmonids?",
+      "top_distance": 0.4836,
+      "top_document": "PMC10157097",
+      "judgment": "Pass for retrieval of the expected histology passage. It does not validate ultrasound or radiology."
+    },
+    {
+      "class": "unsupported_method_question",
+      "query": "What sensitivity did radiology achieve compared with histology in Klykken's Atlantic salmon study?",
+      "top_distance": 0.6226,
+      "top_document": "PMC13334694",
+      "judgment": "False positive: returned contrast radiography of Nile tilapia gonads, not nephrocalcinosis or kidney imaging."
+    },
+    {
+      "class": "unsupported_method_question",
+      "query": "Which kidney regions should ultrasound scan to assign a validated nephrocalcinosis score in salmon?",
+      "top_distance": 0.5704,
+      "top_document": "PMC10157097",
+      "judgment": "False positive: returned histology and von Kossa staining in rainbow trout, not scan coverage or an ultrasound score."
+    }
+  ],
+  "metadata_probe": {
+    "PMC10157097": {
+      "art_niva": "maal",
+      "tema": ["miljo", "nyre", "overvaking", "infeksjon"]
+    },
+    "PMC12961727": {
+      "art_niva": "naer",
+      "tema": ["nyre"]
+    },
+    "PMC13334694": {
+      "art_niva": "naer",
+      "tema": ["bildediagn", "reproduksjon"]
+    },
+    "conclusion": "Filtering out non-target art_niva can remove the tilapia candidate, but cannot remove the false ultrasound candidate from PMC10157097. Existing article-level topic labels are insufficient; method/modality relevance needs its own evidence label or facet."
+  },
+  "lexical_coverage_probe": {
+    "documents_with_radiology_or_ultrasound_terms": 6,
+    "radiology_or_radiography_in_title": ["Brief research report: Contrast-enhanced radiography for gonadal visualization in Nile tilapia."],
+    "direct_salmon_nephrocalcinosis_ultrasound_or_radiology_document_found": false,
+    "limitation": "Simple lexical scan of title, heading, and chunk text; synonym and indirect-mention coverage is incomplete."
+  },
+  "calibration_conclusion": "Do not change Mistral distance thresholds from these observations. Two expected background queries retrieved correctly, while unsupported image-diagnostic queries returned plausible but wrong candidates. Prior calibration data also showed overlap between relevant and irrelevant distances.",
+  "sources": {
+    "Klykken_2022_radiology": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9804365/",
+    "FHF_901587": "https://www.fhf.no/prosjekter/prosjektbasen/901587/",
+    "FHF_901874": "https://www.fhf.no/prosjekter/prosjektbasen/901874/"
+  }
+}
