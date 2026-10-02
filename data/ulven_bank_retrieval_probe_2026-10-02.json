@@ -1,0 +1,712 @@
+{
+  "maal": "2026-10-02T11:02:43.068800+00:00",
+  "modell": "bge-m3 (lokal, boker.db)",
+  "profil": "fiskehelse",
+  "sporsmal": [
+    {
+      "id": 1,
+      "sporring": "Jeg vil prøve noe; kan du forklare hvordan utfelling av mineraler i nefrokalsinonse i laks foregår?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 3,
+        "beste_avstand": 0.8831,
+        "forkastet_morkt": 1917
+      },
+      "treff": [
+        {
+          "id": "bank:236971",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "avstand": 0.8831,
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nBoth the Ca and P metabolisms act in concert, with solubility for both being pH-dependent, meaning increased solubility in acidic environments and precipitation of calcium phosphate [Ca3(PO4)2] salts in alkaline conditions (49). As has previously been shown for rainbow trout, renal responses to acidosis involve phosphate excretion (51). In contrast, Klykken et al. (34) observed increased concentrations of Ca and P in blood plasma in 37% and 16% of fish affected by nephrocalcinosis (respectively), with only 8 and 3% with lower concentrations compared to the normal interval. Importantly, our dat"
+        },
+        {
+          "id": "bank:236948",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "avstand": 0.8963,
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "miljo",
+            "overvaking",
+            "infeksjon"
+          ],
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 1. Introduction]\n\nRAS CO2 levels are primarily a function of fish respiration, stocking density and the level of O2 supplementation, used to promote fish growth by increasing their metabolic rate (5, 8). Use of groundwater may also contribute to higher CO2 exposure (9). In fish, aquatic CO2 exerts adverse effects in a concentration- and exposure duration-dependent manner (10–14). The anesthetic effects of CO2 (associated with a reduction in blood pH that induces a decrease in oxygen transported to respiring tissues, including the central nervous system) can be used as an overdose to achieve fish euthanasia (1"
+        },
+        {
+          "id": "bank:235335",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "samling": "fiskehelse-no",
+          "avstand": 0.9083,
+          "art_niva": "maal",
+          "tema": [
+            "velferd"
+          ],
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\nDette medfører at laksens kroppsvæsker har høyere saltholdighet enn det omgivende vann og vann diffunderer derfor inn og saltioner passivt ut. Tapet av ioner motvirkes av et aktivt opptak av ioner (Na+ og Cl-) gjennom gjellene. Gjellenes «filtrasjonshastighet» og reabsorpsjon av salt er høyt, og fisken skiller ut overflødig vann gjennom fortynnet urin. I sjøvann er laksefisk hypoosmotisk, noe som betyr at deres kroppsvæsker har lavere saltinnhold enn sjøvann. Dette medfører at laks og ørret er i en konstant fare for dehydrering gjennom tap av kroppsvæsker, og et økt tilsig av ioner. Vanntapet til omgivelsene "
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "sporring": "Hvor vil utfelling først oppstå i nyren i tidlig fase, og hvordan vil dette videre akummuleres når sykdommen utvikler seg?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 0.9945,
+        "forkastet_morkt": 814
+      },
+      "treff": []
+    },
+    {
+      "id": 3,
+      "sporring": "Dersom ultralyd skal brukes for detektere graden av nerfokalsinose, score 1-4, hvilket deler av nyren, eventuelt hele nyren bør scannes?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 0.9727,
+        "forkastet_morkt": 482
+      },
+      "treff": []
+    },
+    {
+      "id": 4,
+      "sporring": "dersom man scanner 75 prosent fra hodenyren og bakover, kan man være sikker på resultatet da? også høye scorer",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 0.9656,
+        "forkastet_morkt": 25
+      },
+      "treff": []
+    },
+    {
+      "id": 5,
+      "sporring": "hvorfor radiologi",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 1.0074,
+        "forkastet_morkt": 40
+      },
+      "treff": []
+    },
+    {
+      "id": 6,
+      "sporring": "kan man på en god måte trene en ai modell på sli ultralydscreening, slik som greenfox marine og lumic skal",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 0.9381,
+        "forkastet_morkt": 427
+      },
+      "treff": []
+    },
+    {
+      "id": 7,
+      "sporring": "Hvilke studier har målt sammenhengen mellom CO2-nivå i vannet og grad av nefrokalsinose hos smolt?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 5,
+        "beste_avstand": 0.8994,
+        "forkastet_morkt": 2747
+      },
+      "treff": [
+        {
+          "id": "bank:236967",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "avstand": 0.8994,
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "miljo",
+            "overvaking",
+            "infeksjon"
+          ],
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nWater quality plays a key role in the pathophysiology of fish diseases (2). In the present study, fish developing signs of nephrocalcinosis were found to have been exposed to increased levels of O2 and CO2, compared with a nearby control aquacultural facility. Increased levels of aquatic O2 in stocked tanks causes an increase in fish metabolic O2 consumption rate, with a subsequent rise in environmental CO2 due to tissue respiration (5, 8, 13). Hyperoxia results in hypoventilation of fish, causing retention of carbon dioxide with resultant respiratory acidosis (41). Indeed, levels of dissolved"
+        },
+        {
+          "id": "bank:235628",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "samling": "fiskehelse-no",
+          "avstand": 0.9063,
+          "art_niva": "maal",
+          "tema": [
+            "velferd",
+            "miljo"
+          ],
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\n(2003) A major water quality problem in smolt farms: combined effects of carbon dioxide, reduced pH and aluminium on Atlantic salmon (Salmo salar L.) smolts: physiology and growth. Aquaculture 215(1), 339-357. Fivelstad, S., Waagbø, R., Stefansson, S. & Olsen, A. B. (2007) Impacts of elevated water carbon dioxide partial pressure at two temperatures on Atlantic salmon (Salmo salar L.) parr growth and haematology. Aquaculture 269(1), 241-249. Fjelldal, P. G. & Hansen, T. J. (2010) Vertebral deformities in triploid Atlantic salmon (Salmo salar L.) underyearling smolts. Aquaculture 309, 131-136. Fjelldal, P. G.,"
+        },
+        {
+          "id": "bank:236970",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "avstand": 0.9112,
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nThe acid-base parameters observed in our nephrocalcinosis-affected fish, i.e., lowered blood pH, together with elevated levels of CO2, HCO3, and base excess, are characteristic of respiratory acidosis with metabolic compensation (48). While fish gills are of critical importance for acid-base homeostasis, the kidneys play a significant role in metabolic compensation (49, 50). Hyponatremia is most probably associated with disrupted functioning of kidneys unable to adequately handle Na excretion (48). Reduced levels of Na have also been reported for CO2-exposed fish in an experimental study with "
+        },
+        {
+          "id": "bank:235809",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "samling": "fiskehelse-no",
+          "avstand": 0.9177,
+          "art_niva": "maal",
+          "tema": [
+            "velferd"
+          ],
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\n[3] Good, C., Davidson J., Welsh, C., Snekvik, K. & Summerfelt, S. (2010) The effects of carbon dioxide on performance and histopathology of rainbow trout Oncorhynchus mykiss in water recirculation aquaculture systems. Aquacultural Engineering 42, 51-56. [4] Noble, C., Kankainen, M., Setälä, J., Berrill, I. K., Ruohonen, K., Damsgård, B. & Toften, H. (2012) The bio-economic costs and benefits of improving productivity and fish welfare in aquaculture: Utilizing CO2 stripping technology in Norwegian Atlantic salmon smolt production. Aquaculture Economics & Management 16(4), 414-428. [5] Kristensen, T., Åtland, "
+        },
+        {
+          "id": "bank:236889",
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "samling": "nyrehelse",
+          "avstand": 0.9289,
+          "art_niva": "maal",
+          "tema": [
+            "nyre"
+          ],
+          "tekst": "[Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the — Effect of brackish water transfer and Mg2+depletion on Mg2+transporter expression in Atlantic salmon smolts]\n\nIn experiment 2, smolts that had undergone PST in FW were either kept in FW, or transferred to either brackish water (BW, 12 ppt) or Mg2+-depleted brackish water (BW-M) for 11 weeks (Fig. 6A). We observed that slc41a1-1, −2, cnnm4a1, and trpm7-2, but also cnnm1a2, trpm6-1 and − 7 − 1 responded significantly to BW transfer (Fig. 6A; a, b, d, g, i, k, l). cnnm4a2 and trpm6-2 also displayed a trend towards higher expression in BW, albeit not significant (Fig. 6A; h, j). Relative expression of slc41a3a, c"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "sporring": "Finnes det studier som sammenligner ultralyd med røntgen for å gradere nefrokalsinose hos laks?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 5,
+        "beste_avstand": 0.8986,
+        "forkastet_morkt": 2725
+      },
+      "treff": [
+        {
+          "id": "bank:236970",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "avstand": 0.8986,
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nThe acid-base parameters observed in our nephrocalcinosis-affected fish, i.e., lowered blood pH, together with elevated levels of CO2, HCO3, and base excess, are characteristic of respiratory acidosis with metabolic compensation (48). While fish gills are of critical importance for acid-base homeostasis, the kidneys play a significant role in metabolic compensation (49, 50). Hyponatremia is most probably associated with disrupted functioning of kidneys unable to adequately handle Na excretion (48). Reduced levels of Na have also been reported for CO2-exposed fish in an experimental study with "
+        },
+        {
+          "id": "bank:236948",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "avstand": 0.9016,
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "miljo",
+            "overvaking",
+            "infeksjon"
+          ],
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 1. Introduction]\n\nRAS CO2 levels are primarily a function of fish respiration, stocking density and the level of O2 supplementation, used to promote fish growth by increasing their metabolic rate (5, 8). Use of groundwater may also contribute to higher CO2 exposure (9). In fish, aquatic CO2 exerts adverse effects in a concentration- and exposure duration-dependent manner (10–14). The anesthetic effects of CO2 (associated with a reduction in blood pH that induces a decrease in oxygen transported to respiring tissues, including the central nervous system) can be used as an overdose to achieve fish euthanasia (1"
+        },
+        {
+          "id": "bank:236932",
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "samling": "nyrehelse",
+          "avstand": 0.9109,
+          "art_niva": "maal",
+          "tema": [
+            "nyre"
+          ],
+          "tekst": "[Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the — Magnesium transporters and kidney disease]\n\nSimilar physiological disturbances as that observed in mammals have been observed in Atlantic salmon where development of kidney stones (termed nephrocalcinosis) with severe consequences for the animal [122, 123]. Yet, the molecular and physiopathological mechanisms underlying nephrocalcinosis remains unclear [4]. Our results indicate that paralogues of the genes involved in kidney Mg2+ regulation share key structural and functional domains and residues in the human version. Thus, the conserved function and disease related sites indicate that Atlantic salmon could b"
+        },
+        {
+          "id": "bank:286863",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "samling": "ulven-nefrokalsinose",
+          "avstand": 0.92,
+          "art_niva": "naer",
+          "tema": [
+            "miljo",
+            "nyre"
+          ],
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Materials and Methods]\n\nThe diagnosis of nephrocalcinosis was performed on fish farmed at the LAPMAR of the Federal University of Santa Catarina (UFSC), Barra da Lagoa, Florianópolis, SC, Brazil. The fish were fed a commercial diet (45% crude protein) and housed in a circular PVC fish farm pond measuring 1.0 m in height and with a capacity of 10,000 L. The pond was connected to a recirculating aquaculture system (RAS) with physical and biological filtration, constant temperature and aeration. The pond water quality had a salinity of 33.0 ± 0.9 ppt, temperature of 18.6°C ± 0.5°C, dissolved oxygen of 5.39 ± 0.3"
+        },
+        {
+          "id": "bank:286867",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "samling": "ulven-nefrokalsinose",
+          "avstand": 0.9205,
+          "art_niva": "naer",
+          "tema": [
+            "nyre"
+          ],
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Discussion]\n\nThis is the first report of nephrocalcinosis, popularly known as kidney stones, in aquacultured Brazilian sardines ( S. brasiliensis ). Nevertheless, previous research has documented nephrocalcinosis in aquacultured fish. Klosterhoff et al. (2015) reported kidney stones ranging from 4.0 to 13 mm in diameter in Cobia ( Rachycentron canadum ), which are larger than those found in Brazilian sardines in this study. However, these stones were discovered in fish weighing over 4.0 kg, which are considerably larger. This severe pathophysiology was suspected during a regular haematological assessment. Hae"
+        }
+      ]
+    }
+  ],
+  "begrensning": "Retrieval-maaling av godkjent bank. Ikke bank-av/på syntese, ikke direkte-svar-fasit, ikke produksjons-Mistral.",
+  "vurdering": "Codex-manual gjennomgang av gjenhentede toppchunker og lokal korpusidentitet; ikke blind annotering.",
+  "sporsmalsdekning": [
+    {
+      "id": 1,
+      "dekning": "direkte bakgrunn",
+      "grunnlag": "Topptreff fra PMC10157097 omtaler pH-avhengig løselighet og utfelling av kalsiumfosfat i alkaliske forhold."
+    },
+    {
+      "id": 2,
+      "dekning": "ikke gjenfunnet",
+      "grunnlag": "Ingen treff passerte BGE-M3 MØRKT-grensen."
+    },
+    {
+      "id": 3,
+      "dekning": "ikke gjenfunnet",
+      "grunnlag": "Ingen treff passerte MØRKT-grensen; ingen validert US-score eller skanneprotokoll i gjenfunnet bankmateriale."
+    },
+    {
+      "id": 4,
+      "dekning": "ikke gjenfunnet",
+      "grunnlag": "Ingen treff passerte MØRKT-grensen."
+    },
+    {
+      "id": 5,
+      "dekning": "ikke gjenfunnet",
+      "grunnlag": "Ingen treff passerte MØRKT-grensen. Spørsmålet er svært kort, så retrieval-resultatet må ikke forveksles med bevis på at intet kildeinnhold finnes."
+    },
+    {
+      "id": 6,
+      "dekning": "ikke gjenfunnet",
+      "grunnlag": "Ingen treff passerte MØRKT-grensen; ingen direkte AI-ultralydstudie om laksenyre ble gjenfunnet."
+    },
+    {
+      "id": 7,
+      "dekning": "delvis bakgrunn",
+      "grunnlag": "Topptreff omtaler CO2-eksponering i fisk med nefrokalsinose og fysiologisk respons; dette er ikke en fullstendig eller kausal syntese av alle målinger."
+    },
+    {
+      "id": 8,
+      "dekning": "ingen direkte svar i gjenfunnet treff",
+      "grunnlag": "Topptreff var nyre-/CO2-studier, ikke direkte sammenligning av ultralyd og røntgen."
+    }
+  ],
+  "kildekontroll": {
+    "pmcid": "PMC9804365",
+    "tittel": "Radiological detection of nephrocalcinosis in farmed Atlantic salmon Salmo salar L.",
+    "lokalt_i_boker_db": false,
+    "lisens": "CC BY-NC-ND 4.0",
+    "fold_status": "ikke kvalifisert for bankinntak under gjeldende lisensregel; beholdes som lenket kilde i evidensbanken",
+    "kilde": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9804365/"
+  },
+  "query_variants": [
+    {
+      "original_id": 3,
+      "query": "Is there a validated ultrasound protocol for detecting and grading nephrocalcinosis in Atlantic salmon, including kidney scan coverage and comparison with histology?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.8014,
+        "forkastet_morkt": 0
+      },
+      "treff": [
+        {
+          "id": "bank:236970",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8014,
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nThe acid-base parameters observed in our nephrocalcinosis-affected fish, i.e., lowered blood pH, together with elevated levels of CO2, HCO3, and base excess, are characteristic of respiratory acidosis with metabolic compensation (48). While fish gills are of critical importance for acid-base homeostasis, the kidneys play a significant role in metab"
+        },
+        {
+          "id": "bank:236932",
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "avstand": 0.8101,
+          "tema": [
+            "nyre"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the — Magnesium transporters and kidney disease]\n\nSimilar physiological disturbances as that observed in mammals have been observed in Atlantic salmon where development of kidney stones (termed nephrocalcinosis) with severe consequences for the animal [122, 123]. Yet, the molecular and physiopathological mechanisms underlying nephrocalcinosis remains unclear [4]. Our re"
+        },
+        {
+          "id": "bank:236950",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8668,
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 1. Introduction]\n\nAs the acid-base imbalance is believed to be a central pathophysiological mechanism in nephrocalcinosis progression, we report on blood profile parameters sampled from both affected and healthy fish, gross and microscopic findings in fish, and water quality parameters."
+        },
+        {
+          "id": "bank:286863",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "avstand": 0.8814,
+          "tema": [
+            "miljo",
+            "nyre"
+          ],
+          "art_niva": "naer",
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Materials and Methods]\n\nThe diagnosis of nephrocalcinosis was performed on fish farmed at the LAPMAR of the Federal University of Santa Catarina (UFSC), Barra da Lagoa, Florianópolis, SC, Brazil. The fish were fed a commercial diet (45% crude protein) and housed in a circular PVC fish farm pond measuring 1.0 m in height and with a capacity of 10,000 L. The pond wa"
+        },
+        {
+          "id": "bank:286867",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "avstand": 0.8814,
+          "tema": [
+            "nyre"
+          ],
+          "art_niva": "naer",
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Discussion]\n\nThis is the first report of nephrocalcinosis, popularly known as kidney stones, in aquacultured Brazilian sardines ( S. brasiliensis ). Nevertheless, previous research has documented nephrocalcinosis in aquacultured fish. Klosterhoff et al. (2015) reported kidney stones ranging from 4.0 to 13 mm in diameter in Cobia ( Rachycentron canadum ), which are"
+        },
+        {
+          "id": "bank:235834",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "avstand": 0.8864,
+          "tema": [
+            "velferd"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\n[126] Grøntvedt, R. N., Nerbøvik, I. -K. G, Viljugrein, H., Lillehaug, A., Nilsen, H. & Gjerve, A. –G. (2015) Termisk avlusing av laksefisk – dokumentasjon av fiskevelferd og effekt. Rapport 13, 2015. Veterinærinstituttets rapportserie. Veterinærinstituttet, Oslo, Norge. [127] RSPCA (2018). RSPCA welfare standards for farmed Atlantic salmon. https://science.rspca."
+        },
+        {
+          "id": "bank:235610",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "avstand": 0.9031,
+          "tema": [
+            "velferd"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\nJournal of Experimental Biology 211(15), 2533-2541. Bui, S., Oppedal, F., Korsøen, Ø. J., Sonny, D. & Dempster, T. (2013) Group behavioural responses of Atlantic salmon (Salmo salar L.) to light, infrasound and sound stimuli. PLOS ONE 8, e63696 Bui, S., Dempster, T., Remen, M. & Oppedal, F. (2016) Effect of ectoparasite infestation density and life-history stages "
+        },
+        {
+          "id": "bank:233317",
+          "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "avstand": 0.9113,
+          "tema": [
+            "overvaking",
+            "miljo"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in At — Discussion]\n\natlanticus and that this source of sampling should be investigated further. We did experience contamination during the automated DNA extraction of samples from field trial C, and we applied a stringent interpretation of those results. This also highlights the importance of using negative extraction controls to reveal potential contamination. In conclu"
+        }
+      ]
+    },
+    {
+      "original_id": 5,
+      "query": "Why use radiography to detect nephrocalcinosis in farmed Atlantic salmon, and how does it compare with histology?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.8131,
+        "forkastet_morkt": 0
+      },
+      "treff": [
+        {
+          "id": "bank:236970",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8131,
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nThe acid-base parameters observed in our nephrocalcinosis-affected fish, i.e., lowered blood pH, together with elevated levels of CO2, HCO3, and base excess, are characteristic of respiratory acidosis with metabolic compensation (48). While fish gills are of critical importance for acid-base homeostasis, the kidneys play a significant role in metab"
+        },
+        {
+          "id": "bank:236949",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8273,
+          "tema": [
+            "overvaking",
+            "nyre",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 1. Introduction]\n\nWhile the rainbow trout (Oncorhynchus mykiss) industry represents an important share of aquacultural production (28), the species is known for its poor tolerance to elevated CO2 levels (14, 17, 25). However, fish populations affected by nephrocalcinosis are often characterized by low mortality rates (14, 21, 22, 25). Instead, the condition manife"
+        },
+        {
+          "id": "bank:236932",
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "avstand": 0.8634,
+          "tema": [
+            "nyre"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the — Magnesium transporters and kidney disease]\n\nSimilar physiological disturbances as that observed in mammals have been observed in Atlantic salmon where development of kidney stones (termed nephrocalcinosis) with severe consequences for the animal [122, 123]. Yet, the molecular and physiopathological mechanisms underlying nephrocalcinosis remains unclear [4]. Our re"
+        },
+        {
+          "id": "bank:286863",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "avstand": 0.8932,
+          "tema": [
+            "miljo",
+            "nyre"
+          ],
+          "art_niva": "naer",
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Materials and Methods]\n\nThe diagnosis of nephrocalcinosis was performed on fish farmed at the LAPMAR of the Federal University of Santa Catarina (UFSC), Barra da Lagoa, Florianópolis, SC, Brazil. The fish were fed a commercial diet (45% crude protein) and housed in a circular PVC fish farm pond measuring 1.0 m in height and with a capacity of 10,000 L. The pond wa"
+        },
+        {
+          "id": "bank:286868",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "avstand": 0.8942,
+          "tema": [
+            "nyre",
+            "miljo"
+          ],
+          "art_niva": "naer",
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Discussion]\n\nIn this study, a basic routine haematological examination proved to be a crucial tool in evaluating the health of sardines and offering valuable insights into their physiological and pathological conditions. Blood analysis helped identify changes indicating a potential metabolic/nutritional disorder or an environmental issue linked to captivity. Envir"
+        },
+        {
+          "id": "bank:232980",
+          "tittel": "DNA Vaccination in Farmed Fish with a Focus on Salmonid Alphavirus Infection in Atlantic Salmon (Salmo salar",
+          "avstand": 0.9021,
+          "tema": [
+            "infeksjon",
+            "immun"
+          ],
+          "art_niva": "maal",
+          "tekst": "[DNA Vaccination in Farmed Fish with a Focus on Salmonid Alphavirus Infection in  — 1. Introduction]\n\nPancreas Disease (PD) of farmed Atlantic salmon (Salmo salar L.) and rainbow trout (Oncorhynchus mykiss) is caused by Salmonid alphavirus (SAV), now renamed Alphavirus salmon. Fish with acute PD are typically lethargic and initially exhibit pancreatic tissue inflammation, followed by inflammation of the heart and skeletal muscles [1]. In Norway, "
+        },
+        {
+          "id": "bank:233289",
+          "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "avstand": 0.9024,
+          "tema": [
+            "overvaking",
+            "infeksjon",
+            "miljo"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in At — Introduction]\n\nFurthermore, molecular approaches (especially PCR and qPCR) provide faster, and more sensitive pathogen detection compared to conventional culture-based techniques [22–24]. The use of eNA in aquaculture has great potential as a surveillance tool for pathogens and other biological threats [25,26]. An example of this is a study by Bernhardt et al. [27"
+        },
+        {
+          "id": "bank:235598",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "avstand": 0.9076,
+          "tema": [
+            "velferd"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\n(2007) Nociception in fish: stimulus–response properties of receptors on the head of trout Oncorhynchus mykiss. Brain research 1166, 4754. Aubin, J., Gatesoupe, F. J., Labbé, L. & Lebrun, L. (2005) Trial of probiotics to prevent the vertebral column compression syndrome in rainbow trout (Oncorhynchus mykiss Walbaum). Aquaculture Research 36(8), 758-767. Aunsmo, A."
+        }
+      ]
+    },
+    {
+      "original_id": 6,
+      "query": "Can AI classify nephrocalcinosis from ultrasound images of Atlantic salmon kidneys, with validation against histology?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 6,
+        "beste_avstand": 0.8354,
+        "forkastet_morkt": 1932
+      },
+      "treff": [
+        {
+          "id": "bank:236932",
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "avstand": 0.8354,
+          "tema": [
+            "nyre"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the — Magnesium transporters and kidney disease]\n\nSimilar physiological disturbances as that observed in mammals have been observed in Atlantic salmon where development of kidney stones (termed nephrocalcinosis) with severe consequences for the animal [122, 123]. Yet, the molecular and physiopathological mechanisms underlying nephrocalcinosis remains unclear [4]. Our re"
+        },
+        {
+          "id": "bank:236970",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8432,
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nThe acid-base parameters observed in our nephrocalcinosis-affected fish, i.e., lowered blood pH, together with elevated levels of CO2, HCO3, and base excess, are characteristic of respiratory acidosis with metabolic compensation (48). While fish gills are of critical importance for acid-base homeostasis, the kidneys play a significant role in metab"
+        },
+        {
+          "id": "bank:236973",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.9016,
+          "tema": [
+            "nyre",
+            "infeksjon",
+            "overvaking"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nEven though severe cases of nephrocalcinosis may be of a highly suggestive appearance, kidney infections eliciting similar renal pathology (e.g., calcifying inflammatory lesions, granulomatous nephritis) must first be differentially ruled out (57–60). To conclude, reaching the final diagnosis of nephrocalcinosis in the rainbow trout facility descri"
+        },
+        {
+          "id": "bank:286867",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "avstand": 0.9198,
+          "tema": [
+            "nyre"
+          ],
+          "art_niva": "naer",
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Discussion]\n\nThis is the first report of nephrocalcinosis, popularly known as kidney stones, in aquacultured Brazilian sardines ( S. brasiliensis ). Nevertheless, previous research has documented nephrocalcinosis in aquacultured fish. Klosterhoff et al. (2015) reported kidney stones ranging from 4.0 to 13 mm in diameter in Cobia ( Rachycentron canadum ), which are"
+        },
+        {
+          "id": "bank:234464",
+          "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+          "avstand": 0.9259,
+          "tema": [
+            "ernaring",
+            "immun"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mu — 8.2. Salmonid-Specific Reference Resources, Multi-Omics, and Causal Validation]\n\nSalmonid-specific reference development should build on the Atlantic salmon gut Salmon Microbial Genome Atlas and subsequent bacterial–viral genome catalogues, while integrating cultured isolates, MAGs, phages, functional genes, ARGs, and metabolic annotations into a common framework."
+        },
+        {
+          "id": "bank:232275",
+          "tittel": "Progress of Rapid Detection Technology for Aquatic Microorganisms: A Comprehensive Review.",
+          "avstand": 0.9291,
+          "tema": [
+            "overvaking",
+            "maskinsyn"
+          ],
+          "art_niva": "naer",
+          "tekst": "[Progress of Rapid Detection Technology for Aquatic Microorganisms: A Comprehensi — 5.2. Artificial Intelligence and Machine Learning Applications]\n\nArtificial intelligence (AI) and machine learning (ML) increasingly support aquatic diagnostics by extracting patterns from complex, multivariate data streams. Supervised learning enables classification of diseased versus healthy fish and prediction of water quality parameters, while unsupervised clu"
+        }
+      ]
+    },
+    {
+      "original_id": 8,
+      "query": "Are ultrasound and radiography directly compared for detecting or grading nephrocalcinosis in Atlantic salmon?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.8344,
+        "forkastet_morkt": 0
+      },
+      "treff": [
+        {
+          "id": "bank:236970",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8344,
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 4. Discussion]\n\nThe acid-base parameters observed in our nephrocalcinosis-affected fish, i.e., lowered blood pH, together with elevated levels of CO2, HCO3, and base excess, are characteristic of respiratory acidosis with metabolic compensation (48). While fish gills are of critical importance for acid-base homeostasis, the kidneys play a significant role in metab"
+        },
+        {
+          "id": "bank:236932",
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "avstand": 0.8636,
+          "tema": [
+            "nyre"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the — Magnesium transporters and kidney disease]\n\nSimilar physiological disturbances as that observed in mammals have been observed in Atlantic salmon where development of kidney stones (termed nephrocalcinosis) with severe consequences for the animal [122, 123]. Yet, the molecular and physiopathological mechanisms underlying nephrocalcinosis remains unclear [4]. Our re"
+        },
+        {
+          "id": "bank:236964",
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "avstand": 0.8696,
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low  — 3. Results]\n\nHematology findings showed that, while red and white blood cell counts, hemoglobin and mean corpuscular hemoglobin concentrations had decreased in the nephrocalcinosis-affected group, mean corpuscular volume and mean corpuscular hemoglobin concentration had increased. Of the biochemical variables, Na, P and cholesterol levels had declined compared to "
+        },
+        {
+          "id": "bank:286863",
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "avstand": 0.8963,
+          "tema": [
+            "miljo",
+            "nyre"
+          ],
+          "art_niva": "naer",
+          "tekst": "[First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella b — Materials and Methods]\n\nThe diagnosis of nephrocalcinosis was performed on fish farmed at the LAPMAR of the Federal University of Santa Catarina (UFSC), Barra da Lagoa, Florianópolis, SC, Brazil. The fish were fed a commercial diet (45% crude protein) and housed in a circular PVC fish farm pond measuring 1.0 m in height and with a capacity of 10,000 L. The pond wa"
+        },
+        {
+          "id": "bank:234400",
+          "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+          "avstand": 0.9123,
+          "tema": [
+            "ernaring",
+            "immun"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mu — 2.3. Methodological Comparison and Boundaries of Evidence]\n\nFrom the perspective of study design, 16S rRNA amplicon sequencing remains the main method in gut microbiome research on rainbow trout and Atlantic salmon because it is relatively inexpensive, mature, and suitable for large-sample and multi-treatment designs. It is particularly appropriate for asking whet"
+        },
+        {
+          "id": "bank:235610",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "avstand": 0.9135,
+          "tema": [
+            "velferd"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\nJournal of Experimental Biology 211(15), 2533-2541. Bui, S., Oppedal, F., Korsøen, Ø. J., Sonny, D. & Dempster, T. (2013) Group behavioural responses of Atlantic salmon (Salmo salar L.) to light, infrasound and sound stimuli. PLOS ONE 8, e63696 Bui, S., Dempster, T., Remen, M. & Oppedal, F. (2016) Effect of ectoparasite infestation density and life-history stages "
+        },
+        {
+          "id": "bank:235834",
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "avstand": 0.9195,
+          "tema": [
+            "velferd"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere ]\n\n[126] Grøntvedt, R. N., Nerbøvik, I. -K. G, Viljugrein, H., Lillehaug, A., Nilsen, H. & Gjerve, A. –G. (2015) Termisk avlusing av laksefisk – dokumentasjon av fiskevelferd og effekt. Rapport 13, 2015. Veterinærinstituttets rapportserie. Veterinærinstituttet, Oslo, Norge. [127] RSPCA (2018). RSPCA welfare standards for farmed Atlantic salmon. https://science.rspca."
+        },
+        {
+          "id": "bank:234466",
+          "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+          "avstand": 0.924,
+          "tema": [
+            "ernaring",
+            "immun"
+          ],
+          "art_niva": "maal",
+          "tekst": "[Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mu — 8.3. Precision Nutrition, Health Early Warning, and Resistance-Risk Monitoring]\n\nThe endpoint of gut microbiome research in rainbow trout and Atlantic salmon should extend beyond weight gain or feed conversion ratio to support antibiotic reduction, health early warning, and environmental risk control. This is where precision aquaculture differs most clearly from e"
+        }
+      ]
+    }
+  ]
+}

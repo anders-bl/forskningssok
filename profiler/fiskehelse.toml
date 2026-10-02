@@ -146,7 +146,7 @@ ingen = "ingen organisme nevnt"
 nyre = ["kidney", "renal", "nephro", "nephrocalcinosis", "calcification", "calcium", "magnesium",
         "urine", "osmoregulation", "ionoregulation", "urolith", "nyre", "kalsium"]
 lever = ["liver", "hepat", "steatosis", "lipid metabolism", "lever"]
-bildediagn = ["ultrasound", "ultrasonography", "radiograph", "x-ray", "mri", "tomograph", "sonograph",
+bildediagn = ["ultrasound", "ultrasonography", "radiolog", "radiograph", "radiography", "x-ray", "mri", "tomograph", "sonograph",
               "echograph", "imaging", "ultralyd"]
 maskinsyn = ["computer vision", "machine vision", "deep learning", "neural network", "convolutional",
              "image analysis", "image processing", "image recognition", "yolo", "machine learning",
