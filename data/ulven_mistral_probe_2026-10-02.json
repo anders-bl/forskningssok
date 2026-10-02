@@ -87,6 +87,47 @@
     },
     "conclusion": "Filtering out non-target art_niva can remove the tilapia candidate, but cannot remove the false ultrasound candidate from PMC10157097. Existing article-level topic labels are insufficient; method/modality relevance needs its own evidence label or facet."
   },
+  "metadata_facet_experiment": {
+    "change": "Added profile terms radiolog and radiography to the existing bildediagn topic; no runtime retrieval gate was added.",
+    "candidate_rule_tested": "For image-diagnostic intent, a candidate is method-near only when art_niva is maal and bildediagn is present in article topics.",
+    "fixture_cases": [
+      {
+        "label": "positive target method",
+        "title": "Radiological detection of nephrocalcinosis in farmed Atlantic salmon Salmo salar L.",
+        "art_niva": "maal",
+        "bildediagn": true,
+        "candidate": true
+      },
+      {
+        "label": "hard negative: related histology, no imaging",
+        "title": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+        "art_niva": "maal",
+        "bildediagn": false,
+        "candidate": false
+      },
+      {
+        "label": "hard negative: imaging, wrong target",
+        "title": "Contrast-enhanced radiography for gonadal visualization in Nile tilapia.",
+        "art_niva": "naer",
+        "bildediagn": true,
+        "candidate": false
+      }
+    ],
+    "result": "The title/topic conjunction separates these three cases. This is a small metadata-classifier prototype, not validation of a query-time gate or evidence directness.",
+    "regression_test": {
+      "before_change": "Failed: Radiological detection was labeled overvaking, not bildediagn.",
+      "after_change": "12 tests in tests/test_tema.py passed, including radiological and radiography titles.",
+      "full_suite": "872 passed in 18.37 seconds."
+    },
+    "export_reprobe": {
+      "method": "Re-exported the approved local source set to a temporary JSONL path using the updated profile; canonical export was untouched.",
+      "chunks": 4732,
+      "documents": 68,
+      "documents_tagged_bildediagn": 1,
+      "tagged_document": "Brief research report: Contrast-enhanced radiography for gonadal visualization in Nile tilapia.",
+      "direct_salmon_nephrocalcinosis_imaging_source_present": false
+    }
+  },
   "lexical_coverage_probe": {
     "documents_with_radiology_or_ultrasound_terms": 6,
     "radiology_or_radiography_in_title": ["Brief research report: Contrast-enhanced radiography for gonadal visualization in Nile tilapia."],

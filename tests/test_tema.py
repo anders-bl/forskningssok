@@ -36,6 +36,11 @@ def test_ultrasonikering_er_ikke_bildediagnostikk_ord_ved_ordstart():
     assert "bildediagn" not in navn("Extraction by ultrasonication of protamine", "ultrasonication was applied")
 
 
+def test_radiology_og_radiography_er_bildediagnostikk():
+    assert "bildediagn" in navn("Radiological detection of mineral deposits", "")
+    assert "bildediagn" in navn("Contrast radiography of internal organs", "")
+
+
 def test_kort_term_maa_vaere_helt_ord():
     assert "miljo" not in navn("Grasping the rasters", "")   # «ras» i «rasters»
 
