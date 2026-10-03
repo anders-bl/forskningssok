@@ -80,6 +80,46 @@ PDF-teksten ved sok etter lisens, rettigheter, Creative Commons og kopiering.
 ikke i seg selv vilkarene for a kopiere hele eller deler av teksten inn i et
 annet korpus. Rettighetsstatus for innlemming er derfor fortsatt uavklart.
 
+### Overordnede styringssignaler kontrollert 2026-10-03
+
+Mattilsynet har tre fagdepartementer: Landbruks- og matdepartementet (LMD),
+Naerings- og fiskeridepartementet (NFD) og Helse- og omsorgsdepartementet
+(HOD). LMD har etatsstyringsansvaret; HOD og NFD har faglig etatsstyring pa
+sine omrader, ifolge [HODs etatsside](https://www.regjeringen.no/no/dep/hod/organiseringen-av-helse-og-omsorgsdepartementet/etater-og-virksomheter-under-helse--og-omsorgsdepartementet/underliggende-etater/mattilsynet/id279765/).
+Havforskningsinstituttet ligger under NFD, ifolge [NFDs etatsside](https://www.regjeringen.no/no/dep/nfd/org/etater-og-virksomheter-under-narings--og-fiskeridepartementet/Subordinate-agencies-and-institutions/havforskningsinstituttet-/id115321/).
+
+Den viktigste tverrgaende teksten jeg fant er [Digitaliseringsrundskrivet,
+punkt 1.2](https://www.regjeringen.no/no/dokumenter/digitaliseringsrundskrivet/id3103320/).
+Det krever oversikt over data og registrering i Felles datakatalog i angitte
+tilfeller, og sier at tilgjengeliggjoring skal folge viderebruksreglene. Det
+anbefaler at offentlig produsert tekst ved publisering har bruksvilkar som
+apner for innhosting og gjenbruk til sprak-teknologiske formal; vilkarene bor
+vaere videre enn for andre gjenbruksformer. Regjeringens [retningslinjer for
+offentlige data](https://www.regjeringen.no/no/dokumenter/retningslinjer-ved-tilgjengeliggjoring-av-offentlige-data/id2536870/)
+ber i tillegg om tydelige bruksvilkar og peker pa CC BY 4.0 eller NLOD som
+standardlisenser.
+
+For rapportens konkrete avsendere sjekket jeg ogsa 2026-styringsdokumentene:
+[LMDs tildelingsbrev til Mattilsynet](https://www.regjeringen.no/contentassets/f3630965333e4af2a5f1007dbdc0bad9/statsbudsjett-2026-tildelingsbrev-til-mattilsynet.pdf)
+har ikke treff pa "gjenbruk", "apne data" eller "sprakteknologi". [NFDs
+tildelingsbrev til HI](https://www.regjeringen.no/contentassets/76a9cd4d079d415dbd6d7faa0ebae0e9/hi-tildelingsbrev-2026.pdf)
+har et delmal om a gjore relevante data tilgjengelige og teller datasett,
+nedlasting og datasiteringer; det har ikke treff pa "gjenbruk", "apne data"
+eller "sprakteknologi". Brevene gir dermed en tydelig generell retning mot
+tilgjengelige data, men ingen spesifikk lisens eller rapporttillatelse for
+denne teksten.
+
+Tolkning for dette tilfellet: det finnes et godt grunnlag for a be etatene
+oppgi eller fastsette klare gjenbruksvilkar, og Digitaliseringsrundskrivet
+navngir uttrykkelig sprak-teknologisk bruk. Men rundskrivets ordlyd er en
+anbefaling pa tekstvilkar, og de generelle dataforingene beviser ikke alene
+hvem som har opphavsretten eller om denne bestemte rapporten kan kopieres inn
+i korpuset. Be derfor HI som rapportutgiver/rettighetsforvalter og Mattilsynet
+som oppdragsgiver om en eksplisitt avklaring. Hvis de ikke kan avgjore det,
+be dem rute sporsmalet til rettighetshaver eller sine respektive departementer
+(LMD for Mattilsynets etatsstyring, NFD for HI; HOD/NFD for Mattilsynet dersom
+fagansvaret er relevant).
+
 ### Tryggeste neste handling
 
 Be rettighetshaver/utgiver avklare skriftlig om rapporttekst kan lagres og
