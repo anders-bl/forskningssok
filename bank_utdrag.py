@@ -316,6 +316,56 @@ def finnes(db_path: Path | None = None) -> bool:
         db.close()
 
 
+def verifiser(jsonl: Path = JSONL, db_path: Path | None = None) -> dict:
+    """Read-only check that DB rows and vectors match one complete manifested snapshot."""
+    try:
+        rader, sha256, format_version = _les_snapshot(jsonl, speil=True, tillat_tom=True)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as e:
+        return {"ok": False, "checks": {}, "errors": [f"snapshot: {type(e).__name__}: {e}"]}
+
+    sti = db_path or utdrag_db_sti()
+    if not sti.is_file():
+        return {"ok": False, "checks": {}, "errors": [f"database mangler: {sti}"]}
+    db = None
+    try:
+        db = sqlite3.connect(f"file:{sti}?mode=ro", uri=True)
+        db.enable_load_extension(True)
+        sqlite_vec.load(db)
+        meta = dict(db.execute("SELECT key, value FROM meta"))
+        lagrede_rader = {
+            rad[0]: rad[1:] for rad in db.execute(
+                "SELECT chunk_id, bok, samling, heading, tekst, proveniens, art_niva, tema FROM utdrag")
+        }
+        vektor_ids = {rad[0] for rad in db.execute("SELECT chunk_id FROM utdrag_vec")}
+    except (OSError, sqlite3.Error) as e:
+        return {"ok": False, "checks": {}, "errors": [f"database: {type(e).__name__}: {e}"]}
+    finally:
+        if db is not None:
+            db.close()
+
+    kilde_rader = {
+        rad["id"]: (rad.get("bok"), rad.get("samling"), rad.get("heading"), rad["tekst"],
+                    rad.get("proveniens"), rad.get("art_niva"),
+                    json.dumps(rad.get("tema", []), ensure_ascii=False))
+        for rad in rader
+    }
+    tekst_ids = set(lagrede_rader)
+    avvikende_rader = sum(1 for cid in tekst_ids & set(kilde_rader)
+                          if lagrede_rader[cid] != kilde_rader[cid])
+    checks = {
+        "embed_modell": bool(meta.get("embed_modell")),
+        "snapshot_format_version": meta.get("snapshot_format_version") == str(format_version),
+        "snapshot_rows": meta.get("snapshot_rows") == str(len(rader)),
+        "snapshot_sha256": meta.get("snapshot_sha256") == sha256,
+        "tekst_id-er": tekst_ids == set(kilde_rader),
+        "tekstinnhold": avvikende_rader == 0,
+        "vektor_id-er": vektor_ids == set(kilde_rader),
+    }
+    feil = [navn for navn, bestatt in checks.items() if not bestatt]
+    return {"ok": not feil, "rows": len(rader), "sha256": sha256,
+            "checks": checks, "errors": feil}
+
+
 def sok(emne: str, k: int, *, db_path: Path | None = None, embed_fn=None,
         modell: str | None = None) -> tuple[list[tuple], str]:
     """Nærmeste utdrag-chunks. Returnerer (rader, arsak); rader har samme form som
@@ -358,6 +408,9 @@ def main():
     b.add_argument("--db", default=None)
     b.add_argument("--speil", action="store_true", help="fjern DB-ID-er som mangler i hele JSONL-kilden")
     b.add_argument("--tillat-tom", action="store_true", help="tillat at speilmodus tømmer databasen")
+    v = sub.add_parser("verifiser", help="kontroller DB mot komplett JSONL-snapshot uten å skrive")
+    v.add_argument("--jsonl", default=str(JSONL))
+    v.add_argument("--db", default=None)
     sub.add_parser("status", help="finnes utdraget, hvilken modell, hvor mange chunks")
     a = p.parse_args()
     if a.kommando == "eksporter":
@@ -370,6 +423,11 @@ def main():
             p.error("--tillat-tom krever --speil")
         print(bygg(Path(a.jsonl), Path(a.db) if a.db else None,
                    speil=a.speil, tillat_tom=a.tillat_tom))
+    elif a.kommando == "verifiser":
+        resultat = verifiser(Path(a.jsonl), Path(a.db) if a.db else None)
+        print(json.dumps(resultat, ensure_ascii=False, sort_keys=True))
+        if not resultat["ok"]:
+            raise SystemExit(1)
     else:
         sti = utdrag_db_sti()
         if not finnes(sti):
