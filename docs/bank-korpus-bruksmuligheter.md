@@ -22,7 +22,7 @@ ikke en pålitelig fagklassifikasjon.
 | Miljø | 21 |
 | Velferd | 13 |
 | Overvåking | 11 |
-| Ernæring | 12 |
+| Ernæring | 8 |
 | Genetikk | 5 |
 | Lever | 4 |
 | Maskinsyn | 4 |
@@ -119,14 +119,6 @@ bakgrunn fra kildebelegg for en spesifikk metode. Kildeoppdagelse kan vise slike
 treff med tydelig avgrensning; direkte svar eller metodepåstander trenger egne
 relevansetiketter og holdout-kontroller. Målingen brukte lokal `boker.db`, så den
 sier ikke noe om Mistral-produksjonsutdraget.
-
-Proben avdekket også en merkefeil: «Precision Feeding Technology» manglet
-ernæringstema fordi ordlisten hadde `feed`, som krever helt ord for så korte
-termer, men ikke `feeding`. Profilen dekker nå `feeding`, `fôring`,
-`presisjonsfôring` og `fôringsteknologi`. Eksporten ble regenerert fra den
-skrivebeskyttede bankkilden; 4 732 tekstposter og ID-er er uendret, mens fire
-dokumenter fikk ernæring lagt til blant temaene. Dokumentantallet for ernæring
-er dermed 12. Regresjonstester dekker engelsk tittel og norsk sammensetning.
 
 ## Neste trinn
 
