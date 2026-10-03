@@ -89,6 +89,23 @@ brukerreiser. Ikke anta at ett spørsmålssett eller ett kvalitetsmål dekker de
   viser kilder til brukeren. Sett egen toleranse for irrelevans, manglende dekning,
   kildekrav og konsekvens av feil.
 
+### Observerbar kodeflate (kartlegging, ikke godkjenning)
+
+Kontrollert 2026-10-03 i `api.py`, `syntese_fortelling.py`, `bank_bakgrunn.py` og README:
+
+- Den eneste faktiske integrasjonen jeg fant er bok-bank som bakgrunn i forskningssyntesen.
+  `api.py` kaller `lag_syntese_fortelling(emne)`; standarden slår på bankveien automatisk
+  når `bank_utdrag.db` finnes. CLI-en kan også slå den på eksplisitt med `--bank`.
+- Samme `emne` brukes til retrieval. Inntil åtte bankchunks legges i syntesens kildesett,
+  merkes som bakgrunn eller kandidat etter artikkelklassifisering, kontrolleres sammen med
+  øvrige sitater og vises i syntesens kildeliste.
+- Kildelisten er dermed en utflate av syntese-bruken, ikke bevis for en separat
+  kildeoppdagelsesreise. Jeg fant ingen separat bank-søkerute i denne kodeflaten.
+- Dette beskriver hva koden kan gjøre; det fastslår ikke om bruken er ønsket, aktiv i
+  produksjon eller planlagt videre. Anders må bekrefte om syntese-bruken skal kalibreres,
+  og hvilke andre brukerreiser banken faktisk skal dekke. Ikke lag holdout-spørsmål for
+  foreslåtte, men ubekreftede reiser.
+
 - Frys et håndskrevet, målbart sett med søk, tema, forventet dekning og etikett
   før måling. Ikke bruk historiske brukerforespørsler uten eksplisitt godkjenning.
 - Spørsmålene fra pilotene i `data/mistral_bank_kalibrering_2026-09-26.json` og
