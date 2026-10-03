@@ -120,6 +120,15 @@ treff med tydelig avgrensning; direkte svar eller metodepåstander trenger egne
 relevansetiketter og holdout-kontroller. Målingen brukte lokal `boker.db`, så den
 sier ikke noe om Mistral-produksjonsutdraget.
 
+Proben fant samtidig at artikkelen «Precision Feeding Technology» ikke hadde
+ernæringstema i den gjeldende eksporten. Jeg sammenlignet gjeldende tematermer med
+et foreløpig tillegg av `feeding` mot bare utviklingsdelen av temafasiten: 49
+merkede artikler av 78 ga null endrede prediksjoner. Presisjon, gjenfinning og
+eksakt temasett var uendret (77,6 %, 84,3 % og 59,2 %). Dette er ingen støtte for
+å endre ordlisten: utviklingsdelen inneholder ikke eksempelet som utløste
+hypotesen. Ordlisten står derfor uendret; legg til et uavhengig vurdert
+utviklingseksempel før en slik profilendring vurderes. Holdout er ikke brukt.
+
 ## Neste trinn
 
 1. Lag en håndvurdert, balansert søkepakke med de fire store temaene, noen små
