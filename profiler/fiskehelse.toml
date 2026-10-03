@@ -158,8 +158,9 @@ velferd = ["welfare", "stress", "stocking density", "behaviour", "behavior", "sl
            "enrichment", "velferd"]
 miljo = ["water quality", "temperature", "salinity", "oxygen", "ammonia", "co2", "carbon dioxide", "ras",
          "recirculating", "environmental", "hypoxia", "sediment", "climate", "vannkjemi"]
-ernaring = ["diet", "dietary", "feed", "nutrition", "fishmeal", "fish meal", "supplementation", "protein",
-            "aquafeed", "fôr"]
+ernaring = ["diet", "dietary", "feed", "feeding", "nutrition", "fishmeal", "fish meal",
+            "supplementation", "protein", "aquafeed", "fôr", "fôring", "presisjonsfôring",
+            "fôringsteknologi"]
 genetikk = ["genetic", "genome", "gene expression", "breeding", "triploid", "hybrid", "transcriptom",
             "heritab", "gene editing", "crispr", "genotype"]
 skjelett = ["skeletal", "vertebra", "deformit", "bone", "osteo", "skjelett"]

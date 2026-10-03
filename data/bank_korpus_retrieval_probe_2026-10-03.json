@@ -1,6 +1,6 @@
 {
   "tittel": "Eksplorativ retrieval-probe for flere banktemaer",
-  "maalt": "2026-10-03T15:52:31.954901+00:00",
+  "maalt": "2026-10-03T16:10:35.125583+00:00",
   "formaal": "Utviklingsprobe, ikke blind fasit, terskelkalibrering eller godkjenning av direkte svar. Sporsmalene er handskrevne for denne runden og ikke hentet fra brukerhistorikk.",
   "modell": "bge-m3 via lokal Ollama; ingen AI-proxy",
   "profil": "fiskehelse",
@@ -261,7 +261,9 @@
           "tittel": "An Overview of the Research Status and Advances in Precision Feeding Technology and Equipment in Aquaculture",
           "samling": "velferd",
           "art_niva": "naer",
-          "tema": [],
+          "tema": [
+            "ernaring"
+          ],
           "beste_avstand": 0.7176,
           "beste_band": "skarpt",
           "biter_i_topp8": 2
@@ -559,10 +561,11 @@
     }
   ],
   "begrensninger": [
-    "Kun 10 handskrevne sporsmal fra denne runden, ikke blindt vurdert.",
+    "Kun 10 håndskrevne spørsmål fra denne runden, ikke blindt vurdert.",
     "Topptreff og metadata lagret; fulltekstukrag er bevisst utelatt.",
     "BGE-m3 lokal boker.db er et annet korpus-/runtimeoppsett enn produksjonens mistral-embeddede bank_utdrag.db.",
-    "Morkegrensen er gjeldende BGE-bokkalibrering; resultatene kan ikke brukes til a kalibrere Mistral.",
+    "Mørkegrensen er gjeldende BGE-bokkalibrering; resultatene kan ikke brukes til å kalibrere Mistral.",
     "Temaklassifisering/art_niva er signaler, ikke relevansfasit."
-  ]
+  ],
+  "profil_sha256": "7f8501221544c586214fb97b0879a99e0c728a77ee6ae52f98a356d5487dcf55"
 }

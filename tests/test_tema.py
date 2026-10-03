@@ -17,6 +17,14 @@ def test_tittelen_gir_temaet_med_bevis():
     assert funn[0].tema == "nyre" and "kidney" in funn[0].bevis
 
 
+def test_engelsk_og_norsk_foring_tilhorer_ernaeringstemaet():
+    engelsk = tema.klassifiser("Precision Feeding Technology in Aquaculture", "")
+    norsk = tema.klassifiser("Presisjonsfôring i lakseoppdrett", "")
+    assert "ernaring" in [f.tema for f in engelsk]
+    assert "feeding" in next(f.bevis for f in engelsk if f.tema == "ernaring")
+    assert "ernaring" in [f.tema for f in norsk]
+
+
 def test_flere_temaer_per_artikkel():
     t = navn("Vaccination against a virus in farmed fish")
     assert "immun" in t and "infeksjon" in t
