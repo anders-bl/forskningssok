@@ -48,6 +48,8 @@ from schemas import PaperDossier
 logger = logging.getLogger(__name__)
 
 HJEM = Path.home() / "prosjekter"
+AI_PROXY_EMBED_MODEL = "mistral-embed"
+AI_PROXY_EMBED_DIM = 1024
 
 
 def _ai_proxy_embed(texts: list[str]) -> list[list[float]]:
@@ -57,7 +59,20 @@ def _ai_proxy_embed(texts: list[str]) -> list[list[float]]:
     wiki_id = os.environ.get("AI_PROXY_WIKI_ID", "forskningssok")
     r = httpx.post(url, json={"wiki_id": wiki_id, "input": texts}, timeout=120)
     r.raise_for_status()
-    return r.json()["embeddings"]
+    data = r.json()
+    modell = data.get("model")
+    if modell != AI_PROXY_EMBED_MODEL:
+        raise RuntimeError(f"ai-proxy returnerte embedding-modell {modell!r}, "
+                           f"forventet {AI_PROXY_EMBED_MODEL!r}")
+    vektorer = data.get("embeddings")
+    dimensjon = data.get("dim")
+    if (not isinstance(vektorer, list) or len(vektorer) != len(texts)
+            or dimensjon != AI_PROXY_EMBED_DIM
+            or any(not isinstance(v, list) or len(v) != AI_PROXY_EMBED_DIM for v in vektorer)):
+        raise RuntimeError(f"ai-proxy returnerte ugyldig embedding-form: dim={dimensjon!r}, "
+                           f"antall={len(vektorer) if isinstance(vektorer, list) else 'ukjent'}, "
+                           f"forventet {len(texts)} vektorer med {AI_PROXY_EMBED_DIM} dimensjoner")
+    return vektorer
 
 
 def _hus_embed():

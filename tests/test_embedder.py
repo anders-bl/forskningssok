@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import bank  # noqa: E402
 
@@ -36,7 +38,8 @@ def test_ai_proxy_embed_poster_riktig_body_til_riktig_url(monkeypatch):
             pass
 
         def json(self):
-            return {"embeddings": [[0.1, 0.2]], "model": "mistral-embed", "dim": 2}
+            return {"embeddings": [[0.1] * bank.AI_PROXY_EMBED_DIM],
+                    "model": bank.AI_PROXY_EMBED_MODEL, "dim": bank.AI_PROXY_EMBED_DIM}
 
     def _fake_post(url, json, timeout):
         kalt["url"] = url
@@ -52,7 +55,8 @@ def test_ai_proxy_embed_poster_riktig_body_til_riktig_url(monkeypatch):
 
     assert kalt["url"] == "http://ai-proxy:8000/embed"  # trailing slash strippet riktig
     assert kalt["json"] == {"wiki_id": "forskningssok-test", "input": ["en tekst om nefrokalsinose"]}
-    assert ut == [[0.1, 0.2]]
+    assert len(ut) == 1 and len(ut[0]) == bank.AI_PROXY_EMBED_DIM
+    assert ut[0][0] == 0.1
 
 
 def test_ai_proxy_embed_default_wiki_id_uten_override(monkeypatch):
@@ -63,7 +67,8 @@ def test_ai_proxy_embed_default_wiki_id_uten_override(monkeypatch):
             pass
 
         def json(self):
-            return {"embeddings": [[0.0]]}
+            return {"embeddings": [[0.0] * bank.AI_PROXY_EMBED_DIM],
+                    "model": bank.AI_PROXY_EMBED_MODEL, "dim": bank.AI_PROXY_EMBED_DIM}
 
     def _fake_post(url, json, timeout):
         kalt["json"] = json
@@ -75,3 +80,26 @@ def test_ai_proxy_embed_default_wiki_id_uten_override(monkeypatch):
 
     bank._ai_proxy_embed(["x"])
     assert kalt["json"]["wiki_id"] == "forskningssok"
+
+
+@pytest.mark.parametrize("respons,feil", [
+    ({"embeddings": [[0.0] * 1024], "model": "annen-modell", "dim": 1024},
+     "forventet 'mistral-embed'"),
+    ({"embeddings": [[0.0] * 1023], "model": "mistral-embed", "dim": 1023},
+     "ugyldig embedding-form"),
+    ({"embeddings": [], "model": "mistral-embed", "dim": 1024},
+     "ugyldig embedding-form"),
+])
+def test_ai_proxy_embed_avviser_modell_eller_dimensjonsavvik(monkeypatch, respons, feil):
+    class _FakeResponse:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return respons
+
+    monkeypatch.setenv("AI_PROXY_URL", "http://ai-proxy:8000")
+    monkeypatch.setattr(bank.httpx, "post", lambda *_a, **_kw: _FakeResponse())
+
+    with pytest.raises(RuntimeError, match=feil):
+        bank._ai_proxy_embed(["x"])
