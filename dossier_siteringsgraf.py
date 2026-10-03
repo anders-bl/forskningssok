@@ -22,9 +22,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import scoping
 from adapters import semantic_scholar
 from dossier import hent_kandidater
 from paths import DB
+
+
+def _primaer_akse(p: dict) -> str | None:
+    """Høyest-skårende forskningsakse for ett papir (`scoping.AKSER`, profilstyrt — se
+    CLAUDE.md §Konvensjoner: aksenavn bor i profiler/*.toml, ikke her). Ingen akse traff
+    (dekning 0.0 for alle) gir None -- ærlig ukjent, ikke en gjettet akse. Brukes til å
+    klynge M4-sitasjonsgrafen tematisk (idébank-ønske fra Ulven-miljøet 2026-10-03: samme
+    aksene M2/akse_dekning() allerede måler, nå som node-posisjon i stedet for bar-chart)."""
+    tekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
+    dekning = scoping.akse_dekning(tekst)
+    if not dekning:
+        return None
+    beste = max(dekning, key=dekning.get)
+    return beste if dekning[beste] > 0 else None
 
 
 def bygg_siteringsgraf(papirer: list[dict]) -> dict:
@@ -90,6 +105,7 @@ def siteringsgraf_for_papirer(papirer: list[dict]) -> dict:
             "aar": p.get("aar"),
             "kilde": p.get("kilde"),
             "art_bekreftet": domeneprofil.arts_naer_tekst(f"{p.get('tittel') or ''} {p.get('abstract') or ''}"),
+            "akse": _primaer_akse(p),
         }
         for p in papirer
     }

@@ -2137,19 +2137,68 @@ function renderInnsikt(d) {
 // hvorfor: hage_lenkegraf.py sin Fruchterman-Reingold lever i et annet repo som ALDRI
 // er del av forskningssok sin egen Docker-image). Gjenbruker Kart-fanens fargekode
 // (KILDE_FARGE/kildeGruppe) og .kart-node-klikk-mønster for konsistens.
+// Fast palett for tematisk klynging (M4 2026-10-03, idébank-ønske fra Ulven-miljøet).
+// IKKE indeksert på aksenavn ("Lever" -> farge N ville vært et aksenavn i kjørende kode,
+// forbudt av CLAUDE.md §Konvensjoner) -- indeksert på OPPDAGELSESREKKEFØLGE i dataene.
+// Samme profil gir samme rekkefølge hver kjøring fordi noder_meta bygges fra
+// scoping.AKSER (dict-rekkefølge er profilens TOML-rekkefølge, stabil i Python 3.7+).
+const AKSE_PALETT = ['#5c8a72', '#b9893f', '#4c6e8c', '#a86b8f', '#6b8f4c', '#8f6b4c'];
+
+function akseFarger(noder, meta) {
+  const sett = [];
+  for (const id of noder) {
+    const a = (meta[id] || {}).akse;
+    if (a && sett.indexOf(a) === -1) sett.push(a);
+  }
+  const farge = {};
+  sett.forEach((a, i) => { farge[a] = AKSE_PALETT[i % AKSE_PALETT.length]; });
+  return {sett, farge};
+}
+
 function renderSiteringsgraf(g) {
   const noder = g.noder || [];
   if (!noder.length) return '<div class="hint">Ingen kandidater å tegne.</div>';
   const meta = g.noder_meta || {};
   const cx = 200, cy = 200, rad_sirkel = 165;
   const maksGrad = Math.max(1, ...noder.map(n => g.inn_grad[n] || 0));
+
+  // Tematisk klynging: noder med samme akse (scoping.akse_dekning() sin beste-skårende
+  // akse per papir, se dossier_siteringsgraf.py::_primaer_akse) grupperes i egen sektor
+  // av sirkelen i stedet for jevnt fordelt på rå indeks. Noder uten akse (dekning 0 på
+  // alle, "akse: null") havner i en egen "Ukjent"-sektor -- ærlig, ikke gjemt inn i en
+  // tilfeldig klynge.
+  const {sett: akser, farge: akseFargeKart} = akseFarger(noder, meta);
+  const grupper = akser.concat([null]);  // null = "Ukjent"-sektoren, alltid sist
+  const nodeTilGruppe = {};
+  noder.forEach(id => { nodeTilGruppe[id] = (meta[id] || {}).akse ?? null; });
+  const grupperMedNoder = grupper.filter(gr => noder.some(id => nodeTilGruppe[id] === gr));
+  const sektorBredde = (2 * Math.PI) / Math.max(1, grupperMedNoder.length);
+
   const pos = {};
-  noder.forEach((id, i) => {
-    const ang = (i / noder.length) * 2 * Math.PI - Math.PI / 2;
-    pos[id] = {x: cx + rad_sirkel * Math.cos(ang), y: cy + rad_sirkel * Math.sin(ang)};
+  grupperMedNoder.forEach((gr, gi) => {
+    const medlemmer = noder.filter(id => nodeTilGruppe[id] === gr);
+    const sektorStart = gi * sektorBredde - Math.PI / 2;
+    // Litt innskutt margin i hver sektor slik to naboklynger ikke visuelt smelter sammen
+    // ved få grupper (2-3 klynger ville ellers fylt nesten halve sirkelen hver).
+    const margin = sektorBredde * 0.12;
+    medlemmer.forEach((id, i) => {
+      const andel = medlemmer.length > 1 ? i / (medlemmer.length - 1) : 0.5;
+      const ang = sektorStart + margin + andel * (sektorBredde - 2 * margin);
+      pos[id] = {x: cx + rad_sirkel * Math.cos(ang), y: cy + rad_sirkel * Math.sin(ang)};
+    });
   });
 
   let svg = '<svg viewBox="-20 -20 440 440" style="width:100%">';
+  // Sektor-etiketter (klynge-navn), tegnet FØR kanter/noder slik de ligger bak.
+  grupperMedNoder.forEach((gr, gi) => {
+    const sektorStart = gi * sektorBredde - Math.PI / 2;
+    const midtvinkel = sektorStart + sektorBredde / 2;
+    const lx = cx + (rad_sirkel + 26) * Math.cos(midtvinkel);
+    const ly = cy + (rad_sirkel + 26) * Math.sin(midtvinkel);
+    const navn = gr || 'Ukjent';
+    const farge = gr ? akseFargeKart[gr] : 'var(--muted)';
+    svg += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="11" fill="${farge}" opacity=".7">${escapeHtml(navn)}</text>`;
+  });
   for (const [fra, til] of (g.kanter || [])) {
     if (!pos[fra] || !pos[til]) continue;
     const a = pos[fra], b = pos[til];
@@ -2162,8 +2211,16 @@ function renderSiteringsgraf(g) {
     const r = 4 + Math.sqrt(grad / maksGrad) * 9;
     const farge = KILDE_FARGE[kildeGruppe(m.kilde)] || 'var(--muted)';
     const ringAttr = m.art_bekreftet === false ? 'stroke="var(--warn,#a86)" stroke-width="1.6"' : 'stroke="none"';
+    // Akse-ring: egen, lett større sirkel bak selve noden -- holder kilde-fargen (fylling)
+    // og art-usikkerhet-ringen (stroke på selve noden) urørt, legger klynge-fargen til
+    // som et separat visuelt lag i stedet for å konkurrere med dem om samme attributt.
+    const akseFarge = m.akse ? akseFargeKart[m.akse] : null;
+    const akseRing = akseFarge
+      ? `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r + 3).toFixed(1)}" fill="none" stroke="${akseFarge}" stroke-width="1.4" opacity=".55"/>`
+      : '';
     svg += `<g data-id="${escapeHtml(id)}" class="kart-node" style="cursor:pointer">` +
-      `<title>${escapeHtml(m.tittel || id)}${m.aar ? ' (' + m.aar + ')' : ''} — ${grad} sitering(er) internt i dossieret</title>` +
+      `<title>${escapeHtml(m.tittel || id)}${m.aar ? ' (' + m.aar + ')' : ''} — ${grad} sitering(er) internt i dossieret${m.akse ? ' · akse: ' + m.akse : ''}</title>` +
+      akseRing +
       `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${farge}" ${ringAttr} opacity=".85"/></g>`;
   }
   svg += '</svg>';
@@ -2172,12 +2229,19 @@ function renderSiteringsgraf(g) {
     `<span style="display:inline-flex;align-items:center;gap:.3rem;margin-right:.9rem">` +
     `<span style="width:8px;height:8px;border-radius:50%;background:${KILDE_FARGE[k]};display:inline-block"></span>` +
     `${escapeHtml(KILDE_NAVN[k])}</span>`).join('');
+  const akseLegend = akser.length
+    ? `<div class="hint" style="margin-top:.3rem">${akser.map(a =>
+        `<span style="display:inline-flex;align-items:center;gap:.3rem;margin-right:.9rem">` +
+        `<span style="width:8px;height:8px;border-radius:50%;border:1.4px solid ${akseFargeKart[a]};display:inline-block"></span>` +
+        `${escapeHtml(a)}</span>`).join('')}<span style="color:var(--muted)">· sektorplassering = primær forskningsakse (profilens egne, se §Domeneprofil)</span></div>`
+    : '';
   const artMerke = (state.profil && state.profil.art_merke) || '[art?]';
   const feilNotat = (g.feilede_oppslag || []).length
     ? `<div class="hint" style="margin-top:.4rem">${g.feilede_oppslag.length} oppslag feilet (rate-limit/nettverk) — de kandidatene mangler utgående kanter, ikke fjernet fra grafen.</div>`
     : '';
   return svg +
     `<div class="hint" style="margin-top:.5rem">${legend}<span style="color:var(--muted)">· størrelse = siteringer internt i dossieret · ring = ${escapeHtml(artMerke)}</span></div>` +
+    akseLegend +
     feilNotat;
 }
 

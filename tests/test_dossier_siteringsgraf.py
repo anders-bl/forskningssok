@@ -93,3 +93,28 @@ def test_siteringsgraf_for_emne_legger_ved_node_metadata(monkeypatch):
     assert graf["noder_meta"]["a"]["tittel"] == "Nephrocalcinosis in Atlantic salmon Salmo salar"
     assert graf["noder_meta"]["a"]["aar"] == 2022
     assert graf["noder_meta"]["a"]["art_bekreftet"] is True
+
+
+def test_primaer_akse_velger_hoyest_skarende_profilakse():
+    # "liver"/"hepat" treffer kun Lever-aksen i fiskehelse.toml -- ingen gjetning,
+    # samme nøkkelord-mekanisme som scoping.akse_dekning() allerede bruker for M2.
+    p = _p("a", tittel="Hepatic lipidosis markers", abstract="liver histopathology in farmed fish")
+    assert dsg._primaer_akse(p) == "Lever"
+
+
+def test_primaer_akse_gir_aerlig_none_uten_treff():
+    # Ingen aksenøkkelord i teksten -- None, ikke en gjettet/default-akse.
+    p = _p("a", tittel="xyzabc qwerty", abstract="")
+    assert dsg._primaer_akse(p) is None
+
+
+def test_siteringsgraf_for_papirer_legger_ved_akse_per_node(monkeypatch):
+    papirer = [
+        _p("a", doi="10.1/a", tittel="Ultrasound imaging", abstract="ultralyd diagnos av nyre"),
+        _p("b", doi=None, tittel="xyzabc qwerty", abstract=""),
+    ]
+    monkeypatch.setattr(dsg.semantic_scholar, "siteringsgraf",
+                         lambda doi: {"siteringer": [], "referanser": []})
+    graf = dsg.siteringsgraf_for_papirer(papirer)
+    assert graf["noder_meta"]["a"]["akse"] == "Ultralyd-validering"
+    assert graf["noder_meta"]["b"]["akse"] is None
