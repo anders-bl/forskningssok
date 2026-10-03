@@ -53,6 +53,14 @@ modellidentitet, faktiske parametere og ra svar. Produksjonsstatus er fortsatt
 uverifisert: lokal `bank_utdrag.db` mangler, og produksjonens health-ruter har
 tidligere svart 401. En lokal maling kan derfor ikke omtales som produksjonsmaling.
 
+**Skrivefri etterkontroll 2026-10-03:** `venv/bin/python bank_utdrag.py verifiser`
+validerte JSONL-snapshotet og manifestet langt nok til a rapportere at den lokale
+`bank_utdrag.db` mangler. En anonym GET mot `https://forskningssok.lauvasdata.no/health/ready`
+svarte HTTP 401 `Ikke autentisert` (korrelasjons-ID `3cf56ca3-a001-484a-93f9-a58e43a85cae`).
+Dette verifiserer autentiseringsgrensen, ikke ready-status, produksjonsversjon eller om
+produksjonens bankutdrag er bygget/lastet. Ingen credentials ble brukt, og ingen data ble
+skrevet.
+
 ### Avgrensning for forste runde
 
 - Forste runde maler retrieval-egnethet og syntesens kildebruk for den
