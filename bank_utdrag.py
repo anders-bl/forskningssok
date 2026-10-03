@@ -9,22 +9,23 @@ på nytt med den embedderen som faktisk skal søke. Ingen ny inngående flate, i
 avhengighet av at Macen er på, og ingen tunnel.
 
 To trinn, bevisst adskilt:
-  1. `eksporter` (Mac): boker.db -> data/bank_utdrag.jsonl. Ren tekst + proveniens, ingen
-     vektorer. Bare chunks som ALT er ratifisert inn i banken (lisensgaten i fold_op.py er
-     passert); ingenting nytt slippes inn her.
-  2. `bygg` (der søket skal kjøre, f.eks. `docker exec ... python bank_utdrag.py bygg`):
-     jsonl -> bank_utdrag.db med embeddings fra GJELDENDE embedder. Idempotent: allerede
-     embeddede chunk-id-er hoppes over, så en avbrutt kjøring kan tas opp igjen.
+  1. `eksporter` (Mac): boker.db -> JSONL + manifest. Ren tekst + proveniens, ingen vektorer.
+     Bare chunks som ALT er ratifisert inn i banken (lisensgaten i fold_op.py er passert).
+  2. `bygg` (der søket skal kjøre): standardmodus legger til nye chunks.
+     `bygg --speil` avstemmer databasen mot hele JSONL-snapshotet og fjerner gamle ID-er.
+     Nye embeddings er idempotente, så en avbrutt kjøring kan tas opp igjen.
 
 Vektorrommet er bokført i `meta.embed_modell`. sok() nekter å søke hvis spørringen ville
 blitt embeddet med en annen modell enn utdraget (samme feilklasse embed_renhet.py vokter:
 to modeller i samme vektorrom gir stille søppel, ikke en feil).
 """
 import argparse
+import hashlib
 import json
 import os
 import sqlite3
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -38,12 +39,35 @@ from paths import DB  # noqa: E402
 
 HER = Path(__file__).resolve().parent
 JSONL = HER / "data" / "bank_utdrag.jsonl"
+MANIFEST = HER / "data" / "bank_utdrag.manifest.json"
 STANDARD_BOKER = Path.home() / "prosjekter" / "bøker" / "boker.db"
 DIM = 1024
 BATCH = 32
+MANIFEST_FORMAT_VERSION = 1
 # ai-proxy/mistral-embed har tak per forespørsel; median chunk er ~1 100 tegn, men lengste er ~8 800.
 # Batchen fylles derfor til første av antall eller tegnbudsjett.
 MAKS_TEGN_BATCH = 20000
+
+
+def manifest_sti(jsonl: Path = JSONL) -> Path:
+    return MANIFEST if jsonl == JSONL else jsonl.with_suffix(".manifest.json")
+
+
+def _skriv_midlertidig(mal: Path, innhold: bytes) -> Path:
+    modus = mal.stat().st_mode & 0o777 if mal.exists() else 0o644
+    sti = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix=f".{mal.name}.", dir=mal.parent, delete=False) as f:
+            sti = Path(f.name)
+            f.write(innhold)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(sti, modus)
+        return sti
+    except BaseException:
+        if sti is not None:
+            sti.unlink(missing_ok=True)
+        raise
 
 
 def utdrag_db_sti() -> Path:
@@ -90,12 +114,35 @@ def eksporter(boker_db: Path = STANDARD_BOKER, ut: Path = JSONL,
         db.close()
     ut.parent.mkdir(parents=True, exist_ok=True)
     klassifisering = _klassifiser_artikler(rader)
-    with ut.open("w", encoding="utf-8") as f:
-        for cid, bok, samling, heading, tekst, prov in rader:
-            niva, temaer = klassifisering[bok]
-            f.write(json.dumps({"id": cid, "bok": bok, "samling": samling, "heading": heading,
-                                "tekst": tekst, "proveniens": prov, "art_niva": niva,
-                                "tema": temaer}, ensure_ascii=False) + "\n")
+    manifest = manifest_sti(ut)
+    digest = hashlib.sha256()
+    data_temp = manifest_temp = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix=f".{ut.name}.", dir=ut.parent, delete=False) as f:
+            data_temp = Path(f.name)
+            for cid, bok, samling, heading, tekst, prov in rader:
+                niva, temaer = klassifisering[bok]
+                linje = (json.dumps({"id": cid, "bok": bok, "samling": samling, "heading": heading,
+                                     "tekst": tekst, "proveniens": prov, "art_niva": niva,
+                                     "tema": temaer}, ensure_ascii=False) + "\n").encode("utf-8")
+                f.write(linje)
+                digest.update(linje)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(data_temp, ut.stat().st_mode & 0o777 if ut.exists() else 0o644)
+        dokument = {"format_version": MANIFEST_FORMAT_VERSION, "row_count": len(rader),
+                    "sha256": digest.hexdigest()}
+        manifest_bytes = (json.dumps(dokument, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+        manifest_temp = _skriv_midlertidig(manifest, manifest_bytes)
+        os.replace(data_temp, ut)
+        data_temp = None
+        os.replace(manifest_temp, manifest)
+        manifest_temp = None
+    except BaseException:
+        for sti in (data_temp, manifest_temp):
+            if sti is not None:
+                sti.unlink(missing_ok=True)
+        raise
     return len(rader)
 
 
@@ -117,9 +164,51 @@ def _klassifiser_artikler(rader: list[tuple]) -> dict[str, tuple[str, list[str]]
     return ut
 
 
+def _les_snapshot(jsonl: Path, *, speil: bool, tillat_tom: bool
+                  ) -> tuple[list[dict], str | None, int | None]:
+    """Valider full kilde og manifest foer speilmodus kan slette rader."""
+    innhold = jsonl.read_bytes()
+    sha256 = hashlib.sha256(innhold).hexdigest()
+    manifest = None
+    if speil:
+        try:
+            manifest = json.loads(manifest_sti(jsonl).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            raise ValueError(f"speilmodus krever lesbart manifest: {manifest_sti(jsonl)}") from e
+        if not isinstance(manifest, dict):
+            raise ValueError("ugyldig snapshot-manifest")
+        if type(manifest.get("format_version")) is not int or manifest["format_version"] != MANIFEST_FORMAT_VERSION:
+            raise ValueError("ukjent format_version i snapshot-manifest")
+        if manifest.get("sha256") != sha256:
+            raise ValueError("snapshot-manifestets sha256 stemmer ikke med JSONL")
+        if type(manifest.get("row_count")) is not int or manifest["row_count"] < 0:
+            raise ValueError("ugyldig row_count i snapshot-manifest")
+    rader = []
+    sett = set()
+    for nr, linje in enumerate(innhold.decode("utf-8").splitlines(), 1):
+        rad = json.loads(linje)
+        if not isinstance(rad, dict) or type(rad.get("id")) is not int or not isinstance(rad.get("tekst"), str):
+            raise ValueError(f"ugyldig bankrad paa linje {nr}: krever heltalls-id og tekst")
+        if rad["id"] in sett:
+            raise ValueError(f"duplikat chunk-id {rad['id']} paa linje {nr}")
+        sett.add(rad["id"])
+        rader.append(rad)
+    if manifest is not None and manifest["row_count"] != len(rader):
+        raise ValueError("snapshot-manifestets row_count stemmer ikke med JSONL")
+    if speil and not rader and not tillat_tom:
+        raise ValueError("tom JSONL avvises i speilmodus; bruk tillat_tom=True for tilsiktet tomming")
+    return rader, sha256 if speil else None, manifest["format_version"] if speil else None
+
+
 def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
-         modell: str | None = None, batch: int = BATCH) -> dict:
-    """jsonl -> bank_utdrag.db. Returnerer {"nye", "hoppet_over", "totalt", "modell"}."""
+         modell: str | None = None, batch: int = BATCH, speil: bool = False,
+         tillat_tom: bool = False) -> dict:
+    """Build from JSONL; speil=True removes obsolete IDs after a successful build."""
+    if tillat_tom and not speil:
+        raise ValueError("tillat_tom krever speil=True")
+    rader, snapshot_sha256, snapshot_format_version = _les_snapshot(
+        jsonl, speil=speil, tillat_tom=tillat_tom)
+    kilde_ids = {r["id"] for r in rader}
     db_path = db_path or utdrag_db_sti()
     modell = modell or embed_modell()
     if embed_fn is None:
@@ -132,19 +221,34 @@ def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
             raise RuntimeError(
                 f"utdraget er embeddet med {eksisterende_modell[0]}, men denne kjøringen bruker {modell}. "
                 "Slett bank_utdrag.db og bygg på nytt; to modeller kan ikke blandes i ett vektorrom.")
+        # Invalidate the old proof before any row or vector can change. Batch commits
+        # make interrupted builds resumable, but no partial DB may claim snapshot parity.
+        db.execute("DELETE FROM meta WHERE key IN ('snapshot_sha256', 'snapshot_rows', "
+                   "'snapshot_format_version')")
+        db.commit()
         db.execute("INSERT OR REPLACE INTO meta VALUES('embed_modell', ?)", (modell,))
         har = {r[0] for r in db.execute("SELECT chunk_id FROM utdrag_vec")}
+        eksisterende = {r[0]: r[1:] for r in db.execute(
+            "SELECT chunk_id, bok, samling, heading, tekst, proveniens, art_niva, tema FROM utdrag")}
         ventende = []
-        for linje in jsonl.read_text(encoding="utf-8").splitlines():
-            r = json.loads(linje)
-            if r["id"] not in har:
-                ventende.append(r)
-        hoppet = sum(1 for _ in har)
-        for linje in jsonl.read_text(encoding="utf-8").splitlines():   # metadata for allerede embeddede
-            r = json.loads(linje)
-            if r["id"] in har:
+        hoppet = 0
+        for r in rader:
+            cid = r["id"]
+            rad = (r.get("bok"), r.get("samling"), r.get("heading"), r["tekst"],
+                   r.get("proveniens"), r.get("art_niva"),
+                   json.dumps(r.get("tema", []), ensure_ascii=False))
+            gammel = eksisterende.get(cid)
+            if speil and cid in har and gammel is not None and gammel[3] == r["tekst"]:
+                if gammel != rad:
+                    db.execute("UPDATE utdrag SET bok=?, samling=?, heading=?, tekst=?, proveniens=?, "
+                               "art_niva=?, tema=? WHERE chunk_id=?", (*rad, cid))
+                hoppet += 1
+            elif not speil and cid in har:
                 db.execute("UPDATE utdrag SET art_niva=?, tema=? WHERE chunk_id=?",
-                           (r.get("art_niva"), json.dumps(r.get("tema", []), ensure_ascii=False), r["id"]))
+                           (r.get("art_niva"), rad[6], cid))
+                hoppet += 1
+            else:
+                ventende.append(r)
         for del_ in _batcher(ventende, batch):
             for forsok in range(4):
                 try:
@@ -155,6 +259,7 @@ def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
                         raise
                     time.sleep(2 ** forsok)
             for r, v in zip(del_, vektorer, strict=True):
+                db.execute("DELETE FROM utdrag_vec WHERE chunk_id=?", (r["id"],))
                 db.execute("INSERT OR REPLACE INTO utdrag(chunk_id, bok, samling, heading, tekst, proveniens,"
                            " art_niva, tema) VALUES (?,?,?,?,?,?,?,?)",
                            (r["id"], r["bok"], r["samling"], r["heading"], r["tekst"], r["proveniens"],
@@ -162,12 +267,28 @@ def bygg(jsonl: Path = JSONL, db_path: Path | None = None, *, embed_fn=None,
                 db.execute("INSERT INTO utdrag_vec(chunk_id, embedding) VALUES (?,?)",
                            (r["id"], sqlite_vec.serialize_float32(v)))
             db.commit()
+        fjernet = 0
+        if speil:
+            tekst_ids = {r[0] for r in db.execute("SELECT chunk_id FROM utdrag")}
+            vektor_ids = {r[0] for r in db.execute("SELECT chunk_id FROM utdrag_vec")}
+            if tekst_ids != vektor_ids:
+                raise RuntimeError("utdrag-databasen har ulike ID-sett mellom tekst og vektorer; avbrot speiling")
+            foreldet = tekst_ids - kilde_ids
+            for cid in foreldet:
+                db.execute("DELETE FROM utdrag_vec WHERE chunk_id=?", (cid,))
+                db.execute("DELETE FROM utdrag WHERE chunk_id=?", (cid,))
+            fjernet = len(foreldet)
+            db.execute("INSERT OR REPLACE INTO meta VALUES('snapshot_sha256', ?)", (snapshot_sha256,))
+            db.execute("INSERT OR REPLACE INTO meta VALUES('snapshot_rows', ?)", (str(len(rader)),))
+            db.execute("INSERT OR REPLACE INTO meta VALUES('snapshot_format_version', ?)",
+                       (str(snapshot_format_version),))
         totalt = db.execute("SELECT count(*) FROM utdrag_vec").fetchone()[0]
         db.execute("INSERT OR REPLACE INTO meta VALUES('bygd', ?)", (time.strftime("%Y-%m-%dT%H:%M:%S"),))
         db.commit()
     finally:
         db.close()
-    return {"nye": len(ventende), "hoppet_over": hoppet, "totalt": totalt, "modell": modell}
+    return {"nye": len(ventende), "hoppet_over": hoppet, "fjernet": fjernet,
+            "totalt": totalt, "modell": modell}
 
 
 def _batcher(rader: list[dict], maks_antall: int):
@@ -229,19 +350,26 @@ def sok(emne: str, k: int, *, db_path: Path | None = None, embed_fn=None,
 def main():
     p = argparse.ArgumentParser(description="Utdrag av bok-banken for forskningssøk-syntesen")
     sub = p.add_subparsers(dest="kommando", required=True)
-    e = sub.add_parser("eksporter", help="boker.db -> data/bank_utdrag.jsonl (kjøres på Macen)")
+    e = sub.add_parser("eksporter", help="boker.db -> JSONL + manifest (kjøres på Macen)")
     e.add_argument("--boker", default=str(STANDARD_BOKER))
     e.add_argument("--ut", default=str(JSONL))
     b = sub.add_parser("bygg", help="jsonl -> bank_utdrag.db med gjeldende embedder (kjøres der søket skal gå)")
     b.add_argument("--jsonl", default=str(JSONL))
     b.add_argument("--db", default=None)
+    b.add_argument("--speil", action="store_true", help="fjern DB-ID-er som mangler i hele JSONL-kilden")
+    b.add_argument("--tillat-tom", action="store_true", help="tillat at speilmodus tømmer databasen")
     sub.add_parser("status", help="finnes utdraget, hvilken modell, hvor mange chunks")
     a = p.parse_args()
     if a.kommando == "eksporter":
-        n = eksporter(Path(a.boker), Path(a.ut))
-        print(f"eksporterte {n} chunks til {a.ut} (prefikser: {domeneprofil.PROFIL.get('bank_proveniens')})")
+        ut = Path(a.ut)
+        n = eksporter(Path(a.boker), ut)
+        print(f"eksporterte {n} chunks til {ut} og manifest {manifest_sti(ut)} "
+              f"(prefikser: {domeneprofil.PROFIL.get('bank_proveniens')})")
     elif a.kommando == "bygg":
-        print(bygg(Path(a.jsonl), Path(a.db) if a.db else None))
+        if a.tillat_tom and not a.speil:
+            p.error("--tillat-tom krever --speil")
+        print(bygg(Path(a.jsonl), Path(a.db) if a.db else None,
+                   speil=a.speil, tillat_tom=a.tillat_tom))
     else:
         sti = utdrag_db_sti()
         if not finnes(sti):

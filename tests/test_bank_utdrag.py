@@ -2,6 +2,7 @@
 
 Nettverksfritt: fake embedder med tekst -> vektor-oppslag, ekte sqlite-vec.
 """
+import hashlib
 import json
 import sqlite3
 import sys
@@ -33,6 +34,15 @@ def _embed(tekster):
     return [VEKTORER.get(t, _vec(1.0)) for t in tekster]
 
 
+def _skriv_manifest(jsonl: Path, row_count: int | None = None) -> None:
+    innhold = jsonl.read_bytes()
+    if row_count is None:
+        row_count = len(innhold.splitlines())
+    manifest = {"format_version": bank_utdrag.MANIFEST_FORMAT_VERSION,
+                "row_count": row_count, "sha256": hashlib.sha256(innhold).hexdigest()}
+    bank_utdrag.manifest_sti(jsonl).write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+
 @pytest.fixture
 def boker(tmp_path):
     sti = tmp_path / "boker.db"
@@ -57,6 +67,10 @@ def test_eksporter_velger_paa_prefiks_og_er_sortert(boker, tmp_path):
     assert n == 3
     ids = [json.loads(l)["id"] for l in ut.read_text(encoding="utf-8").splitlines()]
     assert ids == [1, 2, 3]  # kokeboka (id 4) er ikke med; sortert på id
+    manifest = json.loads(bank_utdrag.manifest_sti(ut).read_text(encoding="utf-8"))
+    assert manifest["format_version"] == bank_utdrag.MANIFEST_FORMAT_VERSION
+    assert manifest["row_count"] == 3
+    assert manifest["sha256"] == hashlib.sha256(ut.read_bytes()).hexdigest()
 
 
 def test_eksporter_uten_prefiks_feiler_hoyt(boker, tmp_path, monkeypatch):
@@ -83,6 +97,248 @@ def test_bygg_er_idempotent_og_bokforer_modell(utdrag, tmp_path):
     assert r2["nye"] == 0 and r2["hoppet_over"] == 3
     assert len(kall) == 1  # andre kjøring embedder ingenting
     assert bank_utdrag.finnes(db)
+    meta = _meta(db)
+    assert "snapshot_format_version" not in meta
+
+
+def _ids(db_sti: Path, tabell: str) -> list[int]:
+    db = sqlite3.connect(db_sti)
+    db.enable_load_extension(True)
+    sqlite_vec.load(db)
+    rader = [r[0] for r in db.execute(f"SELECT chunk_id FROM {tabell} ORDER BY chunk_id")]
+    db.close()
+    return rader
+
+
+def _meta(db_sti: Path) -> dict[str, str]:
+    db = sqlite3.connect(db_sti)
+    try:
+        return dict(db.execute("SELECT key, value FROM meta"))
+    finally:
+        db.close()
+
+
+def test_speil_fjerner_chunks_som_er_tatt_ut_av_snapshot(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    rader = [json.loads(l) for l in utdrag.read_text(encoding="utf-8").splitlines()]
+    utdrag.write_text("\n".join(json.dumps(r) for r in rader if r["id"] != 2) + "\n", encoding="utf-8")
+    _skriv_manifest(utdrag)
+
+    resultat = bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+
+    assert resultat["fjernet"] == 1 and resultat["totalt"] == 2
+    assert _ids(db, "utdrag") == [1, 3]
+    assert _ids(db, "utdrag_vec") == [1, 3]
+    meta = _meta(db)
+    assert meta["snapshot_format_version"] == str(bank_utdrag.MANIFEST_FORMAT_VERSION)
+    assert meta["snapshot_rows"] == "2"
+    assert meta["snapshot_sha256"] == hashlib.sha256(utdrag.read_bytes()).hexdigest()
+
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    meta = _meta(db)
+    assert not {"snapshot_format_version", "snapshot_rows", "snapshot_sha256"} & meta.keys()
+
+
+def test_speil_reembedder_endret_tekst_med_samme_id(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    rader = [json.loads(l) for l in utdrag.read_text(encoding="utf-8").splitlines()]
+    rader[0]["tekst"] = "oppdatert chunkinnhold"
+    utdrag.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rader), encoding="utf-8")
+    _skriv_manifest(utdrag)
+    embedte = []
+
+    resultat = bank_utdrag.bygg(
+        utdrag, db, embed_fn=lambda tekster: embedte.extend(tekster) or _embed(tekster),
+        modell="bge-m3", speil=True)
+
+    assert resultat["nye"] == 1 and resultat["hoppet_over"] == 2
+    assert embedte == ["oppdatert chunkinnhold"]
+    lest = sqlite3.connect(db)
+    try:
+        assert lest.execute("SELECT tekst FROM utdrag WHERE chunk_id=?", (rader[0]["id"],)).fetchone()[0] == rader[0]["tekst"]
+    finally:
+        lest.close()
+    meta = _meta(db)
+    assert meta["snapshot_sha256"] == hashlib.sha256(utdrag.read_bytes()).hexdigest()
+
+
+def test_avbrutt_speil_fjerner_gammelt_snapshotbevis(utdrag, tmp_path, monkeypatch):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    rader = [json.loads(l) for l in utdrag.read_text(encoding="utf-8").splitlines()]
+    rader[0]["tekst"] = "tekst som krever ny embedding"
+    utdrag.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rader), encoding="utf-8")
+    _skriv_manifest(utdrag)
+    monkeypatch.setattr(bank_utdrag.time, "sleep", lambda _sekunder: None)
+
+    with pytest.raises(RuntimeError, match="embedding feilet"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=lambda _tekster: (_ for _ in ()).throw(
+            RuntimeError("embedding feilet")), modell="bge-m3", speil=True)
+
+    meta = _meta(db)
+    assert not {"snapshot_format_version", "snapshot_rows", "snapshot_sha256"} & meta.keys()
+    lest = sqlite3.connect(db)
+    try:
+        assert lest.execute("SELECT tekst FROM utdrag WHERE chunk_id=?", (rader[0]["id"],)).fetchone()[0] != rader[0]["tekst"]
+    finally:
+        lest.close()
+
+
+def test_avbrutt_inkrementell_bygging_fjerner_snapshotbevis(utdrag, tmp_path, monkeypatch):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    rader = [json.loads(l) for l in utdrag.read_text(encoding="utf-8").splitlines()]
+    rader.append({**rader[-1], "id": 9, "tekst": "ny inkrementell chunk"})
+    inkrement = tmp_path / "inkrement.jsonl"
+    inkrement.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rader),
+                         encoding="utf-8")
+    monkeypatch.setattr(bank_utdrag.time, "sleep", lambda _sekunder: None)
+
+    with pytest.raises(RuntimeError, match="embedding feilet"):
+        bank_utdrag.bygg(inkrement, db, embed_fn=lambda _tekster: (_ for _ in ()).throw(
+            RuntimeError("embedding feilet")), modell="bge-m3")
+
+    meta = _meta(db)
+    assert not {"snapshot_format_version", "snapshot_rows", "snapshot_sha256"} & meta.keys()
+
+
+def test_speil_holder_hele_eksporten_i_synk(tmp_path):
+    kilde = Path(__file__).resolve().parents[1] / "data" / "bank_utdrag.jsonl"
+    kildelinjer = kilde.read_text(encoding="utf-8").splitlines()
+    assert kildelinjer
+    slanket = tmp_path / "slanket.jsonl"
+    slanket.write_text("\n".join(kildelinjer[1:]) + "\n", encoding="utf-8")
+    _skriv_manifest(slanket)
+    db = tmp_path / "utdrag.db"
+
+    forste = bank_utdrag.bygg(kilde, db, embed_fn=_embed, modell="bge-m3")
+    andre = bank_utdrag.bygg(slanket, db, embed_fn=_embed, modell="bge-m3", speil=True)
+
+    assert forste["totalt"] == len(kildelinjer)
+    assert andre["fjernet"] == 1 and andre["totalt"] == len(kildelinjer) - 1
+    assert len(_ids(db, "utdrag")) == len(kildelinjer) - 1
+    assert len(_ids(db, "utdrag_vec")) == len(kildelinjer) - 1
+
+
+def test_speil_validerer_hele_snapshotet_for_sletting(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    utdrag.write_text('{"id":1,"tekst":"ny"}\n{ugyldig json\n', encoding="utf-8")
+    _skriv_manifest(utdrag, row_count=2)
+
+    with pytest.raises(json.JSONDecodeError):
+        bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+
+    assert _ids(db, "utdrag") == [1, 2, 3]
+    assert _ids(db, "utdrag_vec") == [1, 2, 3]
+
+
+def test_speil_beholder_eksisterende_data_hvis_embedding_feiler(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    utdrag.write_text(json.dumps({"id": 9, "bok": "ny", "tekst": "ny tekst"}) + "\n", encoding="utf-8")
+    _skriv_manifest(utdrag)
+
+    with pytest.raises(ValueError, match="zip\\(\\) argument 2 is shorter than argument 1"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=lambda _tekster: [], modell="bge-m3", speil=True)
+
+    assert _ids(db, "utdrag") == [1, 2, 3]
+    assert _ids(db, "utdrag_vec") == [1, 2, 3]
+
+
+def test_speil_avviser_tom_fil_med_mindre_tomming_er_tillat(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    utdrag.write_text("", encoding="utf-8")
+    _skriv_manifest(utdrag)
+
+    with pytest.raises(ValueError, match="tom JSONL avvises"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    assert _ids(db, "utdrag") == [1, 2, 3]
+
+    resultat = bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3",
+                                speil=True, tillat_tom=True)
+    assert resultat["fjernet"] == 3 and resultat["totalt"] == 0
+    assert _ids(db, "utdrag") == []
+    assert _ids(db, "utdrag_vec") == []
+
+
+def test_speil_avviser_endret_jsonl_med_gammelt_manifest(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    utdrag.write_text(utdrag.read_text(encoding="utf-8").splitlines()[0] + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="sha256 stemmer ikke"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+
+    assert _ids(db, "utdrag") == [1, 2, 3]
+    assert _ids(db, "utdrag_vec") == [1, 2, 3]
+
+
+def test_speil_avviser_manifest_med_feil_radantall(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    _skriv_manifest(utdrag, row_count=2)
+
+    with pytest.raises(ValueError, match="row_count stemmer ikke"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+
+    assert _ids(db, "utdrag") == [1, 2, 3]
+
+
+def test_speil_krever_manifest(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    bank_utdrag.manifest_sti(utdrag).unlink()
+
+    with pytest.raises(ValueError, match="krever lesbart manifest"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    assert _ids(db, "utdrag") == [1, 2, 3]
+
+
+def test_speil_avviser_ukjent_manifestversjon(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    manifest = json.loads(bank_utdrag.manifest_sti(utdrag).read_text(encoding="utf-8"))
+    manifest["format_version"] = bank_utdrag.MANIFEST_FORMAT_VERSION + 1
+    bank_utdrag.manifest_sti(utdrag).write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="ukjent format_version"):
+        bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    assert _ids(db, "utdrag") == [1, 2, 3]
+
+
+def test_avbrutt_eksport_mellom_filbytter_avvises_av_speil(boker, tmp_path, monkeypatch):
+    ut = tmp_path / "bank_utdrag.jsonl"
+    db_sti = tmp_path / "utdrag.db"
+    bank_utdrag.eksporter(boker, ut, ["epmc:", "core:fiskehelse"])
+    bank_utdrag.bygg(ut, db_sti, embed_fn=_embed, modell="bge-m3")
+    db = sqlite3.connect(boker)
+    db.execute("INSERT INTO book_chunks VALUES (?,?,?,?,?,?,?,?)",
+               (5, "Artikkel C", "nyrehelse", None, "nyre tekst", 5, "d", "epmc:nyrehelse:PMC2 folded"))
+    db.commit()
+    db.close()
+    original_replace = bank_utdrag.os.replace
+    antall = 0
+
+    def avbryt_manifest(src, dst):
+        nonlocal antall
+        antall += 1
+        if antall == 2:
+            raise OSError("simulert avbrudd foer manifestpublisering")
+        original_replace(src, dst)
+
+    monkeypatch.setattr(bank_utdrag.os, "replace", avbryt_manifest)
+    with pytest.raises(OSError, match="simulert avbrudd"):
+        bank_utdrag.eksporter(boker, ut, ["epmc:", "core:fiskehelse"])
+    monkeypatch.setattr(bank_utdrag.os, "replace", original_replace)
+
+    with pytest.raises(ValueError, match="sha256 stemmer ikke"):
+        bank_utdrag.bygg(ut, db_sti, embed_fn=_embed, modell="bge-m3", speil=True)
+    assert _ids(db_sti, "utdrag") == [1, 2, 3]
+    assert _ids(db_sti, "utdrag_vec") == [1, 2, 3]
 
 
 def test_bygg_nekter_a_blande_modeller(utdrag, tmp_path):
