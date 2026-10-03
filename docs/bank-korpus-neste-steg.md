@@ -69,13 +69,17 @@ tidligere svart 401. En lokal maling kan derfor ikke omtales som produksjonsmali
 ### Kontrollert offentlig materiale
 
 Mattilsynets [rapportside for 2022](https://mattilsynet.no/for/overvakingsprogram-for-fiskefor/overvakingsprogram-for-fiskefor-2022)
-lenker til PDF-en [Program for overvaking av fiskefor: arsrapport for prover
+og [Havforskningsinstituttets egen rapportpost (Rapport fra havforskningen
+2023-36)](https://www.hi.no/hi/nettrapporter/rapport-fra-havforskningen-2023-36)
+viser rapporten som utgitt av HI pa oppdrag fra Mattilsynet. HI sin PDF sier
+"Distribusjon: Apen". Posten lenker til PDF-en [Program for overvaking av fiskefor: arsrapport for prover
 innsamlet i 2022](https://mattilsynet-xp7prod.enonic.cloud/_/attachment/inline/00b36682-5c14-49b4-b874-26d484769c3d:91a86d753a98b59afebfd3b43e4b95e9617c719c/Rapport_%20Overv%C3%A5kingsprogram%20for%20fiskef%C3%B4r%202022.pdf).
 PDF-en oppgir Havforskningsinstituttet som rapportutgiver og Mattilsynet som
 oppdragsgiver. Forsiden sier distribusjon "Apen".
 
 Jeg fant ingen lisens- eller gjenbruksbetingelse pa rapportsiden eller i
-PDF-teksten ved sok etter lisens, rettigheter, Creative Commons og kopiering.
+PDF-teksten i verken Mattilsynets eller HI sin kopi ved sok etter opphavsrett,
+lisens, rettigheter, Creative Commons, CC BY og kopiering.
 "Apen" distribusjon dokumenterer at rapporten er tilgjengelig, men avklarer
 ikke i seg selv vilkarene for a kopiere hele eller deler av teksten inn i et
 annet korpus. Rettighetsstatus for innlemming er derfor fortsatt uavklart.
@@ -122,12 +126,20 @@ fagansvaret er relevant).
 
 ### Tryggeste neste handling
 
-Be rettighetshaver/utgiver avklare skriftlig om rapporttekst kan lagres og
-indekseres i et internt forskningskorpus, hvilke utdragslengder som eventuelt
-kan vises, om resultatet kan brukes i genererte synteser, og hvilke krav som
-gjelder for attribusjon, videre distribusjon og sletting. Mattilsynet kan
-avklare oppdragsgiverens vilkar; Havforskningsinstituttet bor inkluderes som
-rapportutgiver hvis Mattilsynet ikke eier alle rettigheter.
+Sporr forst HI, som forfatterinstitusjon og utgiver, og Mattilsynet, som
+oppdragsgiver. Bruk HIs [generelle postmottak](https://www.hi.no/hi/om-oss/kontaktinformasjon)
+(`post@hi.no`) og Mattilsynets [felles postmottak](https://www.mattilsynet.no/kontakt-oss/kontaktinformasjon)
+(`postmottak@mattilsynet.no`); be dem rute foresporselen til den som forvalter
+publiseringsavtalen/rettighetene, og be de to etatene samordne svaret. For
+rettighetstillatelse er disse operative kontaktpunktene mer direkte enn a
+starte hos departementene. LMD er Mattilsynets etatsstyrer og NFD HI sin eier;
+departementene er eskalering dersom etatene ikke vet hvem som kan klarere
+rapporten.
+
+Be om skriftlig svar pa om rapporttekst kan lagres og indekseres i et internt
+forskningskorpus, hvilke utdragslengder som eventuelt kan vises, om resultatet
+kan brukes i genererte synteser, og hvilke krav som gjelder for attribusjon,
+videre distribusjon og sletting.
 
 Utkast til henvendelse, ikke sendt:
 
