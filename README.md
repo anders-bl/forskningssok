@@ -844,6 +844,7 @@ venv/bin/python bank_utdrag.py eksporter
 # 2. Etter deploy av den komplette, committede eksporten, i containeren:
 docker exec <forskningssok-container> python bank_utdrag.py bygg --speil
 docker exec <forskningssok-container> python bank_utdrag.py status
+docker exec <forskningssok-container> python bank_utdrag.py verifiser
 ```
 
 Manifestet inneholder formatversjon, radantall og SHA-256 av JSONL-bytene. `bygg --speil`
@@ -853,6 +854,10 @@ lagres manifestversjon, radantall og hash i `bank_utdrag.db` sin `meta`-tabell, 
 kalibrering senere kan avvise et utdrag som ikke har identisk snapshot. Vanlig inkrementell
 bygging fjerner disse snapshotfeltene, siden databasen da ikke lenger beviser samsvar med én
 komplett eksport.
+
+`verifiser` åpner databasen skrivefritt og sammenligner manifestet med snapshotfeltene,
+tekstfeltene og ID-settene i tekst- og vektortabellen. Den returnerer detaljert JSON og exitkode
+1 ved avvik; den re-embedder ikke og beviser ikke at vektorverdiene ble regnet riktig.
 
 `bygg` uten `--speil` er inkrementell og lar ID-er som er fjernet fra eksporten bli liggende.
 Bruk `--speil` bare med et komplett, kontrollert JSONL-snapshot; det re-embedder ID-er med

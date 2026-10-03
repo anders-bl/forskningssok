@@ -204,6 +204,49 @@ def test_avbrutt_inkrementell_bygging_fjerner_snapshotbevis(utdrag, tmp_path, mo
     assert not {"snapshot_format_version", "snapshot_rows", "snapshot_sha256"} & meta.keys()
 
 
+def test_verifiser_godkjenner_eksakt_speilsnapshot_uten_a_skrive(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    innhold_foer = db.read_bytes()
+
+    resultat = bank_utdrag.verifiser(utdrag, db)
+
+    assert resultat["ok"] is True
+    assert resultat["rows"] == 3
+    assert all(resultat["checks"].values())
+    assert db.read_bytes() == innhold_foer
+
+
+def test_verifiser_finner_innholds_og_vektoravvik(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3", speil=True)
+    conn = sqlite3.connect(db)
+    conn.enable_load_extension(True)
+    sqlite_vec.load(conn)
+    conn.execute("UPDATE utdrag SET tekst='korrupt tekst' WHERE chunk_id=1")
+    conn.execute("DELETE FROM utdrag_vec WHERE chunk_id=2")
+    conn.commit()
+    conn.close()
+    innhold_foer = db.read_bytes()
+
+    resultat = bank_utdrag.verifiser(utdrag, db)
+
+    assert resultat["ok"] is False
+    assert resultat["checks"]["tekstinnhold"] is False
+    assert resultat["checks"]["vektor_id-er"] is False
+    assert db.read_bytes() == innhold_foer
+
+
+def test_verifiser_avviser_inkrementell_db_uten_snapshotbevis(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+
+    resultat = bank_utdrag.verifiser(utdrag, db)
+
+    assert resultat["ok"] is False
+    assert "snapshot_sha256" in resultat["errors"]
+
+
 def test_speil_holder_hele_eksporten_i_synk(tmp_path):
     kilde = Path(__file__).resolve().parents[1] / "data" / "bank_utdrag.jsonl"
     kildelinjer = kilde.read_text(encoding="utf-8").splitlines()
