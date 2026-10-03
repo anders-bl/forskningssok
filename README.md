@@ -834,12 +834,26 @@ for ti observasjoner. Oppsummeringen er rettet til gjennomsnittet av de to midte
 verdiene; raamalingene er uendret.
 
 ```bash
-# 1. På Macen: boker.db -> data/bank_utdrag.jsonl (ren tekst, allerede lisensgatet), commit
+# 1. Pa Macen: boker.db -> JSONL + manifest (ren tekst, allerede lisensgatet), commit begge
 venv/bin/python bank_utdrag.py eksporter
-# 2. Etter deploy, i containeren (embedder ~4 700 chunks via ai-proxy; idempotent, kan gjentas):
-docker exec <forskningssok-container> python bank_utdrag.py bygg
+# 2. Etter deploy av den komplette, committede eksporten, i containeren:
+docker exec <forskningssok-container> python bank_utdrag.py bygg --speil
 docker exec <forskningssok-container> python bank_utdrag.py status
 ```
+
+Manifestet inneholder formatversjon, radantall og SHA-256 av JSONL-bytene. `bygg --speil`
+kontrollerer alle tre foer DB-endringer. Hvis eksporten stopper mellom publisering av JSONL
+og manifest, stemmer ikke kontrollsummen, og speilbyggingen avvises. Ved vellykket speilbygg
+lagres manifestversjon, radantall og hash i `bank_utdrag.db` sin `meta`-tabell, slik at en
+kalibrering senere kan avvise et utdrag som ikke har identisk snapshot. Vanlig inkrementell
+bygging fjerner disse snapshotfeltene, siden databasen da ikke lenger beviser samsvar med én
+komplett eksport.
+
+`bygg` uten `--speil` er inkrementell og lar ID-er som er fjernet fra eksporten bli liggende.
+Bruk `--speil` bare med et komplett, kontrollert JSONL-snapshot; det re-embedder ID-er med
+endret tekst, oppdaterer metadata og fjerner DB-ID-er som mangler i filen. Antall slettede
+rapporteres under `fjernet`. Speilmodus avviser tom input som vern mot utilsiktet full sletting.
+For en tilsiktet tom bank kreves ogsaa `--tillat-tom`.
 
 Eksporten (2026-09-25) legger også art og temaer på hver chunk, regnet ut per ARTIKKEL (tittel + de
 tre første chunkene, samme grunnlag som fasiten): `art_niva` (maal/naer/annet/ingen) og `tema` (se
