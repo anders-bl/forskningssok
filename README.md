@@ -111,6 +111,11 @@ atskilt — lokal fil er gitignored, prod starter tomt). Prod-deploy koster små
 ekte Mistral-API-bruk (mistral-embed er billig — se `ai-proxy/main.py`s prisliste),
 ikke lenger gratis som lokal Ollama.
 
+Klienten kontrollerer også modell-ID (`mistral-embed`), dimensjon (1024), antall vektorer
+og lengden på hver vektor fra `/embed`. Avvik stopper bygging/søk før embeddingene brukes.
+Proxyen gir modellaliaset, ikke en versjonsfestet provider-ID; et uvarslet bytte bak samme
+alias kan derfor ikke oppdages av denne sjekken alene.
+
 **Teste `AI_PROXY_URL`-gatede flater (dossier, embed) lokalt uten Dokploy-tilgang**
 (lagt til 2026-09-16): Anders' Mac har ingen nettverkstilgang til den EKTE ai-proxyen —
 den er bevisst nettverksisolert til `dokploy-network` (`ai-proxy/docker-compose.yml`:
