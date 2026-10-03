@@ -93,6 +93,33 @@ fra 2026-10-02 viser både direkte treff og null treff på detaljerte
 ultralydspørsmål. Disse forsøkene begrunner videre måling, men beviser ikke at
 banken forbedrer svarene.
 
+### Lokal BGE-probe på tvers av temaer (2026-10-03)
+
+En håndskrevet probe kjørte ti setningsspørsmål mot lokal `boker.db` med lokal
+bge-m3 og eksisterende proveniensfilter, BGE-kalibrering og `k=8`. Spørsmålene er
+ikke hentet fra brukerhistorikk. Fullt søkesett og treffmetadata er lagret i
+`data/bank_korpus_retrieval_probe_2026-10-03.json`; fulltekst er utelatt.
+
+- Fem temaspørsmål (velferd, immunitet, nefrokalsinose/miljø, presisjonsfôring og
+  rask mikrobedeteksjon) ga alle treff. De viser at søket finner materiale i
+  disse brede temaene, men er ikke relevansannotert og kan ikke telles som
+  presisjon eller dekningsgrad.
+- Tre smale metode-/målespørsmål ga også treff. Ultralydspørsmålet om validert
+  probe-frekvens og skannedekning fikk en nefrokalsinoseartikkel i `skarpt`-båndet
+  (L2 0,8317), uten at treffet etablerer dekning av den etterspurte
+  ultralydprotokollen. eDNA-spørsmålet fikk blant annet en eDNA-artikkel om en
+  annen organisme, men gir ikke grunn til å anta at primere eller deteksjonsgrense
+  for lakselus er dekket.
+- Begge kontrollspørsmålene utenfor domenet ble avvist som MØRKT uten treff
+  (L2 0,9740 og 0,9825).
+
+Dette er et red-team-signal for bruksgrensen: avstandsterskelen avviser
+åpenbart uvedkommende spørsmål, men skiller ikke alltid tematisk nærliggende
+bakgrunn fra kildebelegg for en spesifikk metode. Kildeoppdagelse kan vise slike
+treff med tydelig avgrensning; direkte svar eller metodepåstander trenger egne
+relevansetiketter og holdout-kontroller. Målingen brukte lokal `boker.db`, så den
+sier ikke noe om Mistral-produksjonsutdraget.
+
 ## Neste trinn
 
 1. Lag en håndvurdert, balansert søkepakke med de fire store temaene, noen små

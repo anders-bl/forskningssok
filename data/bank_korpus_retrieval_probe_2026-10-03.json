@@ -1,0 +1,568 @@
+{
+  "tittel": "Eksplorativ retrieval-probe for flere banktemaer",
+  "maalt": "2026-10-03T15:52:31.954901+00:00",
+  "formaal": "Utviklingsprobe, ikke blind fasit, terskelkalibrering eller godkjenning av direkte svar. Sporsmalene er handskrevne for denne runden og ikke hentet fra brukerhistorikk.",
+  "modell": "bge-m3 via lokal Ollama; ingen AI-proxy",
+  "profil": "fiskehelse",
+  "kilde": "lokal boker.db, read-only; ikke produksjonsutdraget",
+  "kilde_storrelse_bytes": 1505136640,
+  "kilde_mtime": "2026-09-29T21:10:09.306327+00:00",
+  "metrik": "sqlite-vec L2; lavere er nærmere",
+  "retrieval": "bank_bakgrunn.hent_bakgrunn k=8; eksisterende proveniensfilter, kalibrering og maks to chunks per dokument",
+  "grupper": {
+    "temadekning": "temasporsmal som var kjent fra korpusoversikten; resultatet beviser ikke direkte faktadekning",
+    "spesifikt_nabospor": "sporsmal om detaljer/metoder som korpusoversikten ikke etablerte at korpuset dekket",
+    "utenfor_domene": "kontroller utenfor fiskehelse/akvakultur"
+  },
+  "sporsmal": [
+    {
+      "gruppe": "temadekning",
+      "tema": "velferd",
+      "sporring": "Which external and internal welfare indicators are used to assess farmed rainbow trout and tilapia?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.7765,
+        "forkastet_morkt": 0
+      },
+      "dokumenter": [
+        {
+          "tittel": "EPI-DOM framework for assessing fish welfare: external and internal indicators for tilapia.",
+          "samling": "tidlig-deteksjon",
+          "art_niva": "naer",
+          "tema": [
+            "velferd"
+          ],
+          "beste_avstand": 0.7765,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Editorial: Fish Welfare in Aquaculture and Research-Where Are We Going?",
+          "samling": "velferd",
+          "art_niva": "naer",
+          "tema": [
+            "velferd"
+          ],
+          "beste_avstand": 0.8367,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "samling": "fiskehelse-no",
+          "art_niva": "maal",
+          "tema": [
+            "velferd"
+          ],
+          "beste_avstand": 0.8565,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "A bioeconomic performance index for comparison of an experimental intensive aquaponic system with tilapia and tomato ver",
+          "samling": "velferd",
+          "art_niva": "naer",
+          "tema": [
+            "okonomi"
+          ],
+          "beste_avstand": 0.9139,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "Fish Welfare in Recirculating Aquaculture Systems (RAS): The Imperative for Environmental Enrichment (EE).",
+          "samling": "velferd",
+          "art_niva": "maal",
+          "tema": [
+            "velferd",
+            "miljo"
+          ],
+          "beste_avstand": 0.9199,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        }
+      ]
+    },
+    {
+      "gruppe": "temadekning",
+      "tema": "immunitet",
+      "sporring": "What immune and mucosal responses are discussed in salmonid vaccination against bacterial disease?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.8671,
+        "forkastet_morkt": 0
+      },
+      "dokumenter": [
+        {
+          "tittel": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "samling": "vaksine",
+          "art_niva": "maal",
+          "tema": [
+            "immun",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.8671,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Back to basics: locally produced vaccines offer a practical alternative to antibiotics for prevention of streptococcosis",
+          "samling": "vaksine",
+          "art_niva": "naer",
+          "tema": [
+            "immun",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.8801,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+          "samling": "tidlig-deteksjon",
+          "art_niva": "maal",
+          "tema": [
+            "immun",
+            "ernaring"
+          ],
+          "beste_avstand": 0.8882,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Advancements in Vaccinology Against Infectious Hematopoietic Necrosis Virus (IHNV): From Traditional Methods to Next-Gen",
+          "samling": "vaksine",
+          "art_niva": "maal",
+          "tema": [
+            "infeksjon",
+            "immun"
+          ],
+          "beste_avstand": 0.8883,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "DNA Vaccination in Farmed Fish with a Focus on Salmonid Alphavirus Infection in Atlantic Salmon (Salmo salar",
+          "samling": "vaksine",
+          "art_niva": "maal",
+          "tema": [
+            "immun",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.8964,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        }
+      ]
+    },
+    {
+      "gruppe": "temadekning",
+      "tema": "miljo_nyre",
+      "sporring": "How are elevated carbon dioxide and water pH associated with nephrocalcinosis in farmed salmonids?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.7192,
+        "forkastet_morkt": 0
+      },
+      "dokumenter": [
+        {
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "miljo",
+            "overvaking",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.7192,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "samling": "ulven-nefrokalsinose",
+          "art_niva": "naer",
+          "tema": [
+            "miljo",
+            "nyre"
+          ],
+          "beste_avstand": 0.8265,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Recent Advances in the Storage, Transportation, and Quality Control of Eriocheir sinensis: A Review.",
+          "samling": "vannkjemi",
+          "art_niva": "annet",
+          "tema": [],
+          "beste_avstand": 0.8891,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "samling": "fiskehelse-no",
+          "art_niva": "maal",
+          "tema": [
+            "velferd",
+            "miljo"
+          ],
+          "beste_avstand": 0.8902,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "An ecophysiological approach to improving health outcomes of ornamental shrimp during aquarium trade and transportation.",
+          "samling": "vannkjemi",
+          "art_niva": "annet",
+          "tema": [],
+          "beste_avstand": 0.8991,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "DNA Vaccination in Farmed Fish with a Focus on Salmonid Alphavirus Infection in Atlantic Salmon (Salmo salar",
+          "samling": "vaksine",
+          "art_niva": "maal",
+          "tema": [
+            "infeksjon",
+            "immun"
+          ],
+          "beste_avstand": 0.9055,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        }
+      ]
+    },
+    {
+      "gruppe": "temadekning",
+      "tema": "ernaring",
+      "sporring": "What precision feeding methods and equipment are used in aquaculture?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.7176,
+        "forkastet_morkt": 0
+      },
+      "dokumenter": [
+        {
+          "tittel": "An Overview of the Research Status and Advances in Precision Feeding Technology and Equipment in Aquaculture",
+          "samling": "velferd",
+          "art_niva": "naer",
+          "tema": [],
+          "beste_avstand": 0.7176,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "An Intelligent IoT-Based Predictive Control System for Water Quality and Energy Management in Koi Aquaculture.",
+          "samling": "velferd",
+          "art_niva": "naer",
+          "tema": [
+            "miljo",
+            "maskinsyn"
+          ],
+          "beste_avstand": 0.8595,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Gut Microbiomes of Rainbow Trout and Atlantic Salmon: Nutritional Modulation, Mucosal Immunity, and Resistome Risk.",
+          "samling": "tidlig-deteksjon",
+          "art_niva": "maal",
+          "tema": [
+            "ernaring",
+            "immun"
+          ],
+          "beste_avstand": 0.8614,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Application of Artificial Intelligence and Computer Vision for Measuring and Counting Oysters.",
+          "samling": "bildeanalyse-akvakultur",
+          "art_niva": "annet",
+          "tema": [
+            "maskinsyn"
+          ],
+          "beste_avstand": 0.882,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "Omics technologies in aquafeed: unlocking the black box towards systems biology.",
+          "samling": "lever",
+          "art_niva": "naer",
+          "tema": [
+            "ernaring"
+          ],
+          "beste_avstand": 0.891,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        }
+      ]
+    },
+    {
+      "gruppe": "temadekning",
+      "tema": "overvaking",
+      "sporring": "What approaches are used for rapid detection of aquatic microorganisms?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 8,
+        "beste_avstand": 0.7536,
+        "forkastet_morkt": 0
+      },
+      "dokumenter": [
+        {
+          "tittel": "Progress of Rapid Detection Technology for Aquatic Microorganisms: A Comprehensive Review.",
+          "samling": "surveillance",
+          "art_niva": "naer",
+          "tema": [
+            "overvaking"
+          ],
+          "beste_avstand": 0.7536,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Trypanosomes of fish as an emerging threat to aquaculture systems in China.",
+          "samling": "surveillance",
+          "art_niva": "naer",
+          "tema": [
+            "overvaking"
+          ],
+          "beste_avstand": 0.8378,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "samling": "surveillance",
+          "art_niva": "maal",
+          "tema": [
+            "overvaking",
+            "infeksjon",
+            "miljo"
+          ],
+          "beste_avstand": 0.8476,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "Charting the Future: Advanced Technologies for Sustainable Parasite Control in Aquaculture.",
+          "samling": "tidlig-deteksjon",
+          "art_niva": "naer",
+          "tema": [
+            "infeksjon",
+            "overvaking"
+          ],
+          "beste_avstand": 0.8614,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "YOLO-CBNet: A robust attention-enhanced detection framework for underwater fish recognition in aquaculture environments.",
+          "samling": "bildeanalyse-akvakultur",
+          "art_niva": "naer",
+          "tema": [
+            "maskinsyn",
+            "overvaking"
+          ],
+          "beste_avstand": 0.8758,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        }
+      ]
+    },
+    {
+      "gruppe": "spesifikt_nabospor",
+      "tema": "ultralyd",
+      "sporring": "Which ultrasound probe frequency and kidney scan coverage are validated for grading nephrocalcinosis in Atlantic salmon?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 7,
+        "beste_avstand": 0.8317,
+        "forkastet_morkt": 2785
+      },
+      "dokumenter": [
+        {
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.8317,
+          "beste_band": "skarpt",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids may represent evolu",
+          "samling": "nyrehelse",
+          "art_niva": "maal",
+          "tema": [
+            "nyre"
+          ],
+          "beste_avstand": 0.853,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "First Report of Nephrocalcinosis in Aquacultured Brazilian Sardine (Sardinella brasiliensis Steindachner, 1879).",
+          "samling": "ulven-nefrokalsinose",
+          "art_niva": "naer",
+          "tema": [
+            "miljo",
+            "nyre"
+          ],
+          "beste_avstand": 0.8639,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Velferdsindikatorer for regnbueørret i oppdrett: Hvordan vurdere og dokumentere fiskevelferd",
+          "samling": "fiskehelse-no",
+          "art_niva": "maal",
+          "tema": [
+            "velferd"
+          ],
+          "beste_avstand": 0.926,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        },
+        {
+          "tittel": "DNA Vaccination in Farmed Fish with a Focus on Salmonid Alphavirus Infection in Atlantic Salmon (Salmo salar",
+          "samling": "vaksine",
+          "art_niva": "maal",
+          "tema": [
+            "infeksjon",
+            "immun"
+          ],
+          "beste_avstand": 0.9265,
+          "beste_band": "delvis",
+          "biter_i_topp8": 1
+        }
+      ]
+    },
+    {
+      "gruppe": "spesifikt_nabospor",
+      "tema": "edna",
+      "sporring": "Which primers and detection limit were validated for eDNA monitoring of sea lice at salmon farms?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 4,
+        "beste_avstand": 0.8709,
+        "forkastet_morkt": 2749
+      },
+      "dokumenter": [
+        {
+          "tittel": "Environmental DNA screening of Phocoenobacter atlanticus subsp. atlanticus in Atlantic salmon aquaculture.",
+          "samling": "surveillance",
+          "art_niva": "maal",
+          "tema": [
+            "overvaking",
+            "miljo"
+          ],
+          "beste_avstand": 0.8709,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        },
+        {
+          "tittel": "Vaccination modality and injection site influence the immune response and protection against sea lice Lepeophtheirus ",
+          "samling": "vaksine",
+          "art_niva": "maal",
+          "tema": [
+            "immun",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.8929,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        }
+      ]
+    },
+    {
+      "gruppe": "spesifikt_nabospor",
+      "tema": "diagnostikk",
+      "sporring": "What sensitivity and specificity compare radiography with ultrasound for grading salmon nephrocalcinosis against histology?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "",
+        "antall": 2,
+        "beste_avstand": 0.873,
+        "forkastet_morkt": 2201
+      },
+      "dokumenter": [
+        {
+          "tittel": "Nephrocalcinosis in farmed salmonids: diagnostic challenges associated with low performance and sporadic mortality.",
+          "samling": "nyrehelse",
+          "art_niva": "maal",
+          "tema": [
+            "nyre",
+            "overvaking",
+            "infeksjon"
+          ],
+          "beste_avstand": 0.873,
+          "beste_band": "delvis",
+          "biter_i_topp8": 2
+        }
+      ]
+    },
+    {
+      "gruppe": "utenfor_domene",
+      "tema": "batteri",
+      "sporring": "How do engineers reduce thermal runaway risk in lithium-ion grid storage batteries?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 0.974,
+        "forkastet_morkt": 312
+      },
+      "dokumenter": []
+    },
+    {
+      "gruppe": "utenfor_domene",
+      "tema": "motor",
+      "sporring": "How can I diagnose a diesel engine misfire?",
+      "status": {
+        "tilgjengelig": true,
+        "kilde": "boker.db",
+        "arsak": "banken dekker ikke emnet (alle treff i MØRKT-båndet)",
+        "antall": 0,
+        "beste_avstand": 0.9825,
+        "forkastet_morkt": 99
+      },
+      "dokumenter": []
+    }
+  ],
+  "begrensninger": [
+    "Kun 10 handskrevne sporsmal fra denne runden, ikke blindt vurdert.",
+    "Topptreff og metadata lagret; fulltekstukrag er bevisst utelatt.",
+    "BGE-m3 lokal boker.db er et annet korpus-/runtimeoppsett enn produksjonens mistral-embeddede bank_utdrag.db.",
+    "Morkegrensen er gjeldende BGE-bokkalibrering; resultatene kan ikke brukes til a kalibrere Mistral.",
+    "Temaklassifisering/art_niva er signaler, ikke relevansfasit."
+  ]
+}
