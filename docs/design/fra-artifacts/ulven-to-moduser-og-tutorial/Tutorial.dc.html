@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<title>Forskningssøk — slik leser du en rapport</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  body { margin: 0; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: #F8F7F4; color: #1C1C1A; }
+  .back-link { font-size: 13px; color: #5A5A56; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .back-link:hover { color: #1C1C1A; }
+  .panel { background: #FFFFFF; border: 1px solid #E4E2D9; border-radius: 12px; padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .num { width: 24px; height: 24px; border-radius: 50%; background: #2E5C47; color: #FFFFFF; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+</style>
+</helmet>
+
+<div style="width: 1280px; height: 900px; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 18px;">
+
+  <div style="display: flex; align-items: center; gap: 18px;">
+    <a href="Start.dc.html" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+      Tilbake
+    </a>
+    <div style="font-size: 19px; font-weight: 700;">Slik leser du en rapport</div>
+  </div>
+  <div style="font-size: 13.5px; color: #5A5A56; max-width: 760px; line-height: 1.6;">
+    Fire enkle regler. De samme reglene gjelder uansett om rapporten kom fra &laquo;Søk og
+    samle&raquo; eller &laquo;Utforsk et spørsmål&raquo;.
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; flex-grow: 1;">
+
+    <div class="panel">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="num">1</div>
+        <div style="font-size: 15.5px; font-weight: 600;">To slags tekst</div>
+      </div>
+      <p style="font-size: 13px; line-height: 1.6; color: #3A3A37; margin: 0;">
+        Det meste du ser er hentet rett fra kilden &mdash; ingen omskriving. Der AI faktisk
+        har satt noe sammen, er det alltid tydelig merket.
+      </p>
+      <div style="display: flex; gap: 10px; margin-top: 4px;">
+        <div style="flex: 1; background: #FBFAF7; border: 1px solid #E4E2D9; border-radius: 8px; padding: 10px 12px;">
+          <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #5A5A56; margin-bottom: 5px;">Direkte fra kilden</div>
+          <div style="font-size: 12px; color: #1C1C1A; line-height: 1.5;">&laquo;Elevated calcium deposition was observed in 12 of 40 smolt post-transfer.&raquo;</div>
+        </div>
+        <div style="flex: 1; background: #EDF2EE; border: 1px solid #C9DBD1; border-radius: 8px; padding: 10px 12px;">
+          <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #2E5C47; margin-bottom: 5px;">AI-sammendrag</div>
+          <div style="font-size: 12px; color: #1C1C1A; line-height: 1.5;">&laquo;Flere kilder peker på sjøvannsovergangen som en sårbar periode.&raquo;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="num">2</div>
+        <div style="font-size: 15.5px; font-weight: 600;">Hver AI-setning peker til en ekte kilde</div>
+      </div>
+      <p style="font-size: 13px; line-height: 1.6; color: #3A3A37; margin: 0;">
+        Tallet i klammer er ikke pynt &mdash; det er en lenke. Du kan alltid sjekke selv.
+      </p>
+      <div style="background: #FBFAF7; border: 1px solid #E4E2D9; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.6;">
+        &laquo;Flere av de nyeste kildene <span style="color: #2E5C47; font-weight: 700;">[1][2]</span> peker på sjøvannsovergangen som en sårbar periode for nyrehelse&hellip;&raquo;
+      </div>
+      <div style="font-size: 11.5px; color: #7A7A74;">[1] og [2] peker til artikkel nr. 1 og 2 i kildelisten &mdash; samme nummer, samme sted, hver gang.</div>
+    </div>
+
+    <div class="panel">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="num">3</div>
+        <div style="font-size: 15.5px; font-weight: 600;">&laquo;Usikker&raquo; er ikke feil &mdash; det er ærlighet</div>
+      </div>
+      <p style="font-size: 13px; line-height: 1.6; color: #3A3A37; margin: 0;">
+        Finner AI ingen kilde som dekker en setning, gjettes den ikke bort &mdash; den merkes gult.
+      </p>
+      <div style="display: inline-flex; align-items: center; gap: 6px; background: #FBF6E3; border: 1px solid #E6D48A; border-radius: 6px; padding: 7px 11px; font-size: 12.5px; width: fit-content;">
+        &laquo;Dette kan også henge sammen med fôrsammensetning.&raquo;
+        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #8A6D1A; background: #F3E4A8; border-radius: 4px; padding: 2px 5px;">uverifisert</span>
+      </div>
+      <div style="font-size: 11.5px; color: #7A7A74; margin-top: 4px;">Ingen tredje mulighet: en påstand siterer en kilde, eller den står slik.</div>
+    </div>
+
+    <div class="panel">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="num">4</div>
+        <div style="font-size: 15.5px; font-weight: 600;">Du kjenner allerede systemet</div>
+      </div>
+      <p style="font-size: 13px; line-height: 1.6; color: #3A3A37; margin: 0;">
+        Merkene under søketreffene &mdash; systematisk oversikt, RCT, kohort, case &mdash; er
+        samme idé: et tydelig merke sier hva slags tekst du leser, alltid synlig, aldri gjemt.
+      </p>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px;">
+        <span style="font-size: 11px; background: #EDF2EE; color: #2E5C47; border-radius: 5px; padding: 4px 8px;">Systematisk oversikt</span>
+        <span style="font-size: 11px; background: #EDF2EE; color: #2E5C47; border-radius: 5px; padding: 4px 8px;">RCT</span>
+        <span style="font-size: 11px; background: #EDF2EE; color: #2E5C47; border-radius: 5px; padding: 4px 8px;">Kohort</span>
+        <span style="font-size: 11px; background: #EDF2EE; color: #2E5C47; border-radius: 5px; padding: 4px 8px;">Case-rapport</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

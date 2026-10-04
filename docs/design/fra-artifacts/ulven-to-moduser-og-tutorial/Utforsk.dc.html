@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<title>Forskningssøk — utforsk et spørsmål</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  body { margin: 0; font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: #F8F7F4; color: #1C1C1A; }
+
+  @keyframes dotBreathe {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46,92,71,0.35); }
+    50%      { box-shadow: 0 0 0 6px rgba(46,92,71,0); }
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+  .back-link { font-size: 13px; color: #5A5A56; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .back-link:hover { color: #1C1C1A; }
+
+  textarea.q-input { width: 100%; box-sizing: border-box; font: inherit; font-size: 13.5px; line-height: 1.5; padding: 10px 12px; border: 1px solid #D8D6CE; border-radius: 8px; resize: vertical; color: #1C1C1A; background: #FFFFFF; }
+  textarea.q-input:focus-visible { outline: 2px solid #2E5C47; outline-offset: 1px; }
+
+  .ask-btn { font: inherit; font-size: 13.5px; font-weight: 600; color: #FFFFFF; background: #2E5C47; border: none; border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+  .ask-btn:hover { background: #24493A; }
+  .ask-btn:disabled { background: #B9C4BC; cursor: default; }
+  .ask-btn:focus-visible { outline: 2px solid #2E5C47; outline-offset: 2px; }
+
+  .sim-row { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #5A5A56; }
+
+  .sb-btn { font: inherit; font-size: 11px; border: 1px solid #D8D6CE; background: #FFFFFF; color: #5A5A56; padding: 4px 8px; cursor: pointer; }
+  .sb-btn:first-child { border-radius: 6px 0 0 6px; }
+  .sb-btn:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+  .sb-btn--active { background: #2E5C47; border-color: #2E5C47; color: #F8F7F4; }
+
+  .kilde-row { animation: fadeIn 260ms ease both; padding: 9px 0; border-bottom: 1px solid #EFEDE5; font-size: 12px; }
+  .kilde-row:last-child { border-bottom: none; }
+</style>
+</helmet>
+
+<div style="width: 1360px; height: 920px; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 22px;">
+
+  <div style="display: flex; align-items: center; gap: 18px;">
+    <a href="Start.dc.html" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+      Tilbake
+    </a>
+    <div style="font-size: 19px; font-weight: 700;">Utforsk et spørsmål</div>
+    <div style="flex-grow: 1;"></div>
+    <label class="sim-row">
+      <input type="checkbox" checked="{{simulerFeil}}" onChange="{{toggleSim}}">
+      Simuler: AI utilgjengelig
+    </label>
+  </div>
+
+  <div style="display: flex; gap: 24px; flex-grow: 1; min-height: 0;">
+
+    <!-- Venstre: spørsmål -->
+    <div style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
+      <label for="q" style="font-size: 12.5px; font-weight: 600; color: #5A5A56;">Hva lurer du på?</label>
+      <textarea id="q" class="q-input" rows="7" value="{{query}}" onInput="{{setQuery}}"></textarea>
+      <button type="button" class="ask-btn" onClick="{{ask}}" disabled="{{running}}">{{askLabel}}</button>
+      <div style="font-size: 11.5px; color: #7A7A74; line-height: 1.5;">
+        Henting av kilder kan ta litt tid &mdash; du ser hvert steg underveis, i stedet for bare en snurrende sirkel.
+      </div>
+    </div>
+
+    <!-- Høyre: pipeline + resultat -->
+    <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+
+      <!-- Horisontal skinnegang -->
+      <div style="display: flex; align-items: flex-start;">
+        <sc-for list="{{steps}}" as="step" hint-placeholder-count="6">
+          <div style="display: flex; align-items: center; flex-grow: 1;">
+            <div style="display: flex; flex-direction: column; align-items: center; width: 108px; flex-shrink: 0;">
+              <div style="{{step.dotStyle}}"></div>
+              <div style="{{step.labelStyle}}">{{step.label}}</div>
+            </div>
+            <sc-if value="{{step.hasConnector}}" hint-placeholder-val="{{true}}">
+              <div style="height: 2px; flex-grow: 1; background: {{step.connectorColor}}; margin-top: 6px;"></div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; gap: 20px; flex-grow: 1; min-height: 0;">
+
+        <!-- Rapport -->
+        <div style="flex-grow: 1; background: #FFFFFF; border: 1px solid #E4E2D9; border-radius: 10px; padding: 18px 20px; overflow-y: auto; min-width: 0;">
+          <div style="font-size: 12px; font-weight: 600; color: #5A5A56; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px;">Rapport</div>
+
+          <sc-if value="{{showIdle}}" hint-placeholder-val="{{true}}">
+            <div style="font-size: 13px; color: #9A9A94; font-style: italic;">Skriv et spørsmål til venstre og trykk &laquo;Spør&raquo;.</div>
+          </sc-if>
+
+          <sc-if value="{{showLadder}}" hint-placeholder-val="{{false}}">
+            <div style="display: flex; gap: 8px; align-items: flex-start; background: #FBF1EE; border: 1px solid #DDB8AE; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; font-style: italic;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#B4553F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="flex-shrink: 0; margin-top: 1px;" aria-hidden="true">
+                <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path>
+              </svg>
+              <div style="font-size: 13px; color: #7A3A2C;">AI-sammenstillingen var utilgjengelig denne gangen. Her er et mekanisk sammendrag i stedet &mdash; bygget direkte av det som ble hentet, uten AI-tolkning.</div>
+            </div>
+            <ul style="font-size: 13.5px; line-height: 1.8; color: #1C1C1A; margin: 0; padding-left: 20px;">
+              <li>4 kilder hentet (2 Europe PMC, 1 CORE, 1 OpenAlex)</li>
+              <li>Nyeste kilde: 2024. Eldste kilde: 2011.</li>
+              <li>1 kilde markert som mulig &laquo;glemt&raquo; (eldre enn 10 år, fortsatt samme tema)</li>
+              <li>Se kildelisten til høyre for detaljer</li>
+            </ul>
+          </sc-if>
+
+          <sc-if value="{{showNarrative}}" hint-placeholder-val="{{false}}">
+            <div style="font-size: 13.5px; line-height: 1.7; color: #1C1C1A;">{{narrativeText}}</div>
+            <sc-if value="{{showUverifisert}}" hint-placeholder-val="{{false}}">
+              <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed #E4E2D9;">
+                <div style="font-size: 11.5px; color: #7A7A74; margin-bottom: 6px;">Eksempel &mdash; en setning uten kildedekning vises slik:</div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; background: #FBF6E3; border: 1px solid #E6D48A; border-radius: 6px; padding: 6px 10px; font-size: 13px;">
+                  &laquo;Dette kan også henge sammen med fôrsammensetning.&raquo;
+                  <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #8A6D1A; background: #F3E4A8; border-radius: 4px; padding: 2px 5px;">uverifisert</span>
+                </div>
+              </div>
+            </sc-if>
+          </sc-if>
+        </div>
+
+        <!-- Kilder -->
+        <div style="width: 280px; flex-shrink: 0; background: #FFFFFF; border: 1px solid #E4E2D9; border-radius: 10px; padding: 16px 16px; overflow-y: auto;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div style="font-size: 12px; font-weight: 600; color: #5A5A56; text-transform: uppercase; letter-spacing: 0.03em;">Kilder</div>
+            <div role="group" aria-label="Visning av kildeliste" style="display: flex;">
+              <sc-for list="{{kildeButtons}}" as="btn" hint-placeholder-count="3">
+                <button type="button" class="{{btn.className}}" aria-pressed="{{btn.active}}" onClick="{{btn.onClick}}">{{btn.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{kilderTomt}}" hint-placeholder-val="{{true}}">
+            <div style="font-size: 12.5px; color: #9A9A94; font-style: italic;">Ingen kilder hentet ennå.</div>
+          </sc-if>
+
+          <sc-if value="{{kilderAv}}" hint-placeholder-val="{{false}}">
+            <div style="font-size: 12.5px; color: #9A9A94; font-style: italic;">Skjult &mdash; {{kildeAntall}} kilder hentet.</div>
+          </sc-if>
+
+          <sc-for list="{{kilder}}" as="k" hint-placeholder-count="4">
+            <sc-if value="{{k.vis}}" hint-placeholder-val="{{false}}">
+              <div class="kilde-row">
+                <div style="font-weight: 600;">[{{k.nr}}] {{k.kilde}} &middot; {{k.aar}}</div>
+                <sc-if value="{{k.kompakt}}" hint-placeholder-val="{{false}}">
+                  <div style="color: #7A7A74; margin-top: 2px;">{{k.tittelPlassholder}}</div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":920}}'>
+class Component extends DCLogic {
+  state = {
+    query: 'Er det noe nytt om sammenhengen mellom vannkvalitet og nefrokalsinose hos smolt i sjøvannsfasen, og har noen sett på dette med ultralyd?',
+    simulerFeil: false,
+    running: false,
+    stepIdx: -1,
+    kildeMode: 'full',
+    narrativeText: '',
+    narrativeDone: false,
+  };
+
+  componentWillUnmount() {
+    clearInterval(this._stepTimer);
+    clearInterval(this._tokenTimer);
+    clearInterval(this._commitTimer);
+  }
+
+  setQuery(e) { this.setState({ query: e.target.value }); }
+  toggleSim(e) { this.setState({ simulerFeil: e.target.checked }); }
+  setKildeMode(mode) { this.setState({ kildeMode: mode }); }
+
+  ask() {
+    clearInterval(this._stepTimer);
+    clearInterval(this._tokenTimer);
+    clearInterval(this._commitTimer);
+    this.setState({ running: true, stepIdx: 0, narrativeText: '', narrativeDone: false });
+    this._stepTimer = setInterval(() => {
+      const next = this.state.stepIdx + 1;
+      if (next > 5) {
+        clearInterval(this._stepTimer);
+        this.setState({ running: false });
+        if (!this.state.simulerFeil) this._startNarrative();
+        return;
+      }
+      this.setState({ stepIdx: next });
+    }, 1100);
+  }
+
+  _startNarrative() {
+    this._buf = [];
+    this._wi = 0;
+    this._words = ('Basert på de 4 kildene som ble hentet, tegner det seg et bilde av hvor '
+      + 'forskningen står på vannkvalitet og nefrokalsinose hos smolt i sjøvannsfasen. '
+      + 'Aktuelt : flere av de nyeste kildene [1][2] peker på sjøvannsovergangen som en '
+      + 'sårbar periode for nyrehelse, men ingen av dem isolerer vannkvalitet som egen '
+      + 'variabel. Glemt : en eldre kilde fra tidlig 2010-tall [3] så direkte på '
+      + 'kalsium-metabolisme i denne perioden, men er lite sitert i nyere litteratur — '
+      + 'trolig fordi feltet siden har dreid mot genetiske forklaringer. Hull : ingen av '
+      + 'de hentede kildene kombinerer ultralyd-basert diagnostikk med kontrollerte '
+      + 'vannkvalitets-eksperimenter — det ser ut som en uprøvd mulighet, ikke bare et '
+      + 'smalt søk.').split(' ');
+    this._tokenTimer = setInterval(() => {
+      if (this._wi >= this._words.length) { clearInterval(this._tokenTimer); return; }
+      this._buf.push(this._words[this._wi]);
+      this._wi += 1;
+    }, 55);
+    this._commitTimer = setInterval(() => {
+      if (this._buf.length === 0) {
+        if (this._wi >= this._words.length) {
+          clearInterval(this._commitTimer);
+          this.setState({ narrativeDone: true });
+        }
+        return;
+      }
+      const merged = (this.state.narrativeText + ' ' + this._buf.join(' ')).trim();
+      this._buf = [];
+      this.setState({ narrativeText: merged });
+    }, 260);
+  }
+
+  renderVals() {
+    const idx = this.state.stepIdx;
+    const rawSteps = [
+      'Leser spørsmålet',
+      'Renser søketeksten',
+      'Deler NO / EN',
+      'Henter kilder',
+      'Aktuelt / glemt / hull',
+      this.state.simulerFeil ? 'Mekanisk sammendrag' : 'Skriver rapport',
+    ];
+    const steps = rawSteps.map((label, i) => {
+      let status;
+      if (idx < 0) status = 'idle';
+      else if (i < idx || (i === idx && idx > 5)) status = 'done';
+      else if (i === idx) status = 'running';
+      else if (i < idx) status = 'done';
+      else status = 'pending';
+      if (idx > 5) status = 'done';
+
+      const isLast = i === rawSteps.length - 1;
+      const isLadderStep = i === 5 && this.state.simulerFeil;
+      const dotColor = status === 'pending' || status === 'idle' ? '#D8D6CE' : (isLadderStep ? '#B4553F' : '#2E5C47');
+      const dotStyle = 'width: 12px; height: 12px; border-radius: 50%; background: ' + dotColor + ';'
+        + (status === 'running' ? ' animation: dotBreathe 1.3s ease-in-out infinite;' : '');
+      const labelStyle = 'font-size: 11px; margin-top: 6px; text-align: center; color: '
+        + (status === 'pending' || status === 'idle' ? '#B3B3AD' : '#5A5A56') + ';'
+        + (status === 'running' ? ' font-weight: 600; color: #1C1C1A;' : '');
+
+      return {
+        label,
+        dotStyle,
+        labelStyle,
+        hasConnector: !isLast,
+        connectorColor: (i < idx || idx > 5) ? '#2E5C47' : '#E4E2D9',
+      };
+    });
+
+    const kildeSourceMeta = [
+      { nr: 1, kilde: 'Europe PMC', aar: 2024 },
+      { nr: 2, kilde: 'Europe PMC', aar: 2023 },
+      { nr: 3, kilde: 'CORE', aar: 2011 },
+      { nr: 4, kilde: 'OpenAlex', aar: 2020 },
+    ];
+    const kilderHentet = idx >= 3;
+    const kilder = kildeSourceMeta.map((k) => ({
+      nr: k.nr,
+      kilde: k.kilde,
+      aar: k.aar,
+      tittelPlassholder: '[tittel og forfattere vises her]',
+      vis: kilderHentet,
+      kompakt: this.state.kildeMode === 'full',
+    }));
+
+    const modes = [{ m: 'full', l: 'Full' }, { m: 'kompakt', l: 'Kompakt' }, { m: 'av', l: 'Av' }];
+    const kildeButtons = modes.map((mo) => ({
+      label: mo.l,
+      active: this.state.kildeMode === mo.m,
+      className: 'sb-btn' + (this.state.kildeMode === mo.m ? ' sb-btn--active' : ''),
+      onClick: () => this.setKildeMode(mo.m),
+    }));
+
+    return {
+      query: this.state.query,
+      setQuery: (e) => this.setQuery(e),
+      ask: () => this.ask(),
+      askLabel: this.state.running ? 'Henter …' : 'Spør',
+      running: this.state.running,
+      simulerFeil: this.state.simulerFeil,
+      toggleSim: (e) => this.toggleSim(e),
+      steps,
+      showIdle: idx < 0,
+      showLadder: idx > 5 && this.state.simulerFeil,
+      showNarrative: idx > 5 && !this.state.simulerFeil,
+      showUverifisert: this.state.narrativeDone,
+      narrativeText: this.state.narrativeText || '…',
+      kilder,
+      kilderTomt: !kilderHentet,
+      kilderAv: kilderHentet && this.state.kildeMode === 'av',
+      kildeAntall: 4,
+      kildeButtons,
+    };
+  }
+}
+</script>
+</body>
+</html>

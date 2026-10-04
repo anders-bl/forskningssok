@@ -1,0 +1,385 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Forskningssøk-revisjonen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F8F7F4; --surface:#FFFFFF; --surface-2:#EFEEEA; --border:#E5E4E0;
+    --text:#1C1C1A; --muted:#5A5A56; --muted-2:#84837C;
+    --accent:#2E5C47; --accent-lt:#4A7D64; --accent-wash:#E6EDE8;
+    --ok:#6F9FB8; --ok-wash:#E7EFF3;
+    --watch:#B08A3E; --watch-wash:#F3ECD9;
+    --attn:#AC4E2E; --attn-wash:#F5E2DA;
+    --shadow:0 1px 2px rgba(20,20,18,.05), 0 8px 24px -12px rgba(20,20,18,.16);
+    --serif:'Source Serif 4',Georgia,'Times New Roman',serif;
+    --sans:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'IBM Plex Mono','SF Mono',Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#141412; --surface:#1F1D1A; --surface-2:#2A2926; --border:#34322E;
+      --text:#EDECE7; --muted:#A8A7A0; --muted-2:#7C7A73;
+      --accent:#7AAF95; --accent-lt:#8FC0A8; --accent-wash:#20302A;
+      --ok:#7FA8BE; --ok-wash:#1E2A30;
+      --watch:#D9AE5C; --watch-wash:#33291A;
+      --attn:#D97C56; --attn-wash:#3A251C;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 28px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141412; --surface:#1F1D1A; --surface-2:#2A2926; --border:#34322E;
+    --text:#EDECE7; --muted:#A8A7A0; --muted-2:#7C7A73;
+    --accent:#7AAF95; --accent-lt:#8FC0A8; --accent-wash:#20302A;
+    --ok:#7FA8BE; --ok-wash:#1E2A30;
+    --watch:#D9AE5C; --watch-wash:#33291A;
+    --attn:#D97C56; --attn-wash:#3A251C;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 28px -12px rgba(0,0,0,.5);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    font-size:15.5px; line-height:1.55; padding-block:2.5rem 5rem;
+  }
+  .wrap{ max-width:920px; margin:0 auto; padding-inline:1.5rem; }
+  h1,h2,h3{ font-family:var(--serif); font-weight:600; text-wrap:balance; margin:0; }
+  a{ color:var(--accent); }
+  code{ font-family:var(--mono); font-size:.875em; }
+
+  /* ---------- Masthead ---------- */
+  .masthead{ border-bottom:2px solid var(--text); padding-bottom:1.5rem; margin-bottom:2.75rem; }
+  .eyebrow{
+    font-family:var(--mono); font-size:.6875rem; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--accent); display:flex; align-items:center; gap:.6rem; margin-bottom:.9rem;
+  }
+  .eyebrow::before{ content:""; width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none; }
+  h1{ font-size:2.1rem; line-height:1.15; letter-spacing:-.01em; }
+  .masthead-sub{ margin-top:.7rem; color:var(--muted); font-size:.9375rem; max-width:56ch; }
+  .meta-row{
+    display:flex; flex-wrap:wrap; gap:1.4rem; margin-top:1.3rem;
+    font-family:var(--mono); font-size:.75rem; color:var(--muted-2);
+  }
+  .meta-row b{ color:var(--text); font-weight:600; }
+
+  section{ margin-bottom:3.2rem; }
+  .section-head{ display:flex; align-items:baseline; gap:.7rem; margin-bottom:.4rem; }
+  .section-num{ font-family:var(--mono); color:var(--accent-lt); font-size:.8125rem; font-weight:600; }
+  h2{ font-size:1.375rem; }
+  .section-dek{ color:var(--muted); font-size:.9375rem; max-width:64ch; margin:.5rem 0 1.6rem; }
+
+  /* ---------- Endpoint groups ---------- */
+  .group{ margin-bottom:1.6rem; border:1px solid var(--border); border-radius:10px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden; }
+  .group-head{
+    display:flex; align-items:center; justify-content:space-between; gap:1rem;
+    padding:.85rem 1.1rem; background:var(--surface-2); border-bottom:1px solid var(--border);
+  }
+  .group-head h3{ font-size:.9375rem; font-weight:600; font-family:var(--sans); }
+  .group-count{ font-family:var(--mono); font-size:.75rem; color:var(--muted); }
+  .ep{ display:grid; grid-template-columns:auto auto 1fr; gap:0 1rem; align-items:start; padding:.6rem 1.1rem; border-bottom:1px solid var(--border); }
+  .ep:last-child{ border-bottom:none; }
+  .ep-verb{
+    font-family:var(--mono); font-size:.6875rem; font-weight:600; letter-spacing:.03em;
+    padding:.15rem .4rem; border-radius:4px; align-self:start; margin-top:.15rem; white-space:nowrap;
+  }
+  .v-get{ background:var(--ok-wash); color:var(--ok); }
+  .v-post{ background:var(--accent-wash); color:var(--accent); }
+  .v-patch{ background:var(--watch-wash); color:var(--watch); }
+  .v-delete{ background:var(--attn-wash); color:var(--attn); }
+  .ep-path{ font-family:var(--mono); font-size:.8125rem; color:var(--text); align-self:start; margin-top:.15rem; white-space:nowrap; }
+  .ep-path .param{ color:var(--muted-2); }
+  .ep-desc{ color:var(--muted); font-size:.84375rem; }
+  .ep-desc b{ color:var(--text); font-weight:600; }
+
+  @media (max-width:640px){
+    .ep{ grid-template-columns:1fr; gap:.3rem; }
+    .ep-path{ white-space:normal; word-break:break-word; }
+  }
+
+  /* ---------- External sources ---------- */
+  .ext-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:.9rem; }
+  .ext-card{ border:1px solid var(--border); border-radius:10px; background:var(--surface); padding:1rem 1.1rem; box-shadow:var(--shadow); }
+  .ext-top{ display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.4rem; }
+  .ext-name{ font-weight:600; font-size:.9375rem; }
+  .pill{ font-family:var(--mono); font-size:.625rem; font-weight:600; letter-spacing:.03em; padding:.15rem .45rem; border-radius:99px; white-space:nowrap; }
+  .p-live{ background:var(--ok-wash); color:var(--ok); }
+  .p-dormant{ background:var(--surface-2); color:var(--muted); border:1px solid var(--border); }
+  .ext-url{ font-family:var(--mono); font-size:.6875rem; color:var(--muted-2); word-break:break-all; margin-bottom:.55rem; }
+  .ext-desc{ color:var(--muted); font-size:.84375rem; }
+  .ext-desc b{ color:var(--text); font-weight:500; }
+  .ext-auth{ margin-top:.55rem; font-size:.75rem; color:var(--muted-2); display:flex; align-items:center; gap:.4rem; }
+  .key-dot{ width:6px; height:6px; border-radius:50%; flex:none; }
+  .key-none{ background:var(--ok); } .key-opt{ background:var(--watch); } .key-req{ background:var(--attn); }
+
+  /* ---------- Findings ---------- */
+  .finding{
+    display:grid; grid-template-columns:1.1rem 1fr; gap:.9rem;
+    padding:1.1rem 0; border-bottom:1px solid var(--border);
+  }
+  .finding:first-of-type{ padding-top:0; }
+  .finding:last-of-type{ border-bottom:none; }
+  .sev{ width:.65rem; height:.65rem; border-radius:50%; margin-top:.45rem; }
+  .sev-attn{ background:var(--attn); box-shadow:0 0 0 3px var(--attn-wash); }
+  .sev-watch{ background:var(--watch); box-shadow:0 0 0 3px var(--watch-wash); }
+  .sev-ok{ background:var(--ok); box-shadow:0 0 0 3px var(--ok-wash); }
+  .f-label{ font-family:var(--mono); font-size:.625rem; letter-spacing:.06em; text-transform:uppercase; font-weight:600; margin-bottom:.3rem; }
+  .f-label.attn{ color:var(--attn); } .f-label.watch{ color:var(--watch); } .f-label.ok{ color:var(--accent); }
+  .f-title{ font-weight:600; font-size:1rem; margin-bottom:.35rem; }
+  .f-body{ color:var(--muted); font-size:.89rem; }
+  .f-body code{ background:var(--surface-2); padding:.1rem .3rem; border-radius:4px; }
+  .f-rec{
+    margin-top:.6rem; padding:.6rem .8rem; background:var(--surface-2); border-radius:7px;
+    border-left:3px solid var(--accent-lt); font-size:.84375rem;
+  }
+  .f-rec b{ font-weight:600; color:var(--text); }
+
+  footer{ margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); font-size:.8125rem; color:var(--muted-2); }
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="eyebrow">Intern gjennomgang · forskningssok</div>
+    <h1>Forskningssøk-revisjonen</h1>
+    <p class="masthead-sub">Oversikt over hvert åpne endepunkt i bruk — internt API og eksterne kilder —
+      og en gjennomgang av verktøyet slik Ulven faktisk møter det, ikke slik koden beskriver seg selv.</p>
+    <div class="meta-row">
+      <span><b>Dato</b> 2026-09-10</span>
+      <span><b>Kilde</b> api.py, adapters/*, README.md, ULVEN_README.md</span>
+      <span><b>Metode</b> lest mot kjørende kode, ikke antatt</span>
+    </div>
+  </div>
+
+  <section id="endepunkter">
+    <div class="section-head"><span class="section-num">01</span><h2>Endepunkter i bruk</h2></div>
+    <p class="section-dek">42 egne API-ruter (det frontend/CLI faktisk kaller) og 7 eksterne kilder
+      (det api.py/adapters faktisk kaller ut til). Grupperingen følger arbeidsflyten, ikke fil-strukturen.</p>
+
+    <div class="group">
+      <div class="group-head"><h3>Helse &amp; metadata</h3><span class="group-count">6</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/health/live</span><span class="ep-desc">Lever prosessen? Ingen disk, ingen nettverk.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/health/ready</span><span class="ep-desc">Kan tjenesten ta trafikk — sjekker faktisk innhold, ikke bare at porten svarer. Brukt av Uptime Kuma.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/health</span><span class="ep-desc">Full helsedetalj bak <code>INTERNAL_API_KEY</code> — uten nøkkel kun status.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/versjon</span><span class="ep-desc">To tall: appversjon og profilversjon, hver svarer på sitt eget spørsmål.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/profil</span><span class="ep-desc">Fagfeltet flaten beskriver seg selv med — merker, søkeeksempel, «Om»-teksten. Alt fra <code>profiler/fiskehelse.toml</code>, ingenting hardkodet.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/status</span><span class="ep-desc">Menneskelesbar helseflate: papirer cachet, siste søk, live nåbarhet per kilde.</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-head"><h3>Søk &amp; utforskning</h3><span class="group-count">6</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/sok</span><span class="ep-desc"><b>Hovedendepunktet.</b> Europe PMC + CORE + OpenAlex slått sammen, deduplisert, rangert etter fagmiljø/artsnærhet.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/sok/historikk</span><span class="ep-desc">Reproduserbarhetssporet: eksakte spørringer, kilder og filtre i ettertid.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/papir/<span class="param">{id}</span></span><span class="ep-desc">Ett papirs fulle metadata.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/lignende/<span class="param">{id}</span></span><span class="ep-desc">Semantiske naboer i cachen (bge-m3-avstand) — «Lignende»-fanen.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/emne/<span class="param">{emne_id}</span></span><span class="ep-desc">Tredje søkemodus: alle OpenAlex-verk under ett emne (vet domenet, ikke søkeordet).</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/omfang</span><span class="ep-desc">Akse-dekning for «Omfang»-panelet — hvilke forskningsakser teksten treffer.</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-head"><h3>Papir-berikelse</h3><span class="group-count">7</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/gap/<span class="param">{id}</span></span><span class="ep-desc">Citation-gap-testen: cachede naboer som IKKE er i papirets egen referanseliste.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/emner/<span class="param">{id}</span></span><span class="ep-desc">OpenAlex-emnetagger. Krever DOI.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/tilgang/<span class="param">{id}</span></span><span class="ep-desc">Lisens/fri-PDF/utgiver — flettet fra OpenAlex + Unpaywall. Krever DOI.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/siteringsgraf/<span class="param">{id}</span></span><span class="ep-desc">Semantic Scholar sin graf MED kontekst (metodologi/resultat/bakgrunn). Krever DOI.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/sti</span><span class="ep-desc">Literature Connector: semantisk kjede mellom to papirer.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/cachede</span><span class="ep-desc">Titler i cachen, til å velge endepunkt for <code>/api/sti</code>.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/relaterte/<span class="param">{id}</span></span><span class="ep-desc">«Relasjonelle sitater» — papirer DU har sitert, semantisk nær dette.</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-head"><h3>Sitering, utkast &amp; dokument (skuffen)</h3><span class="group-count">11</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/sitater</span><span class="ep-desc">Sitater, filtrert på papir eller utkast.</span></div>
+      <div class="ep"><span class="ep-verb v-post">POST</span><span class="ep-path">/api/sitater</span><span class="ep-desc">Lagre et nytt sitat.</span></div>
+      <div class="ep"><span class="ep-verb v-patch">PATCH</span><span class="ep-path">/api/sitater/<span class="param">{id}</span></span><span class="ep-desc">Kommentar eller utkast-tilknytning.</span></div>
+      <div class="ep"><span class="ep-verb v-delete">DELETE</span><span class="ep-path">/api/sitater/<span class="param">{id}</span></span><span class="ep-desc">Slett ett sitat.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/utkast</span><span class="ep-desc">Liste over utkast.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/utkast/<span class="param">{id}</span></span><span class="ep-desc">Ett utkasts innhold.</span></div>
+      <div class="ep"><span class="ep-verb v-post">POST</span><span class="ep-path">/api/utkast</span><span class="ep-desc">Opprett (uten id) eller oppdater (med id) — samme endepunkt.</span></div>
+      <div class="ep"><span class="ep-verb v-delete">DELETE</span><span class="ep-path">/api/utkast/<span class="param">{id}</span></span><span class="ep-desc">Slett ett utkast.</span></div>
+      <div class="ep"><span class="ep-verb v-post">POST</span><span class="ep-path">/api/dokument</span><span class="ep-desc">Last opp egen PDF — blir et ekte papir i korpuset, med fulltekst du kan sitere fra.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/dokumenter</span><span class="ep-desc">Hele skuffen, eller ett papirs vedlegg.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/dokument/<span class="param">{id}</span> · /<span class="param">{id}</span>/fil</span><span class="ep-desc">Ett dokuments metadata, og selve PDF-en (aldri et rått sti-parameter fra klienten).</span></div>
+      <div class="ep"><span class="ep-verb v-delete">DELETE</span><span class="ep-path">/api/dokument/<span class="param">{id}</span></span><span class="ep-desc">Slett et opplastet dokument.</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-head"><h3>Relevans &amp; varme</h3><span class="group-count">3</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/relevans</span><span class="ep-desc">Ambient-modus: teksten du skriver akkurat nå → nærmeste papirer i sanntid.</span></div>
+      <div class="ep"><span class="ep-verb v-post">POST</span><span class="ep-path">/api/varme</span><span class="ep-desc">Meld inn et svakt signal (åpnet et papir). Sterke signaler (sitert) logges server-side der de skjer.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/varme</span><span class="ep-desc">«Varmt»-fanen: to lag slått sammen, aldri blandet — varig bruk og nærhet til det du siterte nå.</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-head"><h3>Verifisering</h3><span class="group-count">2</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/verifiser/tilgjengelig</span><span class="ep-desc">Finnes kapabiliteten her (kun i Dokploy, krever <code>AI_PROXY_URL</code>)?</span></div>
+      <div class="ep"><span class="ep-verb v-post">POST</span><span class="ep-path">/api/verifiser</span><span class="ep-desc">Påstand → EU-web-verifisert verdikt + kilder.</span></div>
+    </div>
+
+    <div class="group">
+      <div class="group-head"><h3>Forskningsrapport (eksport)</h3><span class="group-count">7</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/konvergens</span><span class="ep-desc"><b>Signatur-leveransen.</b> Kilder + gap + omfang + verifisering + proveniens i ett dokument for ett søk.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/dokument</span><span class="ep-desc">Et utkast som markdown/PDF, med festede sitater i sitert rekkefølge.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/kildesamling</span><span class="ep-desc">En valgt liste med papirer, samlet til én kildesamling.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/boilerplate/<span class="param">{id}</span></span><span class="ep-desc">Ett papir + dets semantiske naboer, samlet.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/sitatnotater</span><span class="ep-desc">Hele leseloggen — alle lagrede sitater, ikke filtrert på ett papir.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/gap/<span class="param">{id}</span></span><span class="ep-desc">Delbar versjon av citation-gap-testen for ett papir.</span></div>
+      <div class="ep"><span class="ep-verb v-get">GET</span><span class="ep-path">/api/rapport/omfang</span><span class="ep-desc">Akse-dekning + kandidater fra egen cache for tynt dekkede akser.</span></div>
+    </div>
+
+    <h3 style="margin:2rem 0 .9rem; font-family:var(--sans); font-size:.9375rem;">Eksterne kilder appen kaller ut til</h3>
+    <div class="ext-grid">
+      <div class="ext-card">
+        <div class="ext-top"><span class="ext-name">Europe PMC</span><span class="pill p-live">LIVE · PÅKREVD</span></div>
+        <div class="ext-url">ebi.ac.uk/europepmc/webservices/rest</div>
+        <div class="ext-desc"><b>Hovedkilden.</b> Søk + referanselister for gap-testen. Feil her forplantes uendret til brukeren, aldri skjult.</div>
+        <div class="ext-auth"><span class="key-dot key-none"></span>Ingen nøkkel</div>
+      </div>
+      <div class="ext-card">
+        <div class="ext-top"><span class="ext-name">CORE</span><span class="pill p-live">LIVE · TILLEGG</span></div>
+        <div class="ext-url">api.core.ac.uk/v3</div>
+        <div class="ext-desc">Norsk gråtekst — masteroppgaver og institusjonsarkiv Europe PMC aldri indekserer.</div>
+        <div class="ext-auth"><span class="key-dot key-opt"></span>Valgfri nøkkel (høyere rate)</div>
+      </div>
+      <div class="ext-card">
+        <div class="ext-top"><span class="ext-name">OpenAlex</span><span class="pill p-live">LIVE · TILLEGG</span></div>
+        <div class="ext-url">api.openalex.org</div>
+        <div class="ext-desc">Bred akademisk søk (250M+ verk) + emnetagger + lisensinfo. Lagt til som søkekilde 2026-09-10 — gratis erstatning for Google Scholar/SerpAPI.</div>
+        <div class="ext-auth"><span class="key-dot key-none"></span>Ingen nøkkel (e-post i User-Agent)</div>
+      </div>
+      <div class="ext-card">
+        <div class="ext-top"><span class="ext-name">Unpaywall</span><span class="pill p-live">LIVE</span></div>
+        <div class="ext-url">api.unpaywall.org/v2</div>
+        <div class="ext-desc">Finner åpne PDF-kopier OpenAlex ikke selv har. Slås sammen i <code>/api/tilgang</code>.</div>
+        <div class="ext-auth"><span class="key-dot key-none"></span>Ingen nøkkel (e-post påkrevd i kall)</div>
+      </div>
+      <div class="ext-card">
+        <div class="ext-top"><span class="ext-name">Semantic Scholar</span><span class="pill p-live">LIVE</span></div>
+        <div class="ext-url">api.semanticscholar.org/graph/v1</div>
+        <div class="ext-desc">Siteringsgraf MED kontekst (metodologi/resultat/bakgrunn) — det ingen annen kilde her gir.</div>
+        <div class="ext-auth"><span class="key-dot key-opt"></span>Valgfri nøkkel (delt anonym pool er trang)</div>
+      </div>
+      <div class="ext-card">
+        <div class="ext-top"><span class="ext-name">Crossref</span><span class="pill p-live">LIVE</span></div>
+        <div class="ext-url">api.crossref.org</div>
+        <div class="ext-desc">Utgivernes egen referanse-liste — brukt som dekningskontroll i gap-testen.</div>
+        <div class="ext-auth"><span class="key-dot key-none"></span>Ingen nøkkel</div>
+      </div>
+      <div class="ext-card" style="opacity:.72">
+        <div class="ext-top"><span class="ext-name">Google Scholar</span><span class="pill p-dormant">KODET, IKKE KOBLET INN</span></div>
+        <div class="ext-url">serpapi.com/search</div>
+        <div class="ext-desc">Via SerpAPI. Ferdig adapter, aldri importert i <code>adapters/__init__.py</code> — erstattet av OpenAlex som gratis-alternativ.</div>
+        <div class="ext-auth"><span class="key-dot key-req"></span>Krever betalt nøkkel ($50/mnd for reell bruk)</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ulven">
+    <div class="section-head"><span class="section-num">02</span><h2>Gjennomgang: Ulvens blikk</h2></div>
+    <p class="section-dek">Lest mot koden slik den faktisk kjører i dag, ikke slik dokumentasjonen påstår den kjører.
+      Prioritert etter hvor sannsynlig det er at Ulven faktisk går i fella — ikke etter hvor mye tekst funnet krever.</p>
+
+    <div class="finding">
+      <div class="sev sev-attn"></div>
+      <div>
+        <div class="f-label attn">Blokkerer onboarding</div>
+        <div class="f-title">Steg 3 i Ulvens egen «Kom i gang» er en død kommando</div>
+        <div class="f-body">ULVEN_README.md ber henne kjøre <code>python3 bank.py --oppdater</code> hver uke.
+          <code>bank.py</code> har ingen kommandolinje i det hele tatt — ingen <code>argparse</code>, ingen <code>__main__</code>.
+          Den faktiske kommandoen er <code>python3 cli.py --oppdater</code>. Dette er det ALLERFØRSTE hun ville prøvd
+          etter å ha lest dokumentet, og det feiler umiddelbart.</div>
+        <div class="f-rec"><b>Rett fram:</b> ett linjeskift i dokumentet. Verdt å faktisk kjøre kommandoen fra dokumentet
+          én gang før neste gang noe skrives om oppdatering — samme «verifisert, ikke antatt»-disiplin resten av
+          repoet holder seg til.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="sev sev-attn"></div>
+      <div>
+        <div class="f-label attn">Lover funksjoner som ikke finnes</div>
+        <div class="f-title">«Under utvikling»-seksjonen er ikke under utvikling — den er ubygget og arkitektonisk ikke-triviell</div>
+        <div class="f-body">«Del sitatbank med Lumic-teamet» og «Felles varme-kart» krever fler-bruker-støtte;
+          <code>cache.db</code> er én lokal SQLite-fil per instans, ingen bruker-modell finnes noe sted i skjemaet.
+          «Automatiske varsler» («3 nye studier denne uka») krever et varslingssystem; det finnes ingen cron, webhook
+          eller notifikasjonskanal i hele kodebasen — søkt etter, ikke funnet. Begge presenteres uten forbehold, som
+          om de er et spørsmål om tid.</div>
+        <div class="f-rec"><b>To ærlige veier:</b> enten fjern seksjonen til den faktisk er en plan (ikke et håp),
+          eller merk den eksplisitt «ikke påbegynt, ingen dato» — samme «ærlig fravær, aldri stille»-prinsipp
+          <code>domeneprofil.py</code> og <code>adapters/*.py</code> allerede praktiserer for data. Dokumentasjon
+          fortjener samme standard som koden.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="sev sev-watch"></div>
+      <div>
+        <div class="f-label watch">Eksempel ser ut som ekte data</div>
+        <div class="f-title">AI-assistentens eksempelsvar er både utdatert og lett å lese som en ekte kjøring</div>
+        <div class="f-body">Eksempelet i ULVEN_README.md viser <code>📊</code>/<code>🔍</code>/<code>⚠️</code>-formatering
+          som ikke lenger finnes i <code>ai_assistent.py</code> (fjernet 2026-09-10, husets emoji-forbud) — og tallene
+          («CORE: 3 studier», «Hansen et al. 2023») er oppdiktet til dokumentet, ikke hentet fra en ekte kjøring. Et
+          dokument som ellers snakker om «ingen AI-generering av fakta» viser selv et fabrikert eksempel uten å si at
+          det er fabrikert.</div>
+        <div class="f-rec"><b>Enkel fiks:</b> kjør <code>ai_assistent.py --svar</code> mot et ekte cachet søk, lim inn
+          det faktiske svaret, merk det tydelig «eksempel fra &lt;dato&gt;» — samme praksis som <code>varig</code>/<code>nå</code>-
+          forklaringen i appen selv nå følger (lagt til denne økten).</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="sev sev-watch"></div>
+      <div>
+        <div class="f-label watch">Dokumentert kilde mangler i praksis</div>
+        <div class="f-title">«UiT Munin» er lovet, men finnes ikke i domeneprofilen</div>
+        <div class="f-body">ULVEN_README.md lister UiT Munin («arktisk fiskehelse») blant de prioriterte norske
+          kildene. <code>profiler/fiskehelse.toml</code> sin <code>fagmiljoer</code>-liste har Havforskningsinstituttet,
+          Veterinærinstituttet, NMBU, Nofima, Pharmaq, NTNU og Bergen — ingen UiT/Tromsø-variant. Et ekte
+          Munin-treff vil altså IKKE få domene-merket «norsk fagmiljø» i rangeringen, stikk i strid med det Ulven
+          er fortalt.</div>
+        <div class="f-rec"><b>Avklar retning:</b> enten legg UiT/Tromsø/Munin til i <code>fagmiljoer</code> (arktisk
+          fiskehelse er reelt relevant for lakseoppdrett), eller fjern påstanden fra dokumentet. Begge er ti minutters
+          arbeid — bare ikke la påstand og kode fortsette å si to ting.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="sev sev-watch"></div>
+      <div>
+        <div class="f-label watch">To dokumenter, ingen treffer Ulvens nivå</div>
+        <div class="f-title">README.md er for teknisk, ULVEN_README.md er for unøyaktig</div>
+        <div class="f-body">Hoved-README.md (960+ linjer) er en presis, dato-stemplet logg over arkitekturbeslutninger
+          — verdifull, men skrevet for en utvikler som allerede kjenner koden. ULVEN_README.md henviser dit for
+          «generell dokumentasjon», men den README-en svarer ikke på Ulvens faktiske spørsmål («hva skriver jeg i
+          søkefeltet», «hvorfor ligger dette merket her»). Det finnes i dag ingen tekst skrevet PÅ Ulvens nivå som
+          også er sann.</div>
+        <div class="f-rec"><b>Ikke skriv en tredje lang fil.</b> Modellen appen selv nå bruker (denne økten) er
+          riktigere: korte, presise ettlinjers-forklaringer festet direkte der spørsmålet oppstår (<code>title</code>-
+          tooltips, «Om»-panelet, revisjons-linjen) — fremfor ett dokument som uunngåelig drifter fra koden igjen.
+          Behold ULVEN_README.md kort og faktasjekket, ikke voksende.</div>
+      </div>
+    </div>
+
+    <div class="finding">
+      <div class="sev sev-ok"></div>
+      <div>
+        <div class="f-label ok">Fungerer som tiltenkt</div>
+        <div class="f-title">Selve UI-et forklarer seg allerede rimelig godt i sanntid</div>
+        <div class="f-body">Etter denne øktens gjennomgang (varig/nå-forklaring, Kart-node-tooltip, OA-tooltip,
+          Kart/Gap/Sti sluttet å henge fast) er forvirrings-risikoen i praksis konsentrert i de STATISKE dokumentene,
+          ikke i det levende grensesnittet. Det er gode nyheter: gjenstående arbeid er å rette tekst, ikke å bygge om
+          flater.</div>
+        <div class="f-rec"><b>Én ting å vokte på:</b> «Om»-panelet vokser (nå ~7 seksjoner). Det er fortsatt greit
+          fordi det er ett klikk unna, ikke i veien — men det er taket for hvor mye prosetekst som bør samles ett
+          sted før neste seksjon heller bør bli en egen, kortere forklaring der den faktisk trengs.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Sammenstilt ved å lese <code>api.py</code>, <code>adapters/*.py</code>, <code>cli.py</code>, <code>rapport.py</code>,
+    <code>README.md</code> og <code>ULVEN_README.md</code> direkte — ruter telt med
+    <code>grep -n "^@app\."</code>, ingen tall antatt. 42 interne ruter, 7 eksterne kilder (6 aktive, 1 koblet fra).
+  </footer>
+
+</div>
+
+</body></html>

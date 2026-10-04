@@ -1,0 +1,641 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>Fjordlys</title>
+<style>
+:root{
+  --bg:#EEF1EF; --surface:#FFFFFF; --surface-2:#E4E9E6; --surface-3:#DAE1DC;
+  --text:#1A2420; --text-muted:#5B6A63; --text-faint:#8A968F; --border:#D3DAD5;
+  --accent:#2F6B57; --accent-ink:#16332A; --accent-soft:#DCEAE3;
+  --amber:#9C6A16; --amber-soft:#F3E3C7;
+  --oa:#2F7A4E; --oa-soft:#DCEEE1;
+  --warn:#9C4A30; --warn-soft:#F3DED6;
+  --shadow: 0 1px 2px rgba(20,30,25,.06), 0 6px 20px -8px rgba(20,30,25,.18);
+  --font-display:'Fraunces',ui-serif,Georgia,serif;
+  --font-body:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --font-ui:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121714; --surface:#181F1B; --surface-2:#202822; --surface-3:#293229;
+    --text:#E7ECE8; --text-muted:#93A39A; --text-faint:#67766D; --border:#2A332C;
+    --accent:#63BC97; --accent-ink:#DFF3E9; --accent-soft:#1E332A;
+    --amber:#E0A855; --amber-soft:#3A2E17;
+    --oa:#6FCB93; --oa-soft:#1B2E22;
+    --warn:#E2795C; --warn-soft:#3A231C;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121714; --surface:#181F1B; --surface-2:#202822; --surface-3:#293229;
+  --text:#E7ECE8; --text-muted:#93A39A; --text-faint:#67766D; --border:#2A332C;
+  --accent:#63BC97; --accent-ink:#DFF3E9; --accent-soft:#1E332A;
+  --amber:#E0A855; --amber-soft:#3A2E17;
+  --oa:#6FCB93; --oa-soft:#1B2E22;
+  --warn:#E2795C; --warn-soft:#3A231C;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px -10px rgba(0,0,0,.5);
+}
+
+*{box-sizing:border-box;}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font-ui);
+  height:100vh; overflow:hidden; display:flex; flex-direction:column;
+  font-size:14px; line-height:1.45;
+}
+::selection{ background:var(--accent-soft); color:var(--accent-ink); }
+
+/* ---------- Top bar ---------- */
+.topbar{
+  display:flex; align-items:center; gap:20px; padding:10px 18px;
+  border-bottom:1px solid var(--border); background:var(--surface); flex:none;
+}
+.wordmark{
+  font-family:var(--font-display); font-weight:600; font-style:italic;
+  font-size:20px; letter-spacing:.2px; color:var(--text);
+}
+.wordmark span{ color:var(--accent); font-style:normal; }
+.profile-pill{
+  display:flex; align-items:center; gap:7px; font-family:var(--font-ui);
+  font-size:12.5px; color:var(--text-muted); background:var(--surface-2);
+  border:1px solid var(--border); border-radius:99px; padding:5px 12px 5px 10px;
+}
+.profile-pill b{ color:var(--text); font-weight:600; }
+.profile-dot{ width:7px; height:7px; border-radius:50%; background:var(--accent); flex:none; }
+.modeswitch{ display:flex; background:var(--surface-2); border:1px solid var(--border); border-radius:99px; padding:2px; gap:2px; }
+.modeswitch button{
+  font-family:var(--font-ui); font-size:12.5px; font-weight:600; border:0; background:none;
+  color:var(--text-muted); padding:5px 14px; border-radius:99px; cursor:pointer;
+}
+.modeswitch button.active{ background:var(--surface); color:var(--accent-ink); box-shadow:var(--shadow); }
+.topbar-spacer{ flex:1; }
+.topbar-meta{
+  font-family:var(--font-mono); font-size:11.5px; color:var(--text-faint);
+  display:flex; align-items:center; gap:14px;
+}
+.topbar-meta .live{ color:var(--oa); }
+
+/* ---------- Shell ---------- */
+.shell{
+  flex:1; min-height:0; display:grid;
+  grid-template-columns: 328px 1fr 344px;
+}
+.shell[hidden]{ display:none; }
+.pane{ min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+.pane + .pane{ border-left:1px solid var(--border); }
+.pane-scroll{ flex:1; overflow-y:auto; }
+.pane-head{
+  flex:none; padding:14px 16px 10px; display:flex; flex-direction:column; gap:10px;
+}
+
+/* ---------- Left: søk + resultater ---------- */
+.search-box{
+  display:flex; align-items:center; gap:8px; background:var(--surface-2);
+  border:1px solid var(--border); border-radius:10px; padding:9px 11px;
+}
+.search-box svg{ flex:none; color:var(--text-faint); }
+.search-box input{
+  border:0; background:none; outline:0; font-family:var(--font-ui); font-size:13.5px;
+  color:var(--text); width:100%;
+}
+.search-box input::placeholder{ color:var(--text-faint); }
+.search-meta{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:11.5px; color:var(--text-faint); font-family:var(--font-mono);
+}
+.result-list{ padding:2px 8px 16px; display:flex; flex-direction:column; gap:2px; }
+.result{
+  display:block; padding:11px 10px; border-radius:9px; cursor:pointer;
+  border:1px solid transparent;
+}
+.result:hover{ background:var(--surface-2); }
+.result.active{ background:var(--accent-soft); border-color:var(--accent); }
+.result-row1{
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+  font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-bottom:5px;
+}
+.result-flags{ display:flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; }
+.star{ color:var(--amber); }
+.pill-oa{
+  background:var(--oa-soft); color:var(--oa); border-radius:5px; padding:1px 5px;
+  font-size:9.5px; letter-spacing:.04em; font-weight:600;
+}
+.result-title{
+  font-family:var(--font-body); font-size:14px; line-height:1.35; color:var(--text);
+  margin-bottom:5px;
+}
+.result.active .result-title{ color:var(--accent-ink); }
+.result-journal{ font-size:11.5px; color:var(--text-muted); font-style:italic; }
+
+/* ---------- Midt: leseflate ---------- */
+.reader-head{
+  flex:none; padding:22px 40px 16px; border-bottom:1px solid var(--border);
+}
+.reader-kicker{
+  font-family:var(--font-mono); font-size:11px; color:var(--text-muted);
+  display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;
+}
+.reader-kicker .dot{ color:var(--text-faint); }
+.reader-title{
+  font-family:var(--font-display); font-size:25px; font-weight:600; line-height:1.28;
+  text-wrap:balance; color:var(--text); margin-bottom:9px;
+}
+.reader-authors{ font-family:var(--font-ui); font-size:13px; color:var(--text-muted); }
+.reader-body{ padding:26px 40px 60px; }
+.reader-grid{
+  display:grid; grid-template-columns:20px 1fr; column-gap:16px; max-width:660px;
+}
+.gutter-dot{ display:flex; justify-content:center; padding-top:9px; }
+.gutter-dot i{
+  width:8px; height:8px; border-radius:50%; background:var(--amber); display:block;
+  box-shadow:0 0 0 3px var(--amber-soft);
+}
+.reader-body p{
+  font-family:var(--font-body); font-size:16.5px; line-height:1.72; color:var(--text);
+  margin:0 0 20px; grid-column:2;
+}
+.hl{
+  background:var(--amber-soft); border-bottom:2px solid var(--amber); border-radius:2px;
+  padding:0 1px; position:relative; display:inline-block;
+}
+/* .hl må være ét ufragmentert bokstavet (ikke splittet over linjeskift) for at et
+   absolutt-posisjonert barn (.seltoolbar) skal få riktig positioneringskontekst —
+   fanget som ekte rendrings-bug under bygging: en inline .hl som brøt over to linjer
+   ga toolbaren feil (fragmentert) posisjon, innholdet "lekket" ned i dokumentflyten. */
+/* Flytende utvalgs-verktøylinje — vises rett over markert tekst, samme mønster som
+   Hypothes.is/Readwise: ikonknapper, ingen tittel-tekst, en liten "nebb" ned mot valget. */
+.seltoolbar{
+  position:absolute; left:6px; top:-46px; z-index:5;
+  display:flex; align-items:center; gap:2px;
+  background:var(--text); border-radius:10px; padding:5px; box-shadow:var(--shadow);
+  white-space:nowrap;
+}
+.seltoolbar::after{
+  content:""; position:absolute; left:16px; top:100%; width:9px; height:9px;
+  background:var(--text); transform:rotate(45deg) translateY(-6px);
+}
+.selbtn{
+  border:0; background:none; color:var(--bg); border-radius:6px; padding:6px 8px;
+  cursor:pointer; display:flex; align-items:center; gap:6px;
+  font-family:var(--font-ui); font-size:11.5px; font-weight:600;
+}
+.selbtn:hover{ background:rgba(255,255,255,.14); }
+.selbtn.on{ color:var(--surface); }
+.seldiv{ display:inline-block; width:1px; height:16px; background:rgba(255,255,255,.22); margin:0 2px; }
+.selswatch{ width:13px; height:13px; border-radius:50%; border:1.5px solid rgba(255,255,255,.5); cursor:pointer; }
+.selswatch.pick{ background:var(--amber); border-color:var(--amber); }
+.saved-toast{
+  position:absolute; left:6px; top:-46px; z-index:5;
+  display:flex; align-items:center; gap:6px; background:var(--accent); color:var(--surface);
+  border-radius:10px; padding:7px 11px; font-family:var(--font-ui); font-size:11.5px; font-weight:600;
+  box-shadow:var(--shadow);
+}
+
+/* ---------- Høyre: relasjonspanel ---------- */
+.tabs{ display:flex; gap:2px; padding:12px 14px 0; flex:none; }
+.tab{
+  font-family:var(--font-ui); font-size:12.5px; font-weight:600; color:var(--text-muted);
+  background:none; border:0; padding:9px 12px; border-radius:8px 8px 0 0; cursor:pointer;
+  border-bottom:2px solid transparent;
+}
+.tab.active{ color:var(--accent-ink); border-bottom-color:var(--accent); }
+.tab .count{
+  font-family:var(--font-mono); font-size:10px; margin-left:4px; color:var(--text-faint);
+}
+.tab.active .count{ color:var(--accent); }
+.tabpanel{ display:none; flex-direction:column; gap:0; padding:14px; }
+.tabpanel.active{ display:flex; }
+
+.neighbor{
+  border:1px solid var(--border); border-radius:10px; padding:11px 12px; margin-bottom:9px;
+  background:var(--surface);
+}
+.neighbor-row1{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); margin-bottom:6px;
+}
+.neighbor-row1 .dist{ color:var(--accent); font-weight:600; }
+.neighbor-title{ font-family:var(--font-ui); font-size:12.5px; line-height:1.4; color:var(--text); }
+
+.gap-banner{
+  border:1px dashed var(--warn); background:var(--warn-soft); border-radius:10px;
+  padding:12px 13px; font-family:var(--font-ui); font-size:12px; color:var(--text);
+  line-height:1.55; margin-bottom:12px;
+}
+.gap-banner b{ color:var(--warn); }
+.gap-banner code{ font-family:var(--font-mono); font-size:10.5px; background:var(--surface); padding:1px 5px; border-radius:4px; }
+
+.note{
+  border:1px solid var(--border); border-radius:11px; padding:12px 13px; margin-bottom:11px;
+  background:var(--surface); position:relative;
+}
+.note-src{
+  display:flex; align-items:center; gap:7px; margin-bottom:8px;
+  font-family:var(--font-ui); font-size:11px; font-weight:700; color:var(--accent-ink);
+}
+.note-src i{ width:7px; height:7px; border-radius:50%; background:var(--amber); flex:none; }
+.note-quote{
+  font-family:var(--font-body); font-style:italic; font-size:13.5px; color:var(--text);
+  line-height:1.55; margin-bottom:9px; padding-left:11px; border-left:2px solid var(--border);
+}
+.note-cite{
+  font-family:var(--font-mono); font-size:10.5px; color:var(--text-muted);
+  margin-bottom:9px;
+}
+.note-actions{ display:flex; align-items:center; justify-content:space-between; }
+.note-time{ font-family:var(--font-mono); font-size:10px; color:var(--text-faint); }
+.note-icons{ display:flex; gap:3px; }
+.icon-btn{
+  border:0; background:none; color:var(--text-faint); border-radius:6px; padding:4px;
+  cursor:pointer; display:flex;
+}
+.icon-btn:hover{ background:var(--surface-2); color:var(--accent-ink); }
+
+/* ---------- Kart: node-link, gjenbruker konnektomets d3-force-visuelle språk ---------- */
+.kart-svg{ width:100%; height:auto; }
+.kart-legend{
+  display:flex; flex-direction:column; gap:6px; margin-top:12px; padding-top:12px;
+  border-top:1px solid var(--border); font-family:var(--font-ui); font-size:11px; color:var(--text-muted);
+}
+.kart-legend-row{ display:flex; align-items:center; gap:8px; }
+.leg-dot{ width:10px; height:10px; border-radius:50%; flex:none; }
+.kart-note{
+  font-family:var(--font-ui); font-size:11px; color:var(--text-faint); line-height:1.55; margin-top:10px;
+}
+
+/* ---------- Skriv-modus (FDR-038: fast panel, aldri inline, speil ikke orakel) ---------- */
+.skriv-head{ flex:none; padding:1rem 2.5rem .7rem; border-bottom:1px solid var(--border); }
+.skriv-tittel{
+  font-family:var(--font-display); font-size:20px; font-weight:600; border:0; background:none;
+  color:var(--text); width:100%; margin-bottom:.4rem;
+}
+.skriv-meta{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); }
+.skriv-editor{
+  flex:1; padding:1.6rem 2.5rem 3rem; max-width:680px; font-family:var(--font-body);
+  font-size:16.5px; line-height:1.75; color:var(--text); outline:none; overflow-y:auto;
+}
+.skriv-editor:empty::before{ content:attr(data-placeholder); color:var(--text-faint); }
+.ambient-panel{ padding:.85rem; }
+.ambient-status{
+  display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px;
+  color:var(--text-faint); margin-bottom:.8rem; padding-bottom:.7rem; border-bottom:1px solid var(--border);
+}
+.ambient-status i{ width:6px; height:6px; border-radius:50%; background:var(--oa); flex:none; }
+.ambient-item{
+  border:1px solid var(--border); border-radius:10px; padding:.7rem .75rem; margin-bottom:.6rem; background:var(--surface);
+}
+.ambient-quote{ font-family:var(--font-body); font-style:italic; font-size:13px; line-height:1.5; margin-bottom:.45rem; }
+.ambient-why{ font-size:11px; color:var(--accent-ink); background:var(--accent-soft); border-radius:6px; padding:.2rem .5rem; display:inline-block; margin-bottom:.4rem; }
+.ambient-src{ font-family:var(--font-mono); font-size:10px; color:var(--text-faint); }
+.axis-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:1rem; }
+.axis-chip{
+  font-family:var(--font-ui); font-size:10.5px; font-weight:600; border-radius:99px; padding:.3rem .65rem;
+  border:1px solid var(--border); color:var(--text-muted); display:flex; align-items:center; gap:5px;
+}
+.axis-chip .bar{ width:22px; height:4px; border-radius:2px; background:var(--surface-3); overflow:hidden; }
+.axis-chip .bar i{ display:block; height:100%; background:var(--accent); }
+.axis-chip.thin{ border-color:var(--amber); color:var(--amber); }
+
+.empty-hint{
+  font-family:var(--font-ui); font-size:12px; color:var(--text-faint); line-height:1.6;
+  padding:4px 2px;
+}
+
+::-webkit-scrollbar{ width:9px; height:9px; }
+::-webkit-scrollbar-thumb{ background:var(--surface-3); border-radius:99px; border:2px solid var(--surface); }
+::-webkit-scrollbar-track{ background:transparent; }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<div class="topbar">
+  <div class="wordmark">Fjord<span>lys</span></div>
+  <div class="profile-pill"><span class="profile-dot"></span>Profil: <b>Fiskehelse</b> — nyre · lever · ultralyd-validering</div>
+  <div class="modeswitch" id="modeswitch">
+    <button class="active" data-mode="les">Les</button>
+    <button data-mode="skriv">Skriv</button>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-meta">
+    <span>Europe PMC · <span class="live">●</span> live</span>
+    <span>bank.db · 214 papirer cachet</span>
+  </div>
+</div>
+
+<div class="shell" id="shell-les">
+
+  <!-- VENSTRE: søk + rangerte resultater -->
+  <div class="pane">
+    <div class="pane-head">
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input value="nephrocalcinosis smolt seawater transfer" readonly>
+      </div>
+      <div class="search-meta">
+        <span>8 kandidater · rangert</span>
+        <span>hentet for 3t siden</span>
+      </div>
+    </div>
+    <div class="pane-scroll">
+      <div class="result-list">
+
+        <div class="result active">
+          <div class="result-row1">
+            <span class="result-flags"><span class="star">★</span> 2026 · 0 sit.</span>
+            <span></span>
+          </div>
+          <div class="result-title">Characterisation of Urocystolithiasis in Farmed Atlantic Salmon: Histopathological Features and Pathophysiological Considerations</div>
+          <div class="result-journal">Journal of Fish Diseases · Dalum et al.</div>
+        </div>
+
+        <div class="result">
+          <div class="result-row1">
+            <span class="result-flags"><span class="star">★</span> <span class="pill-oa">OA</span> 2022 · 5 sit.</span>
+          </div>
+          <div class="result-title">Radiological detection of nephrocalcinosis in farmed Atlantic salmon Salmo salar L.</div>
+          <div class="result-journal">Journal of Fish Diseases</div>
+        </div>
+
+        <div class="result">
+          <div class="result-row1">
+            <span class="result-flags"><span class="star">★</span> <span class="pill-oa">OA</span> 2022 · 3 sit.</span>
+          </div>
+          <div class="result-title">Gene expression patterns in Atlantic salmon (Salmo salar) with severe nephrocalcinosis</div>
+          <div class="result-journal">Journal of Fish Diseases</div>
+        </div>
+
+        <div class="result">
+          <div class="result-row1">
+            <span class="result-flags"><span class="star">★</span> 2022 · 6 sit.</span>
+          </div>
+          <div class="result-title">Physiological changes observed in farmed Atlantic salmon (Salmo salar L.) with nephrocalcinosis</div>
+          <div class="result-journal">Aquaculture</div>
+        </div>
+
+        <div class="result">
+          <div class="result-row1">
+            <span class="result-flags">2008 · 36 sit.</span>
+          </div>
+          <div class="result-title">Long-term separate and combined effects of environmental hypercapnia and hyperoxia in Atlantic salmon smolts</div>
+          <div class="result-journal">Aquaculture</div>
+        </div>
+
+        <div class="result">
+          <div class="result-row1">
+            <span class="result-flags"><span class="pill-oa">OA</span> 2024 · 0 sit.</span>
+          </div>
+          <div class="result-title">Differential regulation of magnesium transporters Slc41, Cnnm and Trpm6-7 in the kidney of salmonids</div>
+          <div class="result-journal">BMC Genomics</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDT: leseflate -->
+  <div class="pane">
+    <div class="reader-head">
+      <div class="reader-kicker">
+        <span>Journal of Fish Diseases · 2026</span><span class="dot">·</span>
+        <span>10.1111/jfd.70099</span><span class="dot">·</span>
+        <span style="color:var(--amber)">★ domene-nær</span><span class="dot">·</span>
+        <span>abstract (ikke OA — fulltekst krever egen PDF)</span>
+      </div>
+      <div class="reader-title">Characterisation of Urocystolithiasis in Farmed Atlantic Salmon (Salmo salar L.): Histopathological Features and Pathophysiological Considerations</div>
+      <div class="reader-authors">Dalum AS, Alarcon M, Gretarsson P, Reed AK, Wisløff H, McDougall KK, Takvam M — Pharmaq Analytiq, Oslo</div>
+    </div>
+    <div class="pane-scroll">
+      <div class="reader-body">
+        <div class="reader-grid">
+
+          <div class="gutter-dot"><i></i></div>
+          <p>While nephrocalcinosis has received considerable attention in Atlantic salmon aquaculture, <span class="hl">mineralisation of the urinary bladder remains largely overlooked</span>. Obstruction of the urinary bladder, well recognised in terrestrials as a potentially fatal condition, is often missed in fish due to its exclu­sively internal presentation.</p>
+
+          <div class="gutter-dot"></div>
+          <p>Obstruction of the urinary bladder, well recognised in terrestrials as a potentially fatal condition, is often missed in fish due to its <span class="hl">exclusively internal presentation<span class="seltoolbar">
+              <button class="selbtn on"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M12 5v14"/></svg>Sitér</button>
+              <span class="seldiv"></span>
+              <button class="selbtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Kommentér</button>
+              <span class="seldiv"></span>
+              <span class="selswatch pick"></span><span class="selswatch"></span><span class="selswatch" style="background:#3D5FA6;border-color:#3D5FA6"></span>
+            </span></span> …</p>
+
+          <div class="gutter-dot"></div>
+          <p style="color:var(--text-muted)">Resten av abstractet og fulltekst er ikke hentet i denne mockupen — Europe PMC merker artikkelen <code style="font-family:var(--font-mono);font-size:13px">isOpenAccess: N</code>. Slipp en egen PDF her (institusjonstilgang) for å lese og sitere videre enn abstractet.</p>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HØYRE: lignende / gap / notater -->
+  <div class="pane">
+    <div class="tabs">
+      <button class="tab active" data-tab="lignende">Lignende<span class="count">4</span></button>
+      <button class="tab" data-tab="kart">Kart<span class="count">6</span></button>
+      <button class="tab" data-tab="gap">Gap<span class="count">—</span></button>
+      <button class="tab" data-tab="notater">Notater<span class="count">1</span></button>
+    </div>
+    <div class="pane-scroll">
+
+      <div class="tabpanel active" id="p-lignende">
+        <div class="empty-hint" style="margin-bottom:10px">Semantiske naboer i cachen (bge-m3-avstand) — ikke hele Europe PMC, kun det som alt er søkt opp.</div>
+
+        <div class="neighbor">
+          <div class="neighbor-row1"><span class="dist">0.312</span><span>2022 · J Fish Diseases</span></div>
+          <div class="neighbor-title">Radiological detection of nephrocalcinosis in farmed Atlantic salmon Salmo salar L.</div>
+        </div>
+        <div class="neighbor">
+          <div class="neighbor-row1"><span class="dist">0.398</span><span>2022 · J Fish Diseases</span></div>
+          <div class="neighbor-title">Gene expression patterns in Atlantic salmon with severe nephrocalcinosis</div>
+        </div>
+        <div class="neighbor">
+          <div class="neighbor-row1"><span class="dist">0.441</span><span>2022 · Aquaculture</span></div>
+          <div class="neighbor-title">Physiological changes observed in farmed Atlantic salmon with nephrocalcinosis</div>
+        </div>
+        <div class="neighbor">
+          <div class="neighbor-row1"><span class="dist">0.667</span><span>2024 · BMC Genomics</span></div>
+          <div class="neighbor-title">Differential regulation of magnesium transporters in the kidney of salmonids</div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="p-kart">
+        <div class="empty-hint" style="margin-bottom:8px">Samme naboer som «Lignende» — som graf i stedet for liste. Ghoniem et al. 2005 (bok-banken): node-link vinner på sti-finning/nabolag, lister vinner på eksakt avstand. Derfor begge faner, ikke én.</div>
+        <svg class="kart-svg" viewBox="0 0 300 280" xmlns="http://www.w3.org/2000/svg">
+          <line x1="150" y1="150" x2="215" y2="104" stroke="var(--accent)" stroke-width="3" opacity=".55"/>
+          <line x1="150" y1="150" x2="224" y2="202" stroke="var(--accent)" stroke-width="2.4" opacity=".55"/>
+          <line x1="150" y1="150" x2="56" y2="167" stroke="var(--accent)" stroke-width="2" opacity=".5"/>
+          <line x1="150" y1="150" x2="46" y2="90" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
+          <line x1="150" y1="150" x2="252" y2="248" stroke="var(--text-faint)" stroke-width="1" stroke-dasharray="2 4" opacity=".6"/>
+
+          <circle cx="215" cy="104" r="11" fill="var(--accent-soft)" stroke="var(--amber)" stroke-width="1.6"/>
+          <text x="215" y="88" text-anchor="middle" font-family="var(--font-ui)" font-size="8.6" fill="var(--text-muted)">Radiologisk deteksjon</text>
+          <text x="215" y="122" text-anchor="middle" font-family="var(--font-mono)" font-size="8" fill="var(--accent)">0.312</text>
+
+          <circle cx="224" cy="202" r="10" fill="var(--accent-soft)" stroke="var(--amber)" stroke-width="1.6"/>
+          <text x="224" y="220" text-anchor="middle" font-family="var(--font-ui)" font-size="8.6" fill="var(--text-muted)">Genekspresjon</text>
+          <text x="224" y="187" text-anchor="middle" font-family="var(--font-mono)" font-size="8" fill="var(--accent)">0.398</text>
+
+          <circle cx="56" cy="167" r="10" fill="var(--accent-soft)" stroke="var(--amber)" stroke-width="1.6"/>
+          <text x="56" y="185" text-anchor="middle" font-family="var(--font-ui)" font-size="8.6" fill="var(--text-muted)">Fysiologiske endringer</text>
+          <text x="56" y="151" text-anchor="middle" font-family="var(--font-mono)" font-size="8" fill="var(--accent)">0.441</text>
+
+          <circle cx="46" cy="90" r="9" fill="var(--surface)" stroke="var(--border)" stroke-width="1.6"/>
+          <text x="46" y="76" text-anchor="middle" font-family="var(--font-ui)" font-size="8.6" fill="var(--text-muted)">Mg-transportører</text>
+          <text x="46" y="107" text-anchor="middle" font-family="var(--font-mono)" font-size="8" fill="var(--text-faint)">0.667</text>
+
+          <circle cx="252" cy="248" r="9" fill="var(--surface)" stroke="var(--border)" stroke-width="1.6"/>
+          <text x="252" y="264" text-anchor="middle" font-family="var(--font-ui)" font-size="8.4" fill="var(--text-faint)">Hyperkapni-smolt · 2008</text>
+          <text x="252" y="234" text-anchor="middle" font-family="var(--font-mono)" font-size="8" fill="var(--text-faint)">36 sit., ikke nabo</text>
+
+          <circle cx="150" cy="150" r="16" fill="var(--accent)"/>
+          <text x="150" y="154" text-anchor="middle" font-family="var(--font-ui)" font-weight="700" font-size="9" fill="var(--surface)">åpen</text>
+        </svg>
+        <div class="kart-legend">
+          <div class="kart-legend-row"><span class="leg-dot" style="background:var(--accent-soft);border:1.6px solid var(--amber)"></span>Domene-nær nabo (bge-m3-avstand → linjetykkelse)</div>
+          <div class="kart-legend-row"><span class="leg-dot" style="background:var(--surface);border:1.6px solid var(--border)"></span>Ikke domene-nær / ikke funnet som nabo</div>
+        </div>
+        <div class="kart-note"><b style="color:var(--text)">Lesningen ADR-013 forutsa, nå synlig:</b> hyperkapni-papiret har flest siteringer (36) av alle — men er ingen semantisk nabo av det åpne papiret. Mange siteringer ≠ nær relasjon. Rangeringen i «Lignende»-fanen visste dette allerede; kartet viser HVORFOR.</div>
+      </div>
+
+      <div class="tabpanel" id="p-gap">
+        <div class="gap-banner">
+          <b>Europe PMC /references er nede</b> for øyeblikket (503, planlagt vedlikehold). Citation-gap-testen for dette papiret kan ikke kjøres akkurat nå — prøv <code>cli.py --gap</code> igjen senere.
+        </div>
+        <div class="empty-hint">Når kilden svarer: naboene i «Lignende» sammenlignes mot papirets egen referanseliste — de som IKKE er sitert der, vises her som kandidater. En påstand om hva som mangler er alltid ditt eller Ulvens kall, ikke verktøyets.</div>
+      </div>
+
+      <div class="tabpanel" id="p-notater">
+        <div class="note">
+          <div class="note-src"><i></i>Dalum et al. 2026, J Fish Dis</div>
+          <div class="note-quote">«…mineralisation of the urinary bladder remains largely overlooked»</div>
+          <div class="note-cite">Dalum AS et al. (2026). J Fish Dis. doi:10.1111/jfd.70099 · §1</div>
+          <div class="note-actions">
+            <span class="note-time">i dag, 14:41</span>
+            <span class="note-icons">
+              <button class="icon-btn" title="Kopiér sitering"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+              <button class="icon-btn" title="Hopp til stedet i dokumentet"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+            </span>
+          </div>
+        </div>
+        <div class="empty-hint">Sitér en seksjon i leseflaten for å legge den hit — med kildehenvisning automatisk påført, ingen flateskifte.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- SKRIV-MODUS: skriveflate + fast ambient relevansvindu (FDR-038-mønster — IKKE oppfunnet
+     her, huset har alt vedtatt formen: fast sidepanel, aldri inline, debounce ved pause,
+     speil ikke orakel, proveniens obligatorisk, ærlig stille ved tomt korpus). -->
+<div class="shell" id="shell-skriv" hidden>
+
+  <div class="pane">
+    <div class="pane-head">
+      <div class="search-meta"><span>Dine utkast</span><span></span></div>
+    </div>
+    <div class="pane-scroll">
+      <div class="result-list">
+        <div class="result active">
+          <div class="result-row1"><span>utkast · sist endret nå</span></div>
+          <div class="result-title">Feltnotat — gruppe B, desember</div>
+          <div class="result-journal">Ikke delt</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane">
+    <div class="skriv-head">
+      <input class="skriv-tittel" value="Feltnotat — gruppe B, desember">
+      <div class="skriv-meta">Kun lokalt · ambient-panelet til høyre oppdateres når du stopper å skrive</div>
+    </div>
+    <div class="pane-scroll">
+      <div class="skriv-editor" contenteditable="true" data-placeholder="Skriv her…">Foreløpige funn fra siste skanningsrunde: økt forekomst av nefrokalsinose i gruppe B sammenfaller med forhøyet CO₂ i kar 4–6 gjennom hele desember. Ultralydbildene viser samtidig fortettet levervev hos samme individer — usikkert om dette er en sekundær metabolsk belastning eller en uavhengig respons på det samme miljøavviket. Bør vi lete etter litteratur som kobler hyperkapni direkte til leverpatologi, ikke bare nyre?</div>
+    </div>
+  </div>
+
+  <div class="pane">
+    <div class="tabs">
+      <button class="tab active" data-tab="relevans">Relevans</button>
+      <button class="tab" data-tab="omfang">Omfang</button>
+    </div>
+    <div class="pane-scroll">
+
+      <div class="tabpanel active" id="tab-relevans">
+        <div class="ambient-panel">
+          <div class="ambient-status"><i></i>oppdatert for 4s siden — pauset skriving</div>
+
+          <div class="ambient-item">
+            <div class="ambient-why">→ matcher «CO₂» + «kar»</div>
+            <div class="ambient-quote">«Reliable data on metabolic rates and CO₂ removal efficiency are essential for fish welfare in intensive production and RAS design.»</div>
+            <div class="ambient-src">Aquacultural Engineering, 2024 · alt i cachen din</div>
+          </div>
+
+          <div class="ambient-item">
+            <div class="ambient-why">→ matcher «nefrokalsinose» + «gruppe»</div>
+            <div class="ambient-quote">«Nephrocalcinosis is a widespread challenge in intensive production of salmon smolt. There is however no consensus on its aetiology…»</div>
+            <div class="ambient-src">Journal of Fish Diseases, 2023 · alt i cachen din</div>
+          </div>
+
+          <div class="ambient-item" style="border-style:dashed; border-color:var(--amber)">
+            <div class="ambient-why" style="background:var(--amber-soft); color:var(--amber)">→ ingen treff ennå</div>
+            <div class="ambient-quote" style="color:var(--text-muted); font-style:normal">«hyperkapni + leverpatologi» finnes ikke i cachen din — ingen treff betyr ikke ingen forskning. Prøv «hepatic response hypercapnia salmon» i Les-fanen.</div>
+          </div>
+
+          <div class="hint" style="margin-top:.3rem">Speil, ikke orakel: dette er utdrag fra det du alt har søkt opp, aldri en generert påstand. Samme prinsipp som Fars ambient-modus (FDR-038).</div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="tab-omfang">
+        <div class="hint" style="margin-bottom:.7rem">Hvor mye av det du har skrevet/lest berører hver akse — til scoping, ikke en fasit.</div>
+        <div class="axis-row">
+          <span class="axis-chip">Faser<span class="bar"><i style="width:70%"></i></span></span>
+          <span class="axis-chip">Miljøfaktorer<span class="bar"><i style="width:85%"></i></span></span>
+          <span class="axis-chip">Regenerasjon<span class="bar"><i style="width:40%"></i></span></span>
+          <span class="axis-chip thin">Lever<span class="bar"><i style="width:8%"></i></span></span>
+          <span class="axis-chip thin">Ultralyd-validering<span class="bar"><i style="width:15%"></i></span></span>
+        </div>
+        <div class="hint">Lever og ultralyd-validering er tynt dekket i det du har cachet så langt — ikke fordi forskningen mangler, men fordi du ikke har søkt der ennå. Et ærlig hull å lukke, ikke en påstand om at hullet er reelt i litteraturen.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+document.querySelectorAll('#modeswitch button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#modeswitch button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById('shell-les').hidden = b.dataset.mode !== 'les';
+  document.getElementById('shell-skriv').hidden = b.dataset.mode !== 'skriv';
+}));
+document.querySelectorAll('#shell-skriv .tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('#shell-skriv .tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('#shell-skriv .tabpanel').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+}));
+</script>
+
+<script>
+/* Bevisst begrenset til #shell-les — uten dette kolliderer den med Skriv-fanenes egen
+   handler (begge matchet global .tab/.tabpanel, og denne brukte i tillegg feil id-prefiks
+   "p-" for Skriv-fanene, som kastet en stille TypeError og lot Skriv-panelet stå tomt). */
+document.querySelectorAll('#shell-les .tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('#shell-les .tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('#shell-les .tabpanel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('p-'+t.dataset.tab).classList.add('active');
+  });
+});
+document.querySelectorAll('.result').forEach(r=>{
+  r.addEventListener('click', ()=>{
+    document.querySelectorAll('.result').forEach(x=>x.classList.remove('active'));
+    r.classList.add('active');
+  });
+});
+</script>
+
+</body></html>
