@@ -2,9 +2,27 @@
 
 Dette er sjekklisten for en trygg, innlogget lesetest av Forskningssøk. Den
 skiller lokal kodeverifikasjon fra kontroll gjennom Ulvens faktiske
-tilgangsvei. Status sist gjennomgått 2026-09-24.
+tilgangsvei. Status sist gjennomgått 2026-10-07. Eldre kontrollpunkter står som
+historisk baseline der de ikke kan måles på nytt uten en innlogget brukerøkt.
 
 ## Status
+
+### Oppdatert kontroll 2026-10-07
+
+- Kodegrunnlag: `forskningssok/main` pa `44299f4cd2e92acb36c6786dedb3aa47a7690e26`.
+- Lokal regressjon: `venv/bin/python -m pytest -q` ga 894 bestaatt pa 22,08 sekunder.
+- Live uten sesjon: `GET /`, `/health/live`, `/health/ready`, `/api/status`,
+  `/api/versjon` og `/api/profil` pa `forskningssok.lauvasdata.no` svarte alle
+  HTTP 401 med `{"detail":"Ikke autentisert"}`. Ingen Basic Auth-utfordring
+  ble sendt; forsiden svarte med `Server: uvicorn`.
+- Dette bekrefter at foresporsler uten sesjon avvises. Det bekrefter ikke
+  innlogget tilgang, grant for Ulven, versjon/build, sokeresultater eller
+  produksjonsruting til AI-proxy. Disse kontrollene krever den faktiske
+  portal-innloggingen.
+- Beta-lesetesten er fortsatt ikke godkjent. Bruk den innloggede sjekklisten
+  nedenfor nar en autorisert portalokt er tilgjengelig.
+
+### Historisk baseline 2026-09-24
 
 Den lokale Forskningssøk-suiten har 715 beståtte tester, inkludert reelle
 Chromium-løp for desktop og mobil med isolerte API-fixtures. Portalens backend har
