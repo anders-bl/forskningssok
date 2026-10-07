@@ -161,6 +161,245 @@ def _print_papirer(papirer: list[PaperDossier], antall: int, query: str, eksakt_
         print()
 
 
+def _cmd_oppdater():
+    print("Oppdaterer cache fra alle kilder...")
+    oppdater_query = domeneprofil.PROFIL["sok_standard"]
+
+    try:
+        from adapters.core import sok as core_sok
+        core_result = core_sok(oppdater_query, limit=20)
+        lagre(core_result)
+        print(f"  CORE: {len(core_result)} papirer")
+    except Exception as e:
+        print(f"  CORE feilet: {e}")
+
+    try:
+        from adapters.europe_pmc import sok as pmc_sok
+        pmc_result = pmc_sok(oppdater_query, page_size=20)
+        lagre(pmc_result)
+        print(f"  Europe PMC: {len(pmc_result)} papirer")
+    except Exception as e:
+        print(f"  Europe PMC feilet: {e}")
+
+    try:
+        from adapters.semantic_scholar import sok as scholar_sok
+        scholar_result = scholar_sok(oppdater_query, limit=20)
+        lagre(scholar_result)
+        print(f"  Semantic Scholar: {len(scholar_result)} papirer")
+    except Exception as e:
+        print(f"  Semantic Scholar feilet: {e}")
+
+    # Google Scholar krever SERPAPI_KEY - kommentert ut til nøkkel er satt
+    # try:
+    #     from adapters.google_scholar import sok as google_sok
+    #     google_result = google_sok(oppdater_query, limit=10)
+    #     lagre(google_result)
+    #     print(f"  Google Scholar: {len(google_result)} papirer")
+    # except Exception as e:
+    #     print(f"  Google Scholar feilet: {e}")
+
+    print("\nCache oppdatert! Nå kan du søke.")
+
+
+def _cmd_konformans():
+    import os
+    import konformans
+    from fastapi.testclient import TestClient
+    from api import app as fastapi_app
+    c = TestClient(fastapi_app)
+    off = konformans.sjekk_offentlig(c.get("/health").json())
+    nokkel = os.environ.get("INTERNAL_API_KEY")
+    if nokkel:
+        detalj = konformans.sjekk_detalj(
+            c.get("/health", headers={"X-Internal-Key": nokkel}).json())
+    else:
+        detalj = None
+        print("(INTERNAL_API_KEY ikke satt — sjekker kun det offentlige svaret. "
+              "Sett den for å validere detalj-varianten.)")
+    print(f"Offentlig /health: {'KONFORM' if not off else 'AVVIK'}")
+    for a2 in off:
+        print(f"    - {a2}")
+    if detalj is not None:
+        print(f"Detalj /health:    {'KONFORM' if not detalj else 'AVVIK'}")
+        for a2 in detalj:
+            print(f"    - {a2}")
+
+
+def _cmd_embed_renhet(a):
+    import embed_renhet
+    print("Sjekker at cache.db er embeddet av den nåværende modellen "
+          "(re-embedder og sammenligner med lagret vektor) …")
+    r = embed_renhet.sjekk_renhet(n=a.antall)
+    if r["ren"] is None:
+        print("⊘ UMÅLT: ingen embeddede papirer i cachen — kan ikke bevise embed-modellen.")
+        return
+    print(f"Sjekket {r['sjekket']} papirer. Maks avstand {r['maks_avstand']}, "
+          f"snitt {r['snitt_avstand']} (terskel {embed_renhet.TERSKEL}).")
+    if r["ren"]:
+        print("[REN] Alle lagrede vektorer stemmer med den nåværende embedderen.")
+    else:
+        print(f"[BLANDET] {len(r['avvik'])} papir(er) avviker — cachen bærer vektorer fra "
+              f"en ANNEN modell. Dette er stille korrupt (samme dim, feil rom):")
+        for a2 in r["avvik"][:8]:
+            print(f"    avstand {a2['avstand']}  {a2['tittel']}")
+
+
+def _cmd_kilder():
+    import kilde_liveness
+    # Kontroll-papiret fra profilen: kjent-referert (~79 ref), så et tomt svar er en
+    # svikt, ikke et gyldig 0. Hentes fra cachen for pmid/kilde_kode.
+    kid = domeneprofil.EVAL_KONTROLL.get("kontroll_relevant_id")
+    kp = hent(kid) if kid else None
+    if not kp:
+        print("Kontroll-papiret er ikke cachet — kjør et domene-kjerne-søk først "
+              "(profilens EVAL_KONTROLL.kontroll_relevant_id).", file=sys.stderr)
+        sys.exit(1)
+    print(f"Referanse-kilde-liveness, kontroll: {kp['tittel'][:60]} "
+          f"(DOI {kp['doi']}, PMID {kp['pmid']}) — kjent-referert.\n")
+    svar = kilde_liveness.alle_kilder(doi=kp["doi"], pmid=kp["pmid"],
+                                      kilde_kode=kp["kilde_kode"] or "MED")
+    for s in svar:
+        merke = {"OPPE": "[OPPE]", "NEDE": "[NEDE]", "MISTENKT_NEDE": "[TOM/NEDE]",
+                 "IKKE_SJEKKBAR": "[-]"}.get(s.status, s.status)
+        linje = f"  {merke:11} {s.navn:12} {f'{s.antall} referanser' if s.antall else s.feil}"
+        print(linje)
+    o = kilde_liveness.oppsummer(svar)
+    print()
+    if o["alle_oppe"]:
+        print("Alle sjekkbare kilder oppe.")
+    else:
+        if o["nede"]:
+            print(f"NEDE (svarte ikke): {', '.join(o['nede'])}")
+        if o["mistenkt_nede"]:
+            print(f"MISTENKT NEDE (tomt svar på et kjent-referert papir — dette er felle "
+                  f"38: ser ut som «0 referanser», er egentlig nede): {', '.join(o['mistenkt_nede'])}")
+
+
+def _cmd_evaluer(a):
+    import evaluer
+    # Ekte søk → ranking.py-ordnet liste, akkurat det flaten viser.
+    try:
+        papirer, _, _ = sok_og_ranger(a.evaluer, page_size=max(a.antall, 12))
+    except RuntimeError as e:
+        print(f"Feil under søk: {e}", file=sys.stderr); sys.exit(1)
+    papirer = papirer[:a.antall]
+    lagre(papirer)  # sørg for at kontroll-papirene kan hentes fra cachen
+
+    # Positiv kontroll = species-trap, definert i PROFILEN (domeneprofil.EVAL_KONTROLL),
+    # ikke her — samme regel som resten av fagfelt-kunnskapen. Dommeren MÅ skille det
+    # ekte papiret fra fella, ellers voides målingen. Papirene hentes fra cachen.
+    kk = domeneprofil.EVAL_KONTROLL
+    rel = hent(kk["kontroll_relevant_id"]) if kk.get("kontroll_relevant_id") else None
+    fel = hent(kk["kontroll_felle_id"]) if kk.get("kontroll_felle_id") else None
+    kontroll = ({"query": kk["kontroll_query"], "relevant": rel, "felle": fel}
+                if rel and fel and kk.get("kontroll_query") else None)
+    if not kontroll:
+        print("[OBS] Kontroll-papirene (profilens EVAL_KONTROLL) er ikke cachet — kjør et "
+              "domene-kjerne-søk først. Måler uten positiv kontroll (gyldig=None).",
+              file=sys.stderr)
+
+    print(f"Måler rangeringen for «{a.evaluer}» mot en uavhengig Ollama-dommer "
+          f"({evaluer.DEFAULT_MODELL}, blind for rekkefølgen). Kan ta et minutt …\n")
+    try:
+        r = evaluer.evaluer_rangering(a.evaluer, papirer, kontroll=kontroll)
+    except Exception as e:
+        print(f"Dommeren er ikke nåbar ({type(e).__name__}: {e}). Kjører Ollama lokalt?",
+              file=sys.stderr); sys.exit(1)
+
+    for d in r["detaljer"]:
+        merke = "?" if d["grad"] is None else str(d["grad"])
+        print(f"  [{merke}] {d['tittel']}")
+    k = r["kontroll"]
+    if k:
+        ok = "BESTÅTT" if k["bestått"] else "FEILET"
+        print(f"\nPositiv kontroll ({ok}): ekte «{k['relevant_tittel']}» fikk "
+              f"{k['grad_relevant']}, fella «{k['felle_tittel']}» fikk {k['grad_felle']}.")
+    print(f"\nKonkordans med dommeren: {r['konkordans']} "
+          f"({r['enige_par']}/{r['totale_par']} par enige) · terskel {r['terskel']}")
+    if r["umålte"]:
+        print(f"[OBS] {r['umålte']} papir(er) fikk ingen tolkbar dom (talt som umålt, ikke 0).")
+    if r["gyldig"] is False:
+        print("[STOPP] MÅLINGEN ER UGYLDIG: dommeren besto ikke den positive kontrollen — "
+              "den er lurt av samme species-trap rangeringen bander mot. Konkordansen "
+              "over betyr ingenting.")
+    elif r["gyldig"] is None:
+        print("Målt uten positiv kontroll — les konkordansen med forbehold.")
+    else:
+        dom = "GOD" if r["bestått"] else "UNDER TERSKEL"
+        print(f"Rangeringen er {dom} mot denne dommeren (n={r['n']}, ett datapunkt — "
+              f"ikke en dom over rangeringen generelt).")
+
+
+def _cmd_gap(a):
+    papir = hent(a.gap)
+    if not papir:
+        print(f"{a.gap} er ikke cachet ennå — søk det opp først (--lignende krever samme).")
+        return
+    if not papir["pmid"] and not papir["doi"]:
+        print(f"{a.gap} mangler både PMID og DOI i cachen — ingen referanse-kilde tilgjengelig.")
+        return
+    try:
+        resultat = gap_kandidater(a.gap, papir["kilde_kode"] or "MED", papir["pmid"],
+                                  k=a.antall, kilde_aar=papir["aar"])
+    except RuntimeError as e:
+        print(f"Feil mot Europe PMC /references: {e}", file=sys.stderr)
+        sys.exit(1)
+    print(f"«{papir['tittel']}» ({papir['aar'] or '?'}) siterer "
+          f"{resultat['siterte_antall']} kilder selv.")
+    # Modulen har rapportert referanse_kilde siden den ble bygget, men CLI-en skrev
+    # den aldri ut — transparens-prinsippet gjaldt returverdien og ikke flaten noen
+    # faktisk leser. Fanget da EBIs /references hadde ligget nede i tre døgn og
+    # utskriften ikke røpet at hele svaret kom fra OpenAlex.
+    print(f"Referanselisten kom fra: {resultat['referanse_kilde']}")
+    d = resultat.get("referanse_dekning")
+    if d:
+        print(f"[OBS] Delvis dekning: {d['hentet']} hentet av {d['oppgitt_av_utgiver']} "
+              f"oppgitt av utgiver — gap-listen kan være for lang.")
+    print(f"\n{len(resultat['naboer'])} semantiske naboer i cachen, "
+          f"{len(resultat['gap'])} av dem IKKE i referanselisten (kandidater, ikke en dom):\n")
+    for g in resultat["gap"]:
+        print(f"[{g['avstand']:.3f}] {g['aar'] or '?'} · {g['tidsskrift']}")
+        print(f"    {g['tittel']}")
+        print(f"    {g['kilde_url']}\n")
+    ferske = resultat.get("publisert_etter") or []
+    if ferske:
+        print(f"— og {len(ferske)} nabo(er) publisert ETTER {papir['aar']}, som papiret "
+              f"umulig kunne sitert. Ikke et gap; les dem som «dette har kommet siden»:\n")
+        for g in ferske:
+            print(f"[{g['avstand']:.3f}] {g['aar']} · {g['tittel']}")
+
+
+def _cmd_lignende(a):
+    naboer = lignende(a.lignende, k=a.antall)
+    if not naboer:
+        print(f"Ingen cachede naboer for {a.lignende} — enten ikke søkt opp ennå, "
+              f"eller uten abstract å embedde.")
+        return
+    print(f"{len(naboer)} nærmeste i cachen til {a.lignende}:\n")
+    for n in naboer:
+        print(f"[{n['avstand']:.3f}] {n['aar'] or '?'} · {n['tidsskrift']}")
+        print(f"    {n['tittel']}")
+        print(f"    {n['kilde_url']}\n")
+
+
+def _cmd_sok(a, ap):
+    if not a.query:
+        ap.error("oppgi en søkestreng, eller --lignende ID")
+    query = " ".join(a.query)
+    try:
+        papirer, eksakt_id, revisjon = sok_og_ranger(query, page_size=max(a.antall, 20))
+    except RuntimeError as e:
+        print(f"Feil mot Europe PMC: {e}", file=sys.stderr)
+        sys.exit(1)
+    lagre(papirer)  # cache/embed for fremtidig --lignende-søk — CLI-en kan trygt vente
+    if not revisjon["kilder"]["core"]:
+        print("(CORE utilgjengelig akkurat nå — viser kun Europe PMC-treff)\n", file=sys.stderr)
+    _print_papirer(papirer, a.antall, query, eksakt_id)
+    _print_revisjon(revisjon)
+
+
+# Subkommando-dispatch: hver flagg-gren er sin egen _cmd_*-handler (R210-refaktor 2026-10-07,
+# arkitektur-radar: main var 249 linjer / cx 62). main gjør nå kun argparse + ruting.
 def main():
     ap = argparse.ArgumentParser(
         description=f"Litteratursøk (Europe PMC) — profil: {domeneprofil.NAVN}")
@@ -178,239 +417,20 @@ def main():
 
     # --oppdater må kjøres FØR query-sjekken
     if a.oppdater:
-        print("Oppdaterer cache fra alle kilder...")
-        oppdater_query = domeneprofil.PROFIL["sok_standard"]
-
-        try:
-            from adapters.core import sok as core_sok
-            core_result = core_sok(oppdater_query, limit=20)
-            lagre(core_result)
-            print(f"  CORE: {len(core_result)} papirer")
-        except Exception as e:
-            print(f"  CORE feilet: {e}")
-
-        try:
-            from adapters.europe_pmc import sok as pmc_sok
-            pmc_result = pmc_sok(oppdater_query, page_size=20)
-            lagre(pmc_result)
-            print(f"  Europe PMC: {len(pmc_result)} papirer")
-        except Exception as e:
-            print(f"  Europe PMC feilet: {e}")
-
-        try:
-            from adapters.semantic_scholar import sok as scholar_sok
-            scholar_result = scholar_sok(oppdater_query, limit=20)
-            lagre(scholar_result)
-            print(f"  Semantic Scholar: {len(scholar_result)} papirer")
-        except Exception as e:
-            print(f"  Semantic Scholar feilet: {e}")
-
-        # Google Scholar krever SERPAPI_KEY - kommentert ut til nøkkel er satt
-        # try:
-        #     from adapters.google_scholar import sok as google_sok
-        #     google_result = google_sok(oppdater_query, limit=10)
-        #     lagre(google_result)
-        #     print(f"  Google Scholar: {len(google_result)} papirer")
-        # except Exception as e:
-        #     print(f"  Google Scholar feilet: {e}")
-        
-        print("\nCache oppdatert! Nå kan du søke.")
-        return
-
+        return _cmd_oppdater()
     if a.konformans:
-        import os
-        import konformans
-        from fastapi.testclient import TestClient
-        from api import app as fastapi_app
-        c = TestClient(fastapi_app)
-        off = konformans.sjekk_offentlig(c.get("/health").json())
-        nokkel = os.environ.get("INTERNAL_API_KEY")
-        if nokkel:
-            detalj = konformans.sjekk_detalj(
-                c.get("/health", headers={"X-Internal-Key": nokkel}).json())
-        else:
-            detalj = None
-            print("(INTERNAL_API_KEY ikke satt — sjekker kun det offentlige svaret. "
-                  "Sett den for å validere detalj-varianten.)")
-        print(f"Offentlig /health: {'KONFORM' if not off else 'AVVIK'}")
-        for a2 in off:
-            print(f"    - {a2}")
-        if detalj is not None:
-            print(f"Detalj /health:    {'KONFORM' if not detalj else 'AVVIK'}")
-            for a2 in detalj:
-                print(f"    - {a2}")
-        return
-
+        return _cmd_konformans()
     if a.embed_renhet:
-        import embed_renhet
-        print("Sjekker at cache.db er embeddet av den nåværende modellen "
-              "(re-embedder og sammenligner med lagret vektor) …")
-        r = embed_renhet.sjekk_renhet(n=a.antall)
-        if r["ren"] is None:
-            print("⊘ UMÅLT: ingen embeddede papirer i cachen — kan ikke bevise embed-modellen.")
-            return
-        print(f"Sjekket {r['sjekket']} papirer. Maks avstand {r['maks_avstand']}, "
-              f"snitt {r['snitt_avstand']} (terskel {embed_renhet.TERSKEL}).")
-        if r["ren"]:
-            print("[REN] Alle lagrede vektorer stemmer med den nåværende embedderen.")
-        else:
-            print(f"[BLANDET] {len(r['avvik'])} papir(er) avviker — cachen bærer vektorer fra "
-                  f"en ANNEN modell. Dette er stille korrupt (samme dim, feil rom):")
-            for a2 in r["avvik"][:8]:
-                print(f"    avstand {a2['avstand']}  {a2['tittel']}")
-        return
-
+        return _cmd_embed_renhet(a)
     if a.kilder:
-        import kilde_liveness
-        # Kontroll-papiret fra profilen: kjent-referert (~79 ref), så et tomt svar er en
-        # svikt, ikke et gyldig 0. Hentes fra cachen for pmid/kilde_kode.
-        kid = domeneprofil.EVAL_KONTROLL.get("kontroll_relevant_id")
-        kp = hent(kid) if kid else None
-        if not kp:
-            print("Kontroll-papiret er ikke cachet — kjør et domene-kjerne-søk først "
-                  "(profilens EVAL_KONTROLL.kontroll_relevant_id).", file=sys.stderr)
-            sys.exit(1)
-        print(f"Referanse-kilde-liveness, kontroll: {kp['tittel'][:60]} "
-              f"(DOI {kp['doi']}, PMID {kp['pmid']}) — kjent-referert.\n")
-        svar = kilde_liveness.alle_kilder(doi=kp["doi"], pmid=kp["pmid"],
-                                          kilde_kode=kp["kilde_kode"] or "MED")
-        for s in svar:
-            merke = {"OPPE": "[OPPE]", "NEDE": "[NEDE]", "MISTENKT_NEDE": "[TOM/NEDE]",
-                     "IKKE_SJEKKBAR": "[-]"}.get(s.status, s.status)
-            linje = f"  {merke:11} {s.navn:12} {f'{s.antall} referanser' if s.antall else s.feil}"
-            print(linje)
-        o = kilde_liveness.oppsummer(svar)
-        print()
-        if o["alle_oppe"]:
-            print("Alle sjekkbare kilder oppe.")
-        else:
-            if o["nede"]:
-                print(f"NEDE (svarte ikke): {', '.join(o['nede'])}")
-            if o["mistenkt_nede"]:
-                print(f"MISTENKT NEDE (tomt svar på et kjent-referert papir — dette er felle "
-                      f"38: ser ut som «0 referanser», er egentlig nede): {', '.join(o['mistenkt_nede'])}")
-        return
-
+        return _cmd_kilder()
     if a.evaluer:
-        import evaluer
-        # Ekte søk → ranking.py-ordnet liste, akkurat det flaten viser.
-        try:
-            papirer, _, _ = sok_og_ranger(a.evaluer, page_size=max(a.antall, 12))
-        except RuntimeError as e:
-            print(f"Feil under søk: {e}", file=sys.stderr); sys.exit(1)
-        papirer = papirer[:a.antall]
-        lagre(papirer)  # sørg for at kontroll-papirene kan hentes fra cachen
-
-        # Positiv kontroll = species-trap, definert i PROFILEN (domeneprofil.EVAL_KONTROLL),
-        # ikke her — samme regel som resten av fagfelt-kunnskapen. Dommeren MÅ skille det
-        # ekte papiret fra fella, ellers voides målingen. Papirene hentes fra cachen.
-        kk = domeneprofil.EVAL_KONTROLL
-        rel = hent(kk["kontroll_relevant_id"]) if kk.get("kontroll_relevant_id") else None
-        fel = hent(kk["kontroll_felle_id"]) if kk.get("kontroll_felle_id") else None
-        kontroll = ({"query": kk["kontroll_query"], "relevant": rel, "felle": fel}
-                    if rel and fel and kk.get("kontroll_query") else None)
-        if not kontroll:
-            print("[OBS] Kontroll-papirene (profilens EVAL_KONTROLL) er ikke cachet — kjør et "
-                  "domene-kjerne-søk først. Måler uten positiv kontroll (gyldig=None).",
-                  file=sys.stderr)
-
-        print(f"Måler rangeringen for «{a.evaluer}» mot en uavhengig Ollama-dommer "
-              f"({evaluer.DEFAULT_MODELL}, blind for rekkefølgen). Kan ta et minutt …\n")
-        try:
-            r = evaluer.evaluer_rangering(a.evaluer, papirer, kontroll=kontroll)
-        except Exception as e:
-            print(f"Dommeren er ikke nåbar ({type(e).__name__}: {e}). Kjører Ollama lokalt?",
-                  file=sys.stderr); sys.exit(1)
-
-        for d in r["detaljer"]:
-            merke = "?" if d["grad"] is None else str(d["grad"])
-            print(f"  [{merke}] {d['tittel']}")
-        k = r["kontroll"]
-        if k:
-            ok = "BESTÅTT" if k["bestått"] else "FEILET"
-            print(f"\nPositiv kontroll ({ok}): ekte «{k['relevant_tittel']}» fikk "
-                  f"{k['grad_relevant']}, fella «{k['felle_tittel']}» fikk {k['grad_felle']}.")
-        print(f"\nKonkordans med dommeren: {r['konkordans']} "
-              f"({r['enige_par']}/{r['totale_par']} par enige) · terskel {r['terskel']}")
-        if r["umålte"]:
-            print(f"[OBS] {r['umålte']} papir(er) fikk ingen tolkbar dom (talt som umålt, ikke 0).")
-        if r["gyldig"] is False:
-            print("[STOPP] MÅLINGEN ER UGYLDIG: dommeren besto ikke den positive kontrollen — "
-                  "den er lurt av samme species-trap rangeringen bander mot. Konkordansen "
-                  "over betyr ingenting.")
-        elif r["gyldig"] is None:
-            print("Målt uten positiv kontroll — les konkordansen med forbehold.")
-        else:
-            dom = "GOD" if r["bestått"] else "UNDER TERSKEL"
-            print(f"Rangeringen er {dom} mot denne dommeren (n={r['n']}, ett datapunkt — "
-                  f"ikke en dom over rangeringen generelt).")
-        return
-
+        return _cmd_evaluer(a)
     if a.gap:
-        papir = hent(a.gap)
-        if not papir:
-            print(f"{a.gap} er ikke cachet ennå — søk det opp først (--lignende krever samme).")
-            return
-        if not papir["pmid"] and not papir["doi"]:
-            print(f"{a.gap} mangler både PMID og DOI i cachen — ingen referanse-kilde tilgjengelig.")
-            return
-        try:
-            resultat = gap_kandidater(a.gap, papir["kilde_kode"] or "MED", papir["pmid"],
-                                      k=a.antall, kilde_aar=papir["aar"])
-        except RuntimeError as e:
-            print(f"Feil mot Europe PMC /references: {e}", file=sys.stderr)
-            sys.exit(1)
-        print(f"«{papir['tittel']}» ({papir['aar'] or '?'}) siterer "
-              f"{resultat['siterte_antall']} kilder selv.")
-        # Modulen har rapportert referanse_kilde siden den ble bygget, men CLI-en skrev
-        # den aldri ut — transparens-prinsippet gjaldt returverdien og ikke flaten noen
-        # faktisk leser. Fanget da EBIs /references hadde ligget nede i tre døgn og
-        # utskriften ikke røpet at hele svaret kom fra OpenAlex.
-        print(f"Referanselisten kom fra: {resultat['referanse_kilde']}")
-        d = resultat.get("referanse_dekning")
-        if d:
-            print(f"[OBS] Delvis dekning: {d['hentet']} hentet av {d['oppgitt_av_utgiver']} "
-                  f"oppgitt av utgiver — gap-listen kan være for lang.")
-        print(f"\n{len(resultat['naboer'])} semantiske naboer i cachen, "
-              f"{len(resultat['gap'])} av dem IKKE i referanselisten (kandidater, ikke en dom):\n")
-        for g in resultat["gap"]:
-            print(f"[{g['avstand']:.3f}] {g['aar'] or '?'} · {g['tidsskrift']}")
-            print(f"    {g['tittel']}")
-            print(f"    {g['kilde_url']}\n")
-        ferske = resultat.get("publisert_etter") or []
-        if ferske:
-            print(f"— og {len(ferske)} nabo(er) publisert ETTER {papir['aar']}, som papiret "
-                  f"umulig kunne sitert. Ikke et gap; les dem som «dette har kommet siden»:\n")
-            for g in ferske:
-                print(f"[{g['avstand']:.3f}] {g['aar']} · {g['tittel']}")
-        return
-
+        return _cmd_gap(a)
     if a.lignende:
-        naboer = lignende(a.lignende, k=a.antall)
-        if not naboer:
-            print(f"Ingen cachede naboer for {a.lignende} — enten ikke søkt opp ennå, "
-                  f"eller uten abstract å embedde.")
-            return
-        print(f"{len(naboer)} nærmeste i cachen til {a.lignende}:\n")
-        for n in naboer:
-            print(f"[{n['avstand']:.3f}] {n['aar'] or '?'} · {n['tidsskrift']}")
-            print(f"    {n['tittel']}")
-            print(f"    {n['kilde_url']}\n")
-        return
-
-    if not a.query:
-        ap.error("oppgi en søkestreng, eller --lignende ID")
-    query = " ".join(a.query)
-    try:
-        papirer, eksakt_id, revisjon = sok_og_ranger(query, page_size=max(a.antall, 20))
-    except RuntimeError as e:
-        print(f"Feil mot Europe PMC: {e}", file=sys.stderr)
-        sys.exit(1)
-    lagre(papirer)  # cache/embed for fremtidig --lignende-søk — CLI-en kan trygt vente
-    if not revisjon["kilder"]["core"]:
-        print("(CORE utilgjengelig akkurat nå — viser kun Europe PMC-treff)\n", file=sys.stderr)
-    _print_papirer(papirer, a.antall, query, eksakt_id)
-    _print_revisjon(revisjon)
+        return _cmd_lignende(a)
+    _cmd_sok(a, ap)
 
 
 if __name__ == "__main__":
