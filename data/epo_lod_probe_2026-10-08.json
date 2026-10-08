@@ -1,0 +1,134 @@
+{
+  "type": "read_only_external_api_probe",
+  "queried_at": "2026-10-08T12:26:33+00:00",
+  "scope": "EPO Linked Open EP Data coverage for NO20230610A1 and three listed related publications; documented EP example as a service control.",
+  "method": {
+    "request": "HTTP GET to the official EPO Linked Open EP Data publication JSON endpoint",
+    "credentials_used": false,
+    "ops_used": false,
+    "writes_or_product_integration": false,
+    "target_publication": "NO20230610A1"
+  },
+  "results": [
+    {
+      "role": "target",
+      "uri": "https://data.epo.org/linked-data/data/publication/NO/20230610/A1/-.json?",
+      "http_status": 200,
+      "content_type": "application/json",
+      "bibliographic_record_returned": false,
+      "record_fields": [],
+      "publication_label": null,
+      "publication_number": null,
+      "title_of_invention": null,
+      "classification_fields": []
+    },
+    {
+      "role": "related_national_publication",
+      "uri": "https://data.epo.org/linked-data/data/publication/NO/20220222/A1/-.json?",
+      "http_status": 200,
+      "content_type": "application/json",
+      "bibliographic_record_returned": false,
+      "record_fields": [],
+      "publication_label": null,
+      "publication_number": null,
+      "title_of_invention": null,
+      "classification_fields": []
+    },
+    {
+      "role": "related_national_publication",
+      "uri": "https://data.epo.org/linked-data/data/publication/NO/20220219/A1/-.json?",
+      "http_status": 200,
+      "content_type": "application/json",
+      "bibliographic_record_returned": false,
+      "record_fields": [],
+      "publication_label": null,
+      "publication_number": null,
+      "title_of_invention": null,
+      "classification_fields": []
+    },
+    {
+      "role": "related_international_publication",
+      "uri": "https://data.epo.org/linked-data/data/publication/WO/2021032473/A2/-.json?",
+      "http_status": 200,
+      "content_type": "application/json",
+      "bibliographic_record_returned": false,
+      "record_fields": [],
+      "publication_label": null,
+      "publication_number": null,
+      "title_of_invention": null,
+      "classification_fields": []
+    },
+    {
+      "role": "related_international_publication",
+      "uri": "https://data.epo.org/linked-data/data/publication/WO/2021032473/A3/-.json?",
+      "http_status": 200,
+      "content_type": "application/json",
+      "bibliographic_record_returned": false,
+      "record_fields": [],
+      "publication_label": null,
+      "publication_number": null,
+      "title_of_invention": null,
+      "classification_fields": []
+    },
+    {
+      "role": "known_ep_control",
+      "uri": "https://data.epo.org/linked-data/data/publication/EP/3102070/A1/-.json?",
+      "http_status": 200,
+      "content_type": "application/json",
+      "bibliographic_record_returned": true,
+      "record_fields": [
+        "_about",
+        "agentVC",
+        "applicantVC",
+        "application",
+        "classificationIPCInventive",
+        "filingLanguage",
+        "internationalApplication",
+        "inventorVC",
+        "label",
+        "language",
+        "priority",
+        "proceduralLanguage",
+        "publicationAuthority",
+        "publicationDate",
+        "publicationKind",
+        "publicationNumber",
+        "representation",
+        "titleOfInvention",
+        "type"
+      ],
+      "publication_label": "EP 3102070 A1",
+      "publication_number": "3102070",
+      "title_of_invention": [
+        "PATIENT MONITORING AND REPOSITIONING SYSTEM AND METHOD",
+        "SYSTEM UND VERFAHREN ZUR PATIENTEN\u00dcBERWACHUNG UND -NEUPOSITIONIERUNG",
+        "SYST\u00c8ME DE SURVEILLANCE ET DE REPOSITIONNEMENT D'UN PATIENT ET M\u00c9THODE ASSOCI\u00c9E"
+      ],
+      "classification_fields": [
+        "classificationIPCInventive"
+      ]
+    }
+  ],
+  "interpretation": {
+    "target_outcome": "The NO target, two related NO publications, and WO A2/A3 records returned HTTP 200 JSON envelopes, but primaryTopic was a URI string rather than a bibliographic record object. No title, family, or classification fields were returned for those requests.",
+    "control_outcome": "The documented EP control returned a primaryTopic object with bibliographic fields and IPC inventive classification. This confirms the endpoint and JSON inspection path returned record data for an EP publication during this probe.",
+    "conclusion": "This bounded LOD pilot did not supply usable metadata, family membership, or CPC for the target family. The HTTP 200 responses are transport success only. The result does not establish that the target is absent from all EPO products or determine legal status.",
+    "coverage_context": "EPO documentation describes LOD as an occasional-use data API; non-EP records are included when they belong to a simple patent family that includes an EP application. The inspected target records did not return bibliographic records in this service.",
+    "cpc_note": "The EP control exposed classificationIPCInventive, not a CPC field. LOD documentation also warns that its coverage does not include all CPC data elements."
+  },
+  "official_sources": [
+    {
+      "url": "https://data.epo.org/linked-data/documentation/api-overview",
+      "supports": "API resource lookup and occasional light-use scope"
+    },
+    {
+      "url": "https://data.epo.org/linked-data/documentation/data-coverage",
+      "supports": "Non-EP coverage condition and basic-identification limitation"
+    },
+    {
+      "url": "https://www.epo.org/en/searching-for-patents/data/linked-open-data",
+      "supports": "LOD is not designed as a production backend; bulk data is recommended for heavier use"
+    }
+  ],
+  "next_step": "Keep the LOD pilot closed as unsuitable for this target. Use the already documented Patentstyret record for Norwegian metadata. Reconsider authenticated OPS only if a concrete consumer needs data unavailable from official open registries and its terms, credentials, and rate budget have been reviewed."
+}
