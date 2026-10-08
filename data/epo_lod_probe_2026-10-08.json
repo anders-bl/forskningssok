@@ -1,7 +1,7 @@
 {
   "type": "read_only_external_api_probe",
   "queried_at": "2026-10-08T12:26:33+00:00",
-  "scope": "EPO Linked Open EP Data coverage for NO20230610A1 and three listed related publications; documented EP example as a service control.",
+  "scope": "EPO Linked Open EP Data coverage for NO20230610A1 and four candidate related publication URIs; known EP record as a service control.",
   "method": {
     "request": "HTTP GET to the official EPO Linked Open EP Data publication JSON endpoint",
     "credentials_used": false,
