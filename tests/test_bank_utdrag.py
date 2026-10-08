@@ -73,6 +73,19 @@ def test_eksporter_velger_paa_prefiks_og_er_sortert(boker, tmp_path):
     assert manifest["sha256"] == hashlib.sha256(ut.read_bytes()).hexdigest()
 
 
+def test_bygg_avviser_snapshot_med_proveniens_utenfor_profil(utdrag, tmp_path):
+    rader = [json.loads(l) for l in utdrag.read_text(encoding="utf-8").splitlines()]
+    rader[0]["proveniens"] = None
+    ugyldig = tmp_path / "ugyldig.jsonl"
+    ugyldig.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rader), encoding="utf-8")
+    _skriv_manifest(ugyldig)
+
+    with pytest.raises(ValueError, match="utenfor profilens bank_proveniens"):
+        bank_utdrag.bygg(ugyldig, tmp_path / "utdrag.db", embed_fn=_embed, modell="bge-m3")
+
+    assert not (tmp_path / "utdrag.db").exists()
+
+
 def test_eksporter_uten_prefiks_feiler_hoyt(boker, tmp_path, monkeypatch):
     monkeypatch.setattr(bank_utdrag.domeneprofil, "PROFIL", {})
     with pytest.raises(RuntimeError, match="bank_proveniens"):
@@ -99,6 +112,22 @@ def test_bygg_er_idempotent_og_bokforer_modell(utdrag, tmp_path):
     assert bank_utdrag.finnes(db)
     meta = _meta(db)
     assert "snapshot_format_version" not in meta
+
+
+def test_sok_fail_closer_database_med_null_proveniens(utdrag, tmp_path):
+    db = tmp_path / "utdrag.db"
+    bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
+    corrupt = sqlite3.connect(db)
+    try:
+        corrupt.execute("UPDATE utdrag SET proveniens=NULL WHERE chunk_id=1")
+        corrupt.commit()
+    finally:
+        corrupt.close()
+
+    rader, grunn = bank_utdrag.sok("nyre tekst", 3, db_path=db, embed_fn=_embed, modell="bge-m3")
+
+    assert rader == []
+    assert "utenfor profilens bank_proveniens-allowlist" in grunn
 
 
 def _ids(db_sti: Path, tabell: str) -> list[int]:
@@ -281,7 +310,8 @@ def test_speil_validerer_hele_snapshotet_for_sletting(utdrag, tmp_path):
 def test_speil_beholder_eksisterende_data_hvis_embedding_feiler(utdrag, tmp_path):
     db = tmp_path / "utdrag.db"
     bank_utdrag.bygg(utdrag, db, embed_fn=_embed, modell="bge-m3")
-    utdrag.write_text(json.dumps({"id": 9, "bok": "ny", "tekst": "ny tekst"}) + "\n", encoding="utf-8")
+    utdrag.write_text(json.dumps({"id": 9, "bok": "ny", "tekst": "ny tekst",
+                                  "proveniens": "epmc:ny:PMC9"}) + "\n", encoding="utf-8")
     _skriv_manifest(utdrag)
 
     with pytest.raises(ValueError, match="zip\\(\\) argument 2 is shorter than argument 1"):

@@ -164,6 +164,19 @@ def _klassifiser_artikler(rader: list[tuple]) -> dict[str, tuple[str, list[str]]
     return ut
 
 
+def _bank_proveniens_prefikser() -> tuple[str, ...]:
+    """Samme allowlist for eksport, snapshot-validering og retrieval. Tom/ugyldig profil
+    skal stenge banken, ikke utvide den."""
+    prefikser = tuple(domeneprofil.PROFIL.get("bank_proveniens", ()))
+    if not prefikser or any(not isinstance(p, str) or not p for p in prefikser):
+        raise ValueError("profilen mangler en gyldig bank_proveniens-allowlist")
+    return prefikser
+
+
+def _proveniens_tillatt(proveniens: object, prefikser: tuple[str, ...]) -> bool:
+    return isinstance(proveniens, str) and any(proveniens.startswith(p) for p in prefikser)
+
+
 def _les_snapshot(jsonl: Path, *, speil: bool, tillat_tom: bool
                   ) -> tuple[list[dict], str | None, int | None]:
     """Valider full kilde og manifest foer speilmodus kan slette rader."""
@@ -197,6 +210,10 @@ def _les_snapshot(jsonl: Path, *, speil: bool, tillat_tom: bool
         raise ValueError("snapshot-manifestets row_count stemmer ikke med JSONL")
     if speil and not rader and not tillat_tom:
         raise ValueError("tom JSONL avvises i speilmodus; bruk tillat_tom=True for tilsiktet tomming")
+    prefikser = _bank_proveniens_prefikser()
+    utenfor = sum(1 for rad in rader if not _proveniens_tillatt(rad.get("proveniens"), prefikser))
+    if utenfor:
+        raise ValueError(f"snapshot har {utenfor} rad(er) utenfor profilens bank_proveniens")
     return rader, sha256 if speil else None, manifest["format_version"] if speil else None
 
 
@@ -382,6 +399,17 @@ def sok(emne: str, k: int, *, db_path: Path | None = None, embed_fn=None,
         if not lagret or lagret[0] != modell:
             return [], (f"utdraget er embeddet med {lagret[0] if lagret else 'ukjent modell'}, "
                         f"søket ville brukt {modell}: feil vektorrom")
+        prefikser = _bank_proveniens_prefikser()
+        tillatt_sql = " OR ".join(
+            "substr(proveniens, 1, length(?)) = ?" for _ in prefikser)
+        tillatt_args = tuple(arg for prefiks in prefikser for arg in (prefiks, prefiks))
+        utenfor = db.execute(
+            f"SELECT count(*) FROM utdrag WHERE proveniens IS NULL OR NOT ({tillatt_sql})",
+            tillatt_args,
+        ).fetchone()[0]
+        if utenfor:
+            return [], (f"bankutdraget inneholder {utenfor} rad(er) utenfor profilens "
+                        "bank_proveniens-allowlist; bygg på nytt med gjeldende snapshot")
         if embed_fn is None:
             import bank
             embed_fn = bank._hus_embed()
