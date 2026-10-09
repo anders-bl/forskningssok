@@ -265,6 +265,28 @@ button{ font:inherit; }
 .revisjon-sammendrag .nede{ color:var(--warn,#a86); }
 .sti-velg{ width:100%; margin:.2rem 0 .5rem; font-size:.75rem; padding:.3rem; background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:5px; }
 .fulltekst p{ grid-column:auto; }
+.vk{ margin-top:1.1rem; padding-top:.9rem; border-top:1px solid var(--border); font-size:.8125rem; }
+.vk[hidden], .vk [hidden]{ display:none; }
+.vk-tittel{ margin:0 0 .5rem; font-size:.875rem; color:var(--accent); }
+.vk-rad{ display:flex; flex-wrap:wrap; gap:.5rem; }
+.vk-knapp, .vk-endre{ min-height:2.5rem; min-width:4.5rem; padding:.4rem .9rem; border:1px solid var(--border); border-radius:99px;
+  background:var(--surface-2); color:var(--text); font:inherit; cursor:pointer; }
+.vk-knapp:hover, .vk-endre:hover{ border-color:var(--accent-muted); }
+.vk-knapp[aria-pressed="true"]{ border-color:var(--accent); background:var(--accent); color:var(--surface); font-weight:700; }
+.vk-grunner{ margin:.7rem 0 0; padding:0; border:0; display:grid; gap:.15rem; }
+.vk-grunner legend{ padding:0; margin-bottom:.25rem; color:var(--muted); }
+.vk-grunner label{ display:flex; align-items:center; gap:.5rem; min-height:2rem; }
+.vk-kilder{ margin-top:.7rem; }
+.vk-kilder summary{ cursor:pointer; color:var(--muted); min-height:2rem; }
+.vk-kilde{ display:grid; gap:.25rem; margin:.5rem 0; padding:.5rem; background:var(--surface-2); border-radius:6px; }
+.vk-kilde-tekst{ overflow-wrap:anywhere; }
+.vk-kilde select{ font:inherit; padding:.3rem; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:5px; }
+.vk-kommentar{ display:block; margin-top:.7rem; color:var(--muted); }
+.vk-kommentar textarea{ display:block; width:100%; box-sizing:border-box; margin-top:.25rem; font:inherit; padding:.4rem;
+  background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:6px; resize:vertical; }
+.vk-merk, .vk-prove{ margin:.4rem 0 0; font-size:.75rem; color:var(--muted); }
+.vk-status{ margin:.6rem 0 0; min-height:1.2em; color:var(--text); font-weight:600; }
+.vk-endre{ margin-top:.4rem; }
 .verifiser-overlay[hidden]{ display:none; }
 .verifiser-overlay{ position:fixed; inset:0; background:rgba(20,20,18,.5); display:flex; align-items:center; justify-content:center; z-index:50; padding:1rem; }
 .verifiser-kort{ background:var(--surface); border:1px solid var(--border); border-radius:10px; max-width:38rem; width:100%; max-height:82vh; overflow:auto; padding:1.3rem 1.5rem; position:relative; }
@@ -804,6 +826,35 @@ svg text{ font-family:system-ui,sans-serif; }
      <div class="verifiser-merke">LLM-syntese-fortelling over dine hentede kilder — ikke rå litteratur</div>
      <div class="verifiser-paastand" id="syntese-emne"></div>
      <div id="syntese-kropp" class="dossier-kropp"></div>
+     <!-- Fase A av docs/ulven-menneskevurdering-scope.md: prototype uten lagring. Ingen fetch, ingen storage. -->
+     <section class="vk" id="vurderingskort" aria-labelledby="vk-tittel" hidden>
+       <h4 class="vk-tittel" id="vk-tittel">Hjalp dette deg?</h4>
+       <div class="vk-rad" role="group" aria-labelledby="vk-tittel" id="vk-hoved">
+         <button type="button" class="vk-knapp" data-vk-verdi="ja" aria-pressed="false">Ja</button>
+         <button type="button" class="vk-knapp" data-vk-verdi="delvis" aria-pressed="false">Delvis</button>
+         <button type="button" class="vk-knapp" data-vk-verdi="nei" aria-pressed="false">Nei</button>
+       </div>
+       <fieldset class="vk-grunner" id="vk-grunner" hidden>
+         <legend>Hva var problemet? (valgfritt)</legend>
+         <label><input type="radio" name="vk-grunn" value="mangler_direkte_kilde"> Mangler direkte kilde</label>
+         <label><input type="radio" name="vk-grunn" value="feil_aspekt"> Feil aspekt</label>
+         <label><input type="radio" name="vk-grunn" value="for_generelt"> For generelt</label>
+         <label><input type="radio" name="vk-grunn" value="feil_eller_utdatert"> Feil eller utdatert</label>
+         <label><input type="radio" name="vk-grunn" value="fant_bedre_selv"> Fant bedre selv</label>
+         <label><input type="radio" name="vk-grunn" value="annet"> Annet</label>
+       </fieldset>
+       <details class="vk-kilder" id="vk-kilder">
+         <summary>Vurder kildene (valgfritt)</summary>
+         <div id="vk-kilderader"></div>
+       </details>
+       <label class="vk-kommentar" for="vk-kommentar">Kort kommentar (valgfritt)
+         <textarea id="vk-kommentar" maxlength="300" rows="2"></textarea>
+       </label>
+       <p class="vk-merk">Ikke skriv helseopplysninger, konfidensielle eller upubliserte data.</p>
+       <p class="vk-status" id="vk-status" role="status" aria-live="polite"></p>
+       <button type="button" class="vk-endre" id="vk-endre" hidden>Endre vurderingen</button>
+       <p class="vk-prove">Prøveutgave: vurderingen vises bare her. Den lagres ikke og sendes ikke noe sted.</p>
+     </section>
    </div>
  </div>
  <!-- Fase 2b (prosjekt/forskningssok-smartsyntese-for-ulven): fritekst inn, IKKE
@@ -1095,6 +1146,7 @@ function settResultatForEksport(papirer, tittel, query = null) {
   // id-lista. Derfor finnes den bare for et tekstsøk, ikke for en Utforskning av et emne.
   $('#eksport-konvergens').hidden = papirer.length === 0 || !query;
   oppdaterDossierSynlighet();
+  oppdaterSynteseSynlighet();  // uten denne ble syntese-knappen aldri synlig etter et søk (bare ved søkestart og når tilgjengelig-svaret kom)
 }
 // Forskningsrapporten rendret INNE i appen (smartsyntese fase 1: sy sammen til én flate).
 // Rapporten er alt sammensyingen — kilder + citation-gap + omfang + tverrfaglig + verifiser
@@ -2300,11 +2352,85 @@ $('#btn-dossier').addEventListener('click', async () => {
   }
 });
 
+// Vurderingskort for syntese-fortellingen (fase A: prototype, docs/ulven-menneskevurdering-scope.md).
+// BEVISST uten fetch, localStorage og sessionStorage: kortet viser bare valget og sier det selv. Persistens krever
+// at eier, lesetilgang og retensjon er avklart (scope §Avhengigheter), og /api/tilbakemelding er ikke et alternativ
+// (offentlig portal-endepunkt som lager en cockpit-varsling per klikk).
+const VK_NAVN = {ja: 'Ja', delvis: 'Delvis', nei: 'Nei'};
+const VK_KILDE_ETIKETTER = [
+  ['', 'Ikke vurdert'], ['direkte_stotte', 'Direkte støtte'], ['nyttig_bakgrunn', 'Nyttig bakgrunn'],
+  ['ikke_relevant', 'Ikke relevant'], ['uavklart', 'Uavklart'],
+];
+// Kortet vises bare etter et ferdig svar med minst én kilde; «Ingen kilder i cachen» er et vellykket kall uten innhold.
+function vurderingskortKilder(tekst) {
+  const deler = (tekst || '').split(/\n---\n/);
+  if (!(deler[0] || '').trim()) return null;
+  const kildedel = deler.slice(1).find(d => d.startsWith('## Kildeliste'));
+  if (!kildedel) return null;
+  const linjer = kildedel.split('\n').slice(1).map(l => l.trim()).filter(Boolean);
+  return linjer.length ? linjer : null;
+}
+const vk = {valg: null, grunn: null};
+function vkOppdater() {
+  const kort = $('#vurderingskort');
+  document.querySelectorAll('#vk-hoved .vk-knapp').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.vkVerdi === vk.valg));
+  });
+  $('#vk-grunner').hidden = !(vk.valg === 'delvis' || vk.valg === 'nei');
+  const ferdig = vk.valg !== null;
+  $('#vk-endre').hidden = !ferdig;
+  $('#vk-status').textContent = ferdig
+    ? `Notert: ${VK_NAVN[vk.valg]}. Takk. Dette er en prøveutgave, så ingenting er lagret eller sendt.`
+    : '';
+  kort.dataset.valg = vk.valg || '';
+}
+function vkNullstill(kilder) {
+  vk.valg = null; vk.grunn = null;
+  document.querySelectorAll('input[name="vk-grunn"]').forEach(r => { r.checked = false; });
+  $('#vk-kommentar').value = '';
+  const rader = $('#vk-kilderader');
+  rader.innerHTML = '';
+  (kilder || []).forEach((linje, i) => {
+    const rad = document.createElement('div');
+    rad.className = 'vk-kilde';
+    const id = 'vk-kilde-' + i;
+    const tekst = document.createElement('label');
+    tekst.className = 'vk-kilde-tekst';
+    tekst.htmlFor = id;
+    tekst.textContent = linje.length > 160 ? linje.slice(0, 157) + '...' : linje;
+    const velg = document.createElement('select');
+    velg.id = id;
+    VK_KILDE_ETIKETTER.forEach(([v, n]) => { const o = document.createElement('option'); o.value = v; o.textContent = n; velg.appendChild(o); });
+    rad.append(tekst, velg);
+    rader.appendChild(rad);
+  });
+  $('#vk-kilder').open = false;
+  vkOppdater();
+}
+function vkSkjul() { $('#vurderingskort').hidden = true; }
+function vkVis(kilder) { vkNullstill(kilder); $('#vurderingskort').hidden = false; }
+$('#vk-hoved').addEventListener('click', e => {
+  const knapp = e.target.closest('.vk-knapp');
+  if (!knapp) return;
+  vk.valg = knapp.dataset.vkVerdi;  // samme valg to ganger er idempotent; et annet valg erstatter det forrige
+  if (vk.valg === 'ja') { vk.grunn = null; document.querySelectorAll('input[name="vk-grunn"]').forEach(r => { r.checked = false; }); }
+  vkOppdater();
+});
+$('#vk-grunner').addEventListener('change', e => { if (e.target.name === 'vk-grunn') vk.grunn = e.target.value; });
+$('#vk-endre').addEventListener('click', () => {
+  vk.valg = null; vk.grunn = null;
+  document.querySelectorAll('input[name="vk-grunn"]').forEach(r => { r.checked = false; });
+  vkOppdater();
+  const forste = document.querySelector('#vk-hoved .vk-knapp');
+  if (forste) forste.focus();
+});
+
 $('#btn-syntese').addEventListener('click', async () => {
   const r = state.sisteResultat;
   if (!r || !r.query) return;
   $('#syntese-emne').textContent = '«' + r.query + '»';
   $('#syntese-kropp').innerHTML = '<div class="hint">Genererer syntese-fortelling over dine hentede kilder (kan ta ett minutt eller mer) …</div>';
+  vkSkjul();
   $('#syntese-overlay').hidden = false;
   const stoppFremdrift = startFremdrift($('#syntese-kropp'), ['Henter kildene dine', 'Vever fortellingen sammen', 'Sjekker kildehenvisninger']);
   try {
@@ -2312,8 +2438,11 @@ $('#btn-syntese').addEventListener('click', async () => {
       body: JSON.stringify({emne: r.query})});
     stoppFremdrift();
     $('#syntese-kropp').innerHTML = renderDossier(s.syntese);  // gjenbruker dossier-prosa-rendering
+    const vkKilder = vurderingskortKilder(s.syntese);
+    if (vkKilder) vkVis(vkKilder);
   } catch (err) {
     stoppFremdrift();
+    vkSkjul();
     $('#syntese-kropp').innerHTML = `<div class="hint">Kunne ikke lage syntese-fortelling: ${escapeHtml(err.message)}</div>`;
   }
 });
@@ -2370,7 +2499,7 @@ $('#dossier-lukk').addEventListener('click', lukkDossier);
 $('#dossier-overlay').addEventListener('click', e => { if (e.target.id === 'dossier-overlay') lukkDossier(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dossier-overlay').hidden) lukkDossier(); });
 
-function lukkSyntese() { $('#syntese-overlay').hidden = true; }
+function lukkSyntese() { $('#syntese-overlay').hidden = true; vkSkjul(); }
 $('#syntese-lukk').addEventListener('click', lukkSyntese);
 $('#syntese-overlay').addEventListener('click', e => { if (e.target.id === 'syntese-overlay') lukkSyntese(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#syntese-overlay').hidden) lukkSyntese(); });
