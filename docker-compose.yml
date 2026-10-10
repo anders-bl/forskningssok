@@ -70,6 +70,7 @@ services:
       # (utrullingsrekkefølge). Satt = alle kall unntatt /health/live og /health/ready må ha
       # headeren X-Forskningssok-Tilgang. MÅ stå her, ellers når panel-verdien aldri containeren.
       FORSKNINGSSOK_TILGANG: ${FORSKNINGSSOK_TILGANG:-}
+      FORSKNINGSSOK_TILGANG_PREVIOUS: ${FORSKNINGSSOK_TILGANG_PREVIOUS:-}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       AI_PROXY_WIKI_ID: ${AI_PROXY_WIKI_ID:-forskningssok}
       # CORE-nøkkel (adapters/core.py), registrert 2026-09-08. Usatt = anonym CORE-

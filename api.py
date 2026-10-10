@@ -119,19 +119,27 @@ logger = logging.getLogger("forskningssok")
 # appen direkte og lese søk, utkast, sitater og opplastede dokumenter. Traefik legger nå på
 # X-Forskningssok-Tilgang etter sin egen sjekk; portalen sender den i sine interne kall.
 #
-# Av når FORSKNINGSSOK_TILGANG er tom (utrullingsrekkefølge: Traefik og portal først, så
-# settes verdien her). /health/live og /health/ready står åpne: Docker HEALTHCHECK, Kuma og
-# portalens helsesjekk bruker dem, og de lekker ingenting (se helse-kommentaren under).
+# Av når FORSKNINGSSOK_TILGANG og FORSKNINGSSOK_TILGANG_PREVIOUS er tomme. Ved rotasjon godtas
+# begge i et kort overgangsvindu; fjern PREVIOUS når Traefik og alle kallere bruker ny verdi.
+# /health/live og /health/ready står åpne: Docker HEALTHCHECK, Kuma og portalens helsesjekk
+# bruker dem, og de lekker ingenting (se helse-kommentaren under).
 _TILGANG_HEADER = "x-forskningssok-tilgang"
 _TILGANG_UNNTAK = frozenset({"/health/live", "/health/ready"})
 
 
 @app.middleware("http")
 async def _krev_intern_tilgang(request, call_next):
-    forventet = os.environ.get("FORSKNINGSSOK_TILGANG", "")
-    if forventet and request.url.path not in _TILGANG_UNNTAK:
+    tillatte = tuple(v for v in (
+        os.environ.get("FORSKNINGSSOK_TILGANG", ""),
+        os.environ.get("FORSKNINGSSOK_TILGANG_PREVIOUS", ""),
+    ) if v)
+    if tillatte and request.url.path not in _TILGANG_UNNTAK:
         gitt = request.headers.get(_TILGANG_HEADER, "")
-        if not hmac.compare_digest(gitt.encode(), forventet.encode()):
+        gitt_bytes = gitt.encode()
+        godkjent = False
+        for forventet in tillatte:
+            godkjent = hmac.compare_digest(gitt_bytes, forventet.encode()) | godkjent
+        if not godkjent:
             return JSONResponse({"detail": "Ikke autentisert"}, status_code=401)
     return await call_next(request)
 

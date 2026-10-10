@@ -45,6 +45,14 @@ def test_riktig_header_slipper_gjennom(klient, monkeypatch):
     assert r.status_code == 200
 
 
+def test_forrige_og_ny_header_godtas_i_rotasjonsvindu(klient, monkeypatch):
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG", "ny-rotasjonsnokkel")
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG_PREVIOUS", HEMMELIG)
+    for verdi in ("ny-rotasjonsnokkel", HEMMELIG):
+        assert klient.get("/api/versjon", headers={"X-Forskningssok-Tilgang": verdi}).status_code == 200
+    assert klient.get("/api/versjon", headers={"X-Forskningssok-Tilgang": "ugyldig"}).status_code == 401
+
+
 def test_frontend_og_data_er_gatet(klient, monkeypatch):
     monkeypatch.setenv("FORSKNINGSSOK_TILGANG", HEMMELIG)
     for sti in ("/", "/api/utkast", "/api/dokumenter", "/api/sitater", "/health"):
