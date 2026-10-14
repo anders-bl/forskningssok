@@ -3,7 +3,9 @@ lag_retningsrapport() (forretningslogikken er alt testet i test_retningssamtale.
 Samme mønster som test_api_syntese.py.
 """
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import api
@@ -159,3 +161,37 @@ def test_feil_internnokkel_avviser_profilert_review(monkeypatch):
     })
 
     assert r.status_code == 401
+
+
+def test_parallel_profilert_og_standard_review_lekker_ikke_profiltilstand(monkeypatch):
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG", "intern-testnokkel")
+    sperre = Barrier(2)
+    sett = {}
+
+    def fake(fritekst, kontekst="", uten_ai=False):
+        profil = api.domeneprofil.gjeldende_navn()
+        sperre.wait(timeout=5)
+        sett[fritekst] = profil
+        return {"profil": profil}
+
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review", fake)
+
+    def send(fritekst, profil=None):
+        headers = {"X-Forskningssok-Tilgang": "intern-testnokkel"}
+        if profil:
+            headers["X-Forskningssok-Profil"] = profil
+        with _client() as client:
+            return client.post("/api/review", json={"fritekst": fritekst}, headers=headers)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        profilert = pool.submit(send, "profilert", "psykologi")
+        standard = pool.submit(send, "standard")
+        profilert_svar = profilert.result(timeout=10)
+        standard_svar = standard.result(timeout=10)
+
+    assert profilert_svar.status_code == standard_svar.status_code == 200
+    assert sett == {
+        "profilert": "Psykologi og helsefremmende arbeid",
+        "standard": api.domeneprofil.PROFIL["navn"],
+    }
+    assert api.domeneprofil.gjeldende_navn() == api.domeneprofil.PROFIL["navn"]
