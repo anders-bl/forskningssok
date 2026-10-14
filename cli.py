@@ -119,7 +119,7 @@ def sok_og_ranger(query: str, page_size: int = 20, *, epmc_paakrevd: bool = True
         "etter_dedup": len(kandidater),
         "dubletter_fjernet": len(epmc) + len(kjerne) + len(alex) - len(kandidater),
         "cache_alder_s": round(alder) if alder is not None else None,
-        "profil": domeneprofil.NAVN,
+        "profil": domeneprofil.gjeldende_navn(),
         "baand": {
             "domene_naer": sum(1 for p in rangert if domene_naer(p)),
             "arts_naer": sum(1 for p in rangert if arts_naer(p)),

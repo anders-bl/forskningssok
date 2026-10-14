@@ -57,7 +57,7 @@ def _monster(termer: list[str]) -> re.Pattern | None:
 def _sett(profil_id: int):
     """Kompilerte mønstre per profil-objekt. Nøkkel = id() slik at en test som bytter
     domeneprofil.PROFIL ikke får tilbake cachede mønstre fra forrige profil."""
-    niva = (domeneprofil.PROFIL.get("art") or {}).get("niva")
+    niva = (domeneprofil.gjeldende_profil().get("art") or {}).get("niva")
     if not niva:
         return None
     return {n: _monster(niva.get(n, [])) for n in ("maal", "naer", "annet")}, \
@@ -70,7 +70,7 @@ def _tell(monster: re.Pattern | None, tekst: str) -> list[str]:
 
 def _fjern_kollisjoner(tekst: str) -> str:
     t = (tekst or "").lower()
-    for frase in domeneprofil.ARTSKOLLISJONER:
+    for frase in domeneprofil.gjeldende_profil().get("art", {}).get("kollisjoner", []):
         t = t.replace(frase, "")
     return t
 
@@ -84,7 +84,7 @@ def _mesh_liste(mesh) -> list[str] | None:
 
 
 def klassifiser(tittel: str | None, tekst: str | None = "", mesh=None) -> ArtFunn:
-    sett = _sett(id(domeneprofil.PROFIL))
+    sett = _sett(id(domeneprofil.gjeldende_profil()))
     if sett is None:   # profil uten [art.niva]: gammel ja/nei-oppførsel, tydelig merket
         treff = domeneprofil.arts_naer_tekst(f"{tittel or ''} {tekst or ''}")
         return ArtFunn("maal" if treff else "ingen", "legacy")

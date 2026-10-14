@@ -147,10 +147,13 @@ NORSKE_ORD_GENERISK: frozenset[str] = frozenset({
     "henge", "henger", "hengt", "knytte", "knytter", "knyttet",
 })
 
-# Slått sammen med profilens domeneord ÉN gang ved import — segreger_sprak() bruker
-# denne, ikke NORSKE_ORD_GENERISK direkte, så modulen forblir korrekt selv om
-# NORSKE_DOMENEORD er tom (en annen domeneprofil uten §sprak-seksjon).
+# Compatibility view for older callers; query construction resolves domain words from
+# the profile bound to the current request.
 NORSKE_ORD: frozenset[str] = NORSKE_ORD_GENERISK | frozenset(domeneprofil.NORSKE_DOMENEORD)
+
+
+def _norske_ord() -> frozenset[str]:
+    return NORSKE_ORD_GENERISK | frozenset(domeneprofil.gjeldende_profil().get("sprak", {}).get("norske_ord", []))
 
 
 def ekstraher_innholdsord(tekst: str) -> list[str]:
@@ -181,7 +184,7 @@ def segreger_sprak(innholdsord: list[str]) -> tuple[list[str], list[str]]:
     — se moduldocstring for hvorfor lav presisjon her er akseptabelt."""
     norske, andre = [], []
     for o in innholdsord:
-        if o in NORSKE_ORD or any(c in o for c in "æøå"):
+        if o in _norske_ord() or any(c in o for c in "æøå"):
             norske.append(o)
         else:
             andre.append(o)
@@ -215,7 +218,7 @@ _ENGELSK_PREG = re.compile(r"[cqwxz]|ph|th")
 
 def fagterm(ord_: str) -> tuple[str, str] | None:
     """ord -> (norsk nøkkel, engelsk term), eller None. REN."""
-    termer = domeneprofil.FAGTERMER
+    termer = {k.lower(): v for k, v in domeneprofil.gjeldende_profil().get("sprak", {}).get("fagtermer", {}).items()}
     if not termer:
         return None
     if ord_ in termer:
@@ -243,7 +246,7 @@ def les_tvetydige(tekst: str) -> tuple[str, list[dict]]:
     Hver forekomst gir én tolkning: lest som profilens lesning, lest som noe annet, eller
     uavgjort. Uavgjort oversettes ikke -- ingen stille gjetning -- men erklæres, så
     brukeren ser at ordet ikke ble søkt på og kan presisere."""
-    regler = domeneprofil.TVETYDIGE
+    regler = {k.lower(): v for k, v in domeneprofil.gjeldende_profil().get("sprak", {}).get("tvetydige", {}).items()}
     if not regler or not tekst:
         return tekst, []
     tokens = re.findall(r"[\wøæåØÆÅ]+", tekst.lower())
@@ -425,7 +428,7 @@ def linse_hull(papirer: list) -> dict[str, int]:
         for akse, d in dekning.items():
             if d > 0:
                 c[akse] += 1
-    for akse in scoping.AKSER:
+    for akse in domeneprofil.gjeldende_profil()["akser"]:
         c.setdefault(akse, 0)
     return dict(c)
 
@@ -436,7 +439,7 @@ def linse_domenetreff(papirer: list) -> dict[str, list[str]]:
     Dette er et navigasjonsspor, ikke en faglig klassifisering. Konsumenter må vise
     at treffene er mekaniske og la kildene kunne inspiseres.
     """
-    treff: dict[str, list[str]] = {akse: [] for akse in scoping.AKSER}
+    treff: dict[str, list[str]] = {akse: [] for akse in domeneprofil.gjeldende_profil()["akser"]}
     for papir in papirer:
         tekst = f"{papir.tittel or ''} {papir.abstract or ''}"
         for akse, dekning in scoping.akse_dekning(tekst).items():
@@ -452,7 +455,7 @@ def linse_artsdekning(papirer: list) -> dict:
     sier ikke at relevant litteratur ikke finnes. Hvert kildeutfall beholder
     klassifikatorens grunnlag og signalord for etterproving.
     """
-    art = domeneprofil.PROFIL.get("art") or {}
+    art = domeneprofil.gjeldende_profil().get("art") or {}
     niva = art.get("niva") or {}
     merker = niva.get("merker") or {}
     tellinger = {navn: 0 for navn in art_niva.NIVAER}
@@ -468,7 +471,7 @@ def linse_artsdekning(papirer: list) -> dict:
         })
     return {
         "status": "malt" if papirer else "ingen_kilder",
-        "profil": domeneprofil.NAVN,
+        "profil": domeneprofil.gjeldende_navn(),
         "malobjekt": merker.get("maal", "malobjektet"),
         "antall_kilder": len(papirer),
         "nivaaer": tellinger,

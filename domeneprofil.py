@@ -23,8 +23,13 @@ oppførsel for Ulven-instansen. Samme env-var-mønster som `paths.py` bruker for
 `ranking.py`/`scoping.py` re-eksporterer fortsatt de gamle navnene — kun kilden endret.
 """
 import os
-import tomllib
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import lru_cache
 from pathlib import Path
+
+import tomllib
 
 PROFILKATALOG = Path(__file__).resolve().parent / "profiler"
 STANDARD_PROFIL = "fiskehelse"
@@ -66,6 +71,45 @@ def last_profil(sti: Path | None = None) -> dict:
 
 PROFIL = last_profil()
 
+# Internal Review callers may select a profile per request. ContextVar keeps parallel
+# FastAPI requests isolated, while the process default remains unchanged for the UI/CLI.
+_PROFIL_FOR_REQUEST: ContextVar[dict | None] = ContextVar("forskningssok_profil", default=None)
+
+
+def gjeldende_profil() -> dict:
+    return _PROFIL_FOR_REQUEST.get() or PROFIL
+
+
+@contextmanager
+def profilkontekst(navn: str | None) -> Iterator[None]:
+    """Bind an installed profile to one request without changing process-wide state."""
+    if not navn:
+        yield
+        return
+    profil = _profil_med_navn(navn)
+    token = _PROFIL_FOR_REQUEST.set(profil)
+    try:
+        yield
+    finally:
+        _PROFIL_FOR_REQUEST.reset(token)
+
+
+@lru_cache(maxsize=32)
+def _profil_med_navn(navn: str) -> dict:
+    if not navn.isascii() or not navn.replace("-", "").replace("_", "").isalnum():
+        raise ValueError("ugyldig profilnavn")
+    sti = (PROFILKATALOG / f"{navn}.toml").resolve()
+    if sti.parent != PROFILKATALOG.resolve() or sti.suffix != ".toml":
+        raise ValueError("ugyldig profilnavn")
+    try:
+        return last_profil(sti)
+    except RuntimeError as exc:
+        raise ValueError(f"ukjent forskningsprofil: {navn}") from exc
+
+
+def gjeldende_navn() -> str:
+    return str(gjeldende_profil()["navn"])
+
 NAVN: str = PROFIL["navn"]
 FAGMILJOER: tuple[str, ...] = tuple(PROFIL["domene"]["fagmiljoer"])
 FAGTIDSSKRIFTER: tuple[str, ...] = tuple(PROFIL["domene"]["fagtidsskrifter"])
@@ -98,7 +142,7 @@ EVAL_KONTROLL: dict = dict(PROFIL.get("evaluering", {}))
 NORSKE_FAGMILJOER = FAGMILJOER
 
 
-def forankre_lucene(kjerneord: str, ankerord: tuple[str, ...] = ARTSTERMER) -> str:
+def forankre_lucene(kjerneord: str, ankerord: tuple[str, ...] | None = None) -> str:
     """Bygger en Lucene AND/OR-forankret spørring: (kjerneord) AND (anker1 OR anker2 OR ...).
     For kilder som gjør STRENG implisitt-AND på romskilte ord (Europe PMC, verifisert
     2026-09-14) — der et bart, fagfelt-tvetydig kjerneord alene ga 0/20 art-relevante
@@ -110,11 +154,13 @@ def forankre_lucene(kjerneord: str, ankerord: tuple[str, ...] = ARTSTERMER) -> s
     Ren OR uten det påkrevde kjerneordet ble også testet og forkastet: vannet ut
     presisjonen (matchet ETT generisk ord, ikke emnet). Et påkrevd emne-ledd PLUSS et
     påkrevd (men internt valgfritt) artsanker-ledd ga presise treff i alle mål."""
+    if ankerord is None:
+        ankerord = tuple(gjeldende_profil()["art"]["termer"])
     gruppe = " OR ".join(f'"{a}"' if " " in a else a for a in ankerord)
     return f"({kjerneord}) AND ({gruppe})"
 
 
-def forankre_vedheng(kjerneord: str, ankerord: tuple[str, ...] = ARTSTERMER) -> str:
+def forankre_vedheng(kjerneord: str, ankerord: tuple[str, ...] | None = None) -> str:
     """Enkel mellomroms-vedheng av ankerord, for kilder med relevans-RANGERT (ikke streng-
     AND) matching (OpenAlex, CORE; også brukt for bank.lignende_tekst()s embedding-tekst
     i api.py). Ingen boolsk syntaks — verifisert 2026-09-14 at det er unødvendig her:
@@ -122,6 +168,8 @@ def forankre_vedheng(kjerneord: str, ankerord: tuple[str, ...] = ARTSTERMER) -> 
     (CORE) art-relevante treff med kun denne enkle vedhengingen. Lucene-syntaks
     (forankre_lucene) på disse kildene er UPRØVD og skal ikke antas å virke likt — deres
     query-DSL er ikke bekreftet Lucene-kompatibel, i motsetning til Europe PMC sin."""
+    if ankerord is None:
+        ankerord = tuple(gjeldende_profil()["art"]["termer"])
     return f"{kjerneord} {' '.join(ankerord)}"
 
 
@@ -129,7 +177,8 @@ def domene_naer_tekst(tekst: str) -> bool:
     """Substreng-match mot forfatter-affiliasjon + tidsskriftnavn — se ranking.py:domene_naer
     for hvorfor (forfatter-affiliasjon/tidsskrift, ikke generisk siteringstall)."""
     t = (tekst or "").lower()
-    return any(m in t for m in FAGMILJOER + FAGTIDSSKRIFTER)
+    profil = gjeldende_profil()
+    return any(m in t for m in tuple(profil["domene"]["fagmiljoer"]) + tuple(profil["domene"]["fagtidsskrifter"]))
 
 
 def arts_naer_tekst(tekst: str) -> bool:
@@ -146,9 +195,10 @@ def arts_naer_tekst(tekst: str) -> bool:
     hvert fagfelt har sine egne homonymer, og det er nettopp den kunnskapen som gjorde
     denne funksjonen fiskespesifikk før profilen ble en datafil."""
     t = (tekst or "").lower()
-    for frase in ARTSKOLLISJONER:
+    profil = gjeldende_profil()
+    for frase in profil["art"].get("kollisjoner", []):
         t = t.replace(frase, "")
-    return any(m in t for m in ARTSTERMER)
+    return any(m in t for m in profil["art"]["termer"])
 
 
 def arts_naer_mesh(mesh: tuple[str, ...] | str | None) -> bool | None:
@@ -165,7 +215,7 @@ def arts_naer_mesh(mesh: tuple[str, ...] | str | None) -> bool | None:
     if not termer:
         return None
     lav = {t.lower() for t in termer}
-    return any(m.lower() in lav for m in MESH_TERMER)
+    return any(m.lower() in lav for m in gjeldende_profil()["art"].get("mesh_termer", []))
 
 
 def for_frontend() -> dict:
@@ -173,10 +223,11 @@ def for_frontend() -> dict:
     søke-eksempel og «Om»-teksten. Termlistene sendes IKKE — de er store, brukes bare
     server-side, og en klient som fikk dem ville invitert til å reimplementere
     matchingen i JS med subtilt andre regler."""
-    art = PROFIL.get("art", {})
-    domene = PROFIL.get("domene", {})
+    profil = gjeldende_profil()
+    art = profil.get("art", {})
+    domene = profil.get("domene", {})
     domenebanker = []
-    for bank in PROFIL.get("domenebanker", []):
+    for bank in profil.get("domenebanker", []):
         if not isinstance(bank, dict):
             continue
         domenebanker.append({
@@ -188,16 +239,16 @@ def for_frontend() -> dict:
             "tilgjengelig": bool(bank.get("tilgjengelig", False)),
         })
     return {
-        "navn": NAVN,
-        "kort": PROFIL["kort"],
-        "sok_standard": PROFIL["sok_standard"],
-        "sok_eksempel": PROFIL.get("sok_eksempel", PROFIL["sok_standard"]),
+        "navn": profil["navn"],
+        "kort": profil["kort"],
+        "sok_standard": profil["sok_standard"],
+        "sok_eksempel": profil.get("sok_eksempel", profil["sok_standard"]),
         "domene_merke": domene.get("merke", "[fag]"),
         "domene_merke_betyr": domene.get("merke_betyr", "domene-nær"),
         "art_merke": art.get("merke", "[OBS]"),
         "art_merke_betyr": art.get("merke_betyr", "nevner ikke målobjektet"),
         "art_merke_utdypet": art.get("merke_utdypet", ""),
-        "akser": list(AKSER),
-        "om_domeneprofil": (PROFIL.get("om", {}).get("domeneprofil") or "").strip(),
+        "akser": list(profil["akser"]),
+        "om_domeneprofil": (profil.get("om", {}).get("domeneprofil") or "").strip(),
         "domenebanker": domenebanker,
     }

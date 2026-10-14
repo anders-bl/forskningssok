@@ -133,6 +133,11 @@ async def _krev_intern_tilgang(request, call_next):
         os.environ.get("FORSKNINGSSOK_TILGANG", ""),
         os.environ.get("FORSKNINGSSOK_TILGANG_PREVIOUS", ""),
     ) if v)
+    profilvalg = request.headers.get("x-forskningssok-profil", "")
+    if profilvalg and request.url.path != "/api/review":
+        return JSONResponse({"detail": "Profilvalg gjelder bare Review"}, status_code=400)
+    if profilvalg and not tillatte:
+        return JSONResponse({"detail": "Profilvalg krever konfigurert intern tilgang"}, status_code=503)
     if tillatte and request.url.path not in _TILGANG_UNNTAK:
         gitt = request.headers.get(_TILGANG_HEADER, "")
         gitt_bytes = gitt.encode()
@@ -1083,7 +1088,7 @@ def api_retningssamtale(body: dict):
 
 
 @app.post("/api/review")
-def api_review(body: dict):
+def api_review(body: dict, profil: str | None = Header(None, alias="X-Forskningssok-Profil")):
     """Felles, strukturert Review-kontrakt for Smartsøk og Forskningssøk.
 
     Markdown-svaret fra /api/retningssamtale beholdes for v1-flaten. Dette
@@ -1093,13 +1098,18 @@ def api_review(body: dict):
     fritekst = (body.get("fritekst") or "").strip()
     if not fritekst:
         raise HTTPException(400, "tom fritekst")
-    # Valgfri: forrige brukerspørsmål i samtalen (Belegg). Brukes bare til fagtermer når
+    # Valgfri: forrige brukerspørsmål i samtalen. Brukes bare til fagtermer når
     # fritekst mangler egne, se retningssamtale.bygg_sokeledd. Kappet: kontekst, ikke korpus.
-    kontekst = str(body.get("kontekst") or "")[:1000]
+    # A profile-routed request is a standalone research query; prior conversation
+    # material may contain personal details and must not be expanded to providers.
+    kontekst = "" if profil else str(body.get("kontekst") or "")[:1000]
     try:
         # uten_ai: kalleren lager eget svar (Belegg); hopp over Reviews AI-sammendrag.
-        return retningssamtale_modul.lag_review(fritekst, kontekst=kontekst,
-                                                uten_ai=body.get("uten_ai") is True)
+        with domeneprofil.profilkontekst(profil):
+            return retningssamtale_modul.lag_review(fritekst, kontekst=kontekst,
+                                                    uten_ai=body.get("uten_ai") is True)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     except RuntimeError as e:
         raise HTTPException(502, str(e))
 

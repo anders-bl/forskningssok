@@ -16,8 +16,11 @@ Svart hatt-funn — se den fila for hvorfor)."""
 from collections import Counter
 
 import art_niva
+import domeneprofil
 import tema
-from domeneprofil import AKSER
+
+# Compatibility view for existing consumers; request-time calculations use the bound profile.
+AKSER = domeneprofil.AKSER
 
 _FULL_VED_ANTALL = 2  # 2+ distinkte nøkkelord i teksten = full stolpe — ukalibrert, se moduldocstring
 
@@ -26,7 +29,7 @@ def akse_dekning(tekst: str) -> dict[str, float]:
     """tekst → {akse: 0.0-1.0}. Tom/kort tekst gir alle akser 0.0 (ærlig, ikke en feil)."""
     t = (tekst or "").lower()
     ut = {}
-    for akse, ord in AKSER.items():
+    for akse, ord in domeneprofil.gjeldende_profil()["akser"].items():
         treff = sum(1 for o in ord if o in t)
         ut[akse] = round(min(1.0, treff / _FULL_VED_ANTALL), 2)
     return ut
