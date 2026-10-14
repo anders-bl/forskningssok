@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import api  # noqa: E402
+import api
 
 
 def _client():
@@ -84,3 +84,78 @@ def test_review_sender_uten_ai_bare_naar_det_er_eksplisitt_true(monkeypatch):
     _client().post("/api/review", json={"fritekst": "x", "uten_ai": "ja"})
     _client().post("/api/review", json={"fritekst": "x"})
     assert fanget == [True, False, False]
+
+
+def test_profilert_review_krever_intern_tilgang(monkeypatch):
+    monkeypatch.delenv("FORSKNINGSSOK_TILGANG", raising=False)
+    monkeypatch.delenv("FORSKNINGSSOK_TILGANG_PREVIOUS", raising=False)
+
+    r = _client().post("/api/review", json={"fritekst": "generisk sporring"},
+                       headers={"X-Forskningssok-Profil": "psykologi"})
+
+    assert r.status_code == 503
+
+
+def test_profilvalg_avvises_pa_alle_andre_ruter(monkeypatch):
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG", "intern-testnokkel")
+
+    r = _client().get("/api/profil", headers={
+        "X-Forskningssok-Tilgang": "intern-testnokkel",
+        "X-Forskningssok-Profil": "psykologi",
+    })
+
+    assert r.status_code == 400
+
+
+def test_profilert_review_bruker_profilen_fjerner_kontekst_og_resetter(monkeypatch):
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG", "intern-testnokkel")
+    sett = {}
+
+    def fake(fritekst, kontekst="", uten_ai=False):
+        sett["profil"] = api.domeneprofil.gjeldende_navn()
+        sett["kontekst"] = kontekst
+        sett["uten_ai"] = uten_ai
+        return {"profil": sett["profil"]}
+
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review", fake)
+    standardprofil = api.domeneprofil.PROFIL["navn"]
+    r = _client().post(
+        "/api/review",
+        json={"fritekst": "generisk sporring", "kontekst": "tidligere sensitiv tekst", "uten_ai": True},
+        headers={
+            "X-Forskningssok-Tilgang": "intern-testnokkel",
+            "X-Forskningssok-Profil": "psykologi",
+        },
+    )
+
+    assert r.status_code == 200
+    assert r.json() == {"profil": "Psykologi og helsefremmende arbeid"}
+    assert sett == {"profil": "Psykologi og helsefremmende arbeid", "kontekst": "", "uten_ai": True}
+    assert api.domeneprofil.gjeldende_navn() == standardprofil
+
+
+def test_ukjent_profil_gir_400_uten_a_endres_stille(monkeypatch):
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG", "intern-testnokkel")
+    kalt = []
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review",
+                        lambda *args, **kwargs: kalt.append(True) or {})
+
+    r = _client().post("/api/review", json={"fritekst": "generisk sporring"}, headers={
+        "X-Forskningssok-Tilgang": "intern-testnokkel",
+        "X-Forskningssok-Profil": "ukjent-profil-til-test",
+    })
+
+    assert r.status_code == 400
+    assert kalt == []
+
+
+def test_feil_internnokkel_avviser_profilert_review(monkeypatch):
+    monkeypatch.setenv("FORSKNINGSSOK_TILGANG", "riktig-testnokkel")
+    monkeypatch.setattr(api.retningssamtale_modul, "lag_review", lambda *args, **kwargs: {})
+
+    r = _client().post("/api/review", json={"fritekst": "generisk sporring"}, headers={
+        "X-Forskningssok-Tilgang": "feil-testnokkel",
+        "X-Forskningssok-Profil": "psykologi",
+    })
+
+    assert r.status_code == 401
