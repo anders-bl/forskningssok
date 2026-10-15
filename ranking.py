@@ -15,7 +15,8 @@ alene, som ville begravd et 2026-funn under et 2015-funn med ti års forsprang i
 """
 import re
 
-from domeneprofil import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER, arts_naer_tekst, domene_naer_tekst
+import domeneprofil
+from domeneprofil import FAGTIDSSKRIFTER, NORSKE_FAGMILJOER
 from rank import rank
 from schemas import PaperDossier
 
@@ -28,7 +29,7 @@ def domene_naer(p: PaperDossier) -> bool:
     driftskontekst (norsk lakseoppdrett, se domeneprofil.py). Substreng-match mot
     forfatter-affiliasjon-strengen og tidsskriftnavnet Europe PMC allerede returnerer —
     ingen ny henting."""
-    return domene_naer_tekst(f"{p.forfattere} {p.tidsskrift}")
+    return domeneprofil.domene_naer_tekst(f"{p.forfattere} {p.tidsskrift}")
 
 
 def arts_naer(p: PaperDossier) -> bool:
@@ -37,7 +38,7 @@ def arts_naer(p: PaperDossier) -> bool:
     ferskhet/siteringer avgjør — uten dette kan et menneske-nyrestein-funn med lavere
     embedding-avstand utkonkurrere et faktisk fiskefunn kun på tekstlig nærhet. Flagger,
     filtrerer ALDRI bort — et treff uten artstermer forblir i lista, bare lenger ned."""
-    return arts_naer_tekst(f"{p.tittel} {p.abstract}")
+    return domeneprofil.arts_naer_tekst(f"{p.tittel} {p.abstract}")
 
 
 def _band(p: PaperDossier) -> tuple:
@@ -97,8 +98,8 @@ def ranger_cachede(papirer: list[dict], query: str | None = None) -> list[dict]:
         tekst = f"{p.get('tittel') or ''} {p.get('abstract') or ''}"
         domene = f"{p.get('forfattere') or ''} {p.get('tidsskrift') or ''}"
         return (
-            not domene_naer_tekst(domene),
-            not arts_naer_tekst(tekst),
+            not domeneprofil.domene_naer_tekst(domene),
+            not domeneprofil.arts_naer_tekst(tekst),
             -(tittel_dekning(query, p.get("tittel") or "") if query else 0.0),
             -(p.get("aar") or 0),
             -(p.get("siteringstall") or 0),
