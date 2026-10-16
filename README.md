@@ -99,10 +99,10 @@ brukes fortsatt husets delte bge-m3-embedder (`silverbullet/ops/semantisk_sok.py
 en `sys.path`-import — den kaller til slutt en Ollama-instans på `localhost`/hjemme-
 flåtenoden, uoppnåelig fra en Dokploy-container på Netcup. **Sett `AI_PROXY_URL`**
 (kun i Dokploy-miljøet) og `bank.py` bytter i stedet til `ai-proxy`s `/embed`
-(mistral-embed, EU-direkte, nås internt på `dokploy-network` — samme mønster
-smartsok/wiki allerede bruker der). `AI_PROXY_WIKI_ID` (default `"forskningssok"`)
+(mistral-embed, EU-direkte, nås på det interne Docker-nettverket `ai-intern`, som er
+separat fra `dokploy-network`). `AI_PROXY_WIKI_ID` (default `"forskningssok"`)
 brukes kun til kost-attribusjon i ai-proxy, ikke autentisering — nettverksisolasjon
-(kun containere på `dokploy-network` når endepunktet) ER auth-grensen.
+(kun containere på `ai-intern` når endepunktet) ER auth-grensen.
 
 **Begge er 1024-dim (ingen skjema-endring), men IKKE samme vektor-rom** — bge-m3 og
 mistral-embed er målt ulike fordelinger. `cache.db` må derfor være embed-modell-REN:
@@ -118,8 +118,8 @@ alias kan derfor ikke oppdages av denne sjekken alene.
 
 **Teste `AI_PROXY_URL`-gatede flater (dossier, embed) lokalt uten Dokploy-tilgang**
 (lagt til 2026-09-16): Anders' Mac har ingen nettverkstilgang til den EKTE ai-proxyen —
-den er bevisst nettverksisolert til `dokploy-network` (`ai-proxy/docker-compose.yml`:
-`expose: ["8000"]  # KUN internt`), ikke en Mac-begrensning. `silverbullet/ops/lokal_ai_proxy.py`
+den er bevisst nettverksisolert til `ai-intern` (`ai-proxy/docker-compose.yml`:
+`internal: true` og `expose: ["8000"]`), ikke en Mac-begrensning. `silverbullet/ops/lokal_ai_proxy.py`
 erstatter kontraktens FORM lokalt (`/complete` + `/embed`) og forwarder til lokal Ollama:
 ```bash
 python3 ~/prosjekter/silverbullet/ops/lokal_ai_proxy.py 8421   # egen terminal
@@ -498,7 +498,7 @@ per wiki_id, som flaten forplanter lesbart.
 tilstander, verifisert-med-kilder OG uverifisert-uten-kilder, med riktig merking og
 Escape/bakgrunn/x-lukking. Enhetstestene mocker `/research` (suiten er nettverksfri).
 Live ende-til-ende mot den deployerte ai-proxy gjenstår som Anders' hånd: verken den interne
-dokploy-network-adressen eller en betalende Mistral-nøkkel er nåbar fra Mac-en (målt: 402).
+`ai-intern`-adressen eller en betalende Mistral-nøkkel er nåbar fra Mac-en (målt: 402).
 
 ## Versjon — to tall, fordi de svarer på to ulike spørsmål (2026-09-05)
 

@@ -51,7 +51,7 @@ services:
       # Volum-sti — se paths.py for hvorfor ALLE fire cache-moduler må dele denne
       # (ellers "halvveis persistert" cache som mister deler av dataen ved redeploy).
       FORSKNINGSSOK_DB: ${FORSKNINGSSOK_DB:-/data/cache.db}
-      # Satt = ai-proxy/embed (mistral-embed, EU-direkte, dokploy-network-internt).
+      # Satt = ai-proxy/embed (mistral-embed, EU-direkte, ai-intern-internt).
       # Usatt = ville falt til lokal Ollama (uoppnåelig herfra) — MÅ stå her i prod.
       # Se bank.py sin moduldocstring for hele resonnementet.
       AI_PROXY_URL: ${AI_PROXY_URL:-http://ai-proxy:8000}
