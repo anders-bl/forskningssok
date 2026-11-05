@@ -814,6 +814,20 @@ lagrede kalibreringsspoerringene, men Nomic-resultatene dekker dermed ikke hele 
 trofast. Nomic er ikke klar for produksjonsbruk med dagens chunking. Se
 `data/nomic_context_audit_2026-09-26.json` for chunk-ID-er og maaling.
 
+En offline oppfoelgingsscreen 2026-11-05 maalte den lokale Ollama-taggen
+`nomic-embed-text:latest` (vekt-SHA256 `970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6`),
+som er en annen modell enn Nomic Embed v2 MoE over. Screeningen brukte 48 unike
+haandskrevne sporsmaal fra de tre eksisterende probene og samme 4 732-chunkers
+profilutvalg. 4 729 chunks ble embedda; tre ble avvist av den lokale 2 048-token-grensen
+uten avkorting. Alle 48 sporsmaal ble embedda. Alle 10 forventede maalitler var i det
+indekserte utvalget, men eksakt normalisert titteltreff var 0/10 paa topp 1 og 1/10 i
+topp 5. Dette er et svakt resultat for den smale dekkede-probegruppen og en stoppgrunn
+for aa bruke denne modellen til reindeksering uten videre feilsoking og blind relevansreview.
+Dette var ikke en screening av hele 270 498-chunkers biblioteket, fastsatte ingen terskel
+og godkjenner ikke produksjonsbruk eller en vektormigrering. Preregistrering, kjorekode,
+prompt-tokenmaal og utfall per query/input: `data/nomic_offline_screen_prereg_2026-11-05.json`,
+`ops/offline_embedding_screen.py` og `data/nomic_offline_screen_results_2026-11-05.json`.
+
 En oppfoelging la til 10 haandskrevne nabokontroller som ber om konkrete maal eller detaljer
 som ikke er oppgitt i utdraget. Mistral-avstandene var 0.4106-0.5855 mot 0.3958-0.5172 for
 dekkede spoersmaal og 0.6189-0.6869 for fjerne. Nomic hadde 0.9373-1.0804 mot 0.7512-0.9643
