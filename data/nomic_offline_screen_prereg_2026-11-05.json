@@ -1,10 +1,12 @@
 {
   "experiment_id": "R2402-nomic-profile-screen-2026-11-05",
+  "prereg_revision": 2,
+  "supersedes_prereg_sha256": "64a40151b6787779c9d38cdfc16193a22270f1151bc9dad0e4b42cb393265701",
   "decision_ref": "partyline:44111",
   "registered_before_inference": true,
   "scope": "Offline retrieval screen only. No production activation, Mistral fallback, 1024-dimension migration, or write to the source database.",
   "executor_path": "ops/offline_embedding_screen.py",
-  "executor_sha256": "97ffb54e0396f9fd74127a3112faf6bdf9b0fa13cd7f5c9da3557f8009a948ce",
+  "executor_sha256": "ae67b698749ffa8a994797d5c984bd04f35caf07ca81f9bafbde451ca915e725",
   "model": {
     "tag": "nomic-embed-text:latest",
     "family": "local Ollama nomic-embed-text tag; underlying release not separately resolved",
@@ -24,7 +26,7 @@
       "request_num_ctx": 2048,
       "truncate": false,
       "prompt_length_measure": "Ollama API prompt_eval_count from one-input-per-request responses; record character and UTF-8 byte lengths as well.",
-      "overlength_handling": "Abort the run on any input rejected by Ollama; do not retry with truncation."
+      "overlength_handling": "Record an input rejected specifically for context length, omit only that input from the vector index, and continue; do not retry with truncation. Record prompt_eval_count as unavailable for rejected inputs. Abort on any other error."
     }
   },
   "ollama": {
@@ -87,7 +89,7 @@
   "evaluation": {
     "top_k": 5,
     "primary_metric": "Exact normalized expected-title retrieval at rank 1 and within top 5 for the 10 covered queries, with all 10 target titles verified present in the frozen corpus before inference.",
-    "secondary_outputs": "Store per-query top-5 chunk ids, title hashes, L2 distances, and group. Store per-input prompt_eval_count, character/byte lengths, and SHA-256 of raw float32 embedding bytes.",
+    "secondary_outputs": "Store per-query top-5 chunk ids, title hashes, L2 distances, and group. Store per-input prompt_eval_count, character/byte lengths, status, and SHA-256 of raw float32 embedding bytes; context-rejected inputs have no token count or vector hash.",
     "no_threshold_fitting": true,
     "no_new_manual_judgment": true,
     "no_cross_model_distance_comparison": true
@@ -95,6 +97,7 @@
   "interpretation_limits": [
     "The 48 records are hand-authored probes from three existing exploratory artifacts, not blind independent gold labels; 10 covered expected-title labels support only a narrow recall screen.",
     "The corpus is the 4,732-row profile-filtered slice, not the complete 270,498-row library and not a full reindexing trial.",
+    "Inputs rejected by the local context limit are excluded from the in-memory vector index without truncation; their actual token count cannot be measured by the failed request.",
     "The installed base text model is not the previously measured Nomic Embed v2 MoE; historical v2 MoE scores and distances are not comparable to this model.",
     "The model has 768 dimensions versus the existing 1024-dimensional vector store. This experiment does not define a migration plan or approve production use.",
     "No human relevance adjudication is performed on the new rankings; descriptive distance separation cannot establish a safe retrieval threshold."

@@ -155,6 +155,11 @@ def embed_one(text: str, task_prefix: str) -> tuple[list[float], int]:
     return [float(value) for value in vector], token_count
 
 
+def is_context_rejection(error: RuntimeError) -> bool:
+    message = str(error).casefold()
+    return "context" in message and any(term in message for term in ("exceed", "length", "too long"))
+
+
 def unit_vector(values: list[float]) -> list[float]:
     norm = math.sqrt(sum(value * value for value in values))
     if not math.isfinite(norm) or norm == 0:
@@ -183,22 +188,42 @@ def main() -> None:
     print(f"local model={MODEL}; ollama={version}; corpus={len(corpus)}; queries={len(queries)}", flush=True)
 
     started = time.time()
-    vectors: list[list[float]] = []
     input_records: list[dict[str, Any]] = []
+    document_vectors: dict[int, list[float]] = {}
+    query_vectors: dict[str, list[float]] = {}
     inputs = [("document", row, "search_document: ") for row in corpus]
     inputs.extend(("query", row, "search_query: ") for row in queries)
     for index, (kind, row, prefix) in enumerate(inputs, start=1):
-        vector, token_count = embed_one(row["text"], prefix)
-        raw_blob = vector_blob(vector)
-        vectors.append(unit_vector(vector))
-        input_records.append({
+        input_text = prefix + row["text"]
+        record = {
             "kind": kind,
             "id": row["chunk_id"] if kind == "document" else row["query_id"],
-            "input_chars": len(prefix + row["text"]),
-            "input_utf8_bytes": len((prefix + row["text"]).encode("utf-8")),
-            "prompt_eval_count": token_count,
-            "raw_embedding_sha256": sha256_bytes(raw_blob),
-        })
+            "input_chars": len(input_text),
+            "input_utf8_bytes": len(input_text.encode("utf-8")),
+        }
+        try:
+            vector, token_count = embed_one(row["text"], prefix)
+        except RuntimeError as error:
+            if not is_context_rejection(error):
+                raise
+            record.update({
+                "status": "rejected_over_context",
+                "prompt_eval_count": None,
+                "error_sha256": sha256_bytes(str(error).encode("utf-8")),
+            })
+        else:
+            raw_blob = vector_blob(vector)
+            record.update({
+                "status": "embedded",
+                "prompt_eval_count": token_count,
+                "raw_embedding_sha256": sha256_bytes(raw_blob),
+            })
+            normalized = unit_vector(vector)
+            if kind == "document":
+                document_vectors[int(row["chunk_id"])] = normalized
+            else:
+                query_vectors[str(row["query_id"])] = normalized
+        input_records.append(record)
         if index % 250 == 0 or index == len(inputs):
             print(f"embedded={index}/{len(inputs)}", flush=True)
 
@@ -208,15 +233,16 @@ def main() -> None:
     connection.execute("CREATE VIRTUAL TABLE screened_vectors USING vec0(row_id INTEGER PRIMARY KEY, embedding FLOAT[768])")
     connection.executemany(
         "INSERT INTO screened_vectors(row_id, embedding) VALUES (?, ?)",
-        ((row["chunk_id"], vector_blob(vector)) for row, vector in zip(corpus, vectors[:len(corpus)])),
+        ((row["chunk_id"], vector_blob(document_vectors[row["chunk_id"]]))
+         for row in corpus if row["chunk_id"] in document_vectors),
     )
     connection.commit()
 
     title_by_id = {row["chunk_id"]: row["title"] for row in corpus}
     records = []
-    query_vectors = vectors[len(corpus):]
-    for query, vector in zip(queries, query_vectors):
-        neighbors = connection.execute(
+    for query in queries:
+        vector = query_vectors.get(query["query_id"])
+        neighbors = [] if vector is None else connection.execute(
             "SELECT row_id, distance FROM screened_vectors WHERE embedding MATCH ? AND k = ? ORDER BY distance",
             (vector_blob(vector), TOP_K),
         ).fetchall()
@@ -238,6 +264,7 @@ def main() -> None:
             "query_id": query["query_id"],
             "source_id": query["source_id"],
             "group": query["group"],
+            "status": "embedded" if vector is not None else "rejected_over_context",
             "query_sha256": sha256_bytes(query["text"].encode("utf-8")),
             "expected_title_sha256": sha256_bytes(query["expected_title"].encode("utf-8")) if query["expected_title"] else None,
             "expected_title_present_in_corpus": bool(
@@ -259,19 +286,25 @@ def main() -> None:
         "elapsed_seconds": round(time.time() - started, 3),
         "model": prereg["model"],
         "ollama": prereg["ollama"],
-        "corpus": prereg["corpus"],
+        "corpus": {
+            **prereg["corpus"],
+            "indexed_chunk_count": len(document_vectors),
+            "rejected_over_context_count": len(corpus) - len(document_vectors),
+        },
         "input_count": len(input_records),
+        "input_status_counts": dict(Counter(row["status"] for row in input_records)),
         "query_count": len(records),
         "query_group_counts": dict(expected_counts),
         "prompt_token_count_summary": {
             kind: {
                 "n": len(values),
-                "min": min(values),
-                "median": statistics.median(values),
-                "max": max(values),
+                "min": min(values) if values else None,
+                "median": statistics.median(values) if values else None,
+                "max": max(values) if values else None,
             }
             for kind in ("document", "query")
-            for values in [[item["prompt_eval_count"] for item in input_records if item["kind"] == kind]]
+            for values in [[item["prompt_eval_count"] for item in input_records
+                            if item["kind"] == kind and item["prompt_eval_count"] is not None]]
         },
         "covered_expected_title_recall": {
             "n": len(covered),
