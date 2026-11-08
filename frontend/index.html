@@ -2292,10 +2292,14 @@ function renderSiteringsgraf(g) {
   const feilNotat = (g.feilede_oppslag || []).length
     ? `<div class="hint" style="margin-top:.4rem">${g.feilede_oppslag.length} oppslag feilet (rate-limit/nettverk) — de kandidatene mangler utgående kanter, ikke fjernet fra grafen.</div>`
     : '';
+  const ufullstendigNotat = (g.ufullstendige_oppslag || []).length
+    ? `<div class="hint" style="margin-top:.4rem">${g.ufullstendige_oppslag.length} kandidat(er) har flere siterende arbeider enn som ble hentet — manglende kanter inn til dem betyr ikke at de ikke er sitert i dossieret.</div>`
+    : '';
   return svg +
     `<div class="hint" style="margin-top:.5rem">${legend}<span style="color:var(--muted)">· størrelse = siteringer internt i dossieret · ring = ${escapeHtml(artMerke)}</span></div>` +
     akseLegend +
-    feilNotat;
+    feilNotat +
+    ufullstendigNotat;
 }
 
 function renderDossier(tekst) {

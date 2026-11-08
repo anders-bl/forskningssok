@@ -20,7 +20,7 @@ def _sit(doi, tittel="", innflytelsesrik=False):
 def test_bygger_kant_kun_mellom_papirer_internt_i_settet(monkeypatch):
     papirer = [_p("a", doi="10.1/a"), _p("b", doi="10.1/b")]
 
-    def fake_siteringsgraf(doi):
+    def fake_siteringsgraf(doi, **_kw):
         # "b" siterer "a" -- graf hentet FOR "a" skal vise "b" som siterende.
         if doi.lower() == "10.1/a":
             return {"siteringer": [_sit("10.1/b")], "referanser": []}
@@ -37,7 +37,7 @@ def test_bygger_kant_kun_mellom_papirer_internt_i_settet(monkeypatch):
 def test_sitering_utenfor_settet_ignoreres_ikke_lagt_til_som_node():
     papirer = [_p("a", doi="10.1/a")]
 
-    def fake_siteringsgraf(doi):
+    def fake_siteringsgraf(doi, **_kw):
         return {"siteringer": [_sit("10.1/ukjent-utenfor-settet")], "referanser": []}
 
     import unittest.mock
@@ -58,7 +58,7 @@ def test_papir_uten_doi_blir_isolert_node_ikke_utelatt():
 def test_feilet_oppslag_degraderer_til_isolert_node_ikke_krasj(monkeypatch):
     papirer = [_p("a", doi="10.1/a"), _p("b", doi="10.1/b")]
 
-    def fake(doi):
+    def fake(doi, **_kw):
         if doi.lower() == "10.1/a":
             raise RuntimeError("Semantic Scholar rate-limitet")
         return {"siteringer": [], "referanser": []}
@@ -72,14 +72,14 @@ def test_feilet_oppslag_degraderer_til_isolert_node_ikke_krasj(monkeypatch):
 def test_selvsitering_utelates(monkeypatch):
     papirer = [_p("a", doi="10.1/a")]
     monkeypatch.setattr(dsg.semantic_scholar, "siteringsgraf",
-                         lambda doi: {"siteringer": [_sit("10.1/a")], "referanser": []})
+                         lambda doi, **_kw: {"siteringer": [_sit("10.1/a")], "referanser": []})
     graf = dsg.bygg_siteringsgraf(papirer)
     assert graf["kanter"] == []
 
 
 def test_tomt_korpus_gir_aerlig_tom_graf():
     graf = dsg.bygg_siteringsgraf([])
-    assert graf == {"noder": [], "kanter": [], "inn_grad": {}, "feilede_oppslag": []}
+    assert graf == {"noder": [], "kanter": [], "inn_grad": {}, "feilede_oppslag": [], "ufullstendige_oppslag": []}
 
 
 def test_siteringsgraf_for_emne_legger_ved_node_metadata(monkeypatch):
@@ -88,7 +88,7 @@ def test_siteringsgraf_for_emne_legger_ved_node_metadata(monkeypatch):
                                                      tittel="Nephrocalcinosis in Atlantic salmon Salmo salar",
                                                      aar=2022)])
     monkeypatch.setattr(dsg.semantic_scholar, "siteringsgraf",
-                         lambda doi: {"siteringer": [], "referanser": []})
+                         lambda doi, **_kw: {"siteringer": [], "referanser": []})
     graf = dsg.siteringsgraf_for_emne("nephrocalcinosis salmon")
     assert graf["noder_meta"]["a"]["tittel"] == "Nephrocalcinosis in Atlantic salmon Salmo salar"
     assert graf["noder_meta"]["a"]["aar"] == 2022
@@ -114,7 +114,48 @@ def test_siteringsgraf_for_papirer_legger_ved_akse_per_node(monkeypatch):
         _p("b", doi=None, tittel="xyzabc qwerty", abstract=""),
     ]
     monkeypatch.setattr(dsg.semantic_scholar, "siteringsgraf",
-                         lambda doi: {"siteringer": [], "referanser": []})
+                         lambda doi, **_kw: {"siteringer": [], "referanser": []})
     graf = dsg.siteringsgraf_for_papirer(papirer)
     assert graf["noder_meta"]["a"]["akse"] == "Ultralyd-validering"
     assert graf["noder_meta"]["b"]["akse"] is None
+
+
+def _side(siteringer, *, complete, has_more, next_offset=None):
+    return {"siteringer": siteringer, "referanser": [],
+            "siteringer_dekning": {"complete": complete, "has_more": has_more, "next_offset": next_offset}}
+
+
+def test_dossiergrafen_ber_om_full_side_og_paginerer_til_siste(monkeypatch):
+    """s-19d HOLD #46295: adapterens standardgrense 20 kappet dossierets kanter stille."""
+    papirer = [_p("a", doi="10.1/a"), _p("b", doi="10.1/b"), _p("c", doi="10.1/c")]
+    kall = []
+
+    def fake(doi, limit=20, offset=0):
+        kall.append((doi, limit, offset))
+        if doi != "10.1/a":
+            return _side([], complete=True, has_more=False)
+        if offset == 0:
+            return _side([_sit("10.1/b")], complete=False, has_more=True, next_offset=1000)
+        return _side([_sit("10.1/c")], complete=True, has_more=False)
+
+    monkeypatch.setattr(dsg.semantic_scholar, "siteringsgraf", fake)
+    graf = dsg.bygg_siteringsgraf(papirer)
+    assert ("10.1/a", dsg.SIDE_GRENSE, 0) in kall and ("10.1/a", dsg.SIDE_GRENSE, 1000) in kall
+    assert graf["kanter"] == [("b", "a"), ("c", "a")]
+    assert graf["ufullstendige_oppslag"] == []
+
+
+def test_ukjent_dekning_eller_nadd_tak_merkes_ufullstendig(monkeypatch):
+    papirer = [_p("ukjent", doi="10.1/u"), _p("tak", doi="10.1/t")]
+    kall = []
+
+    def fake(doi, limit=20, offset=0):
+        kall.append(doi)
+        if doi == "10.1/u":
+            return {"siteringer": [], "referanser": []}
+        return _side([], complete=False, has_more=True, next_offset=offset + limit)
+
+    monkeypatch.setattr(dsg.semantic_scholar, "siteringsgraf", fake)
+    graf = dsg.bygg_siteringsgraf(papirer)
+    assert graf["ufullstendige_oppslag"] == ["ukjent", "tak"]
+    assert kall.count("10.1/t") == dsg.MAKS_SIDER
