@@ -100,7 +100,7 @@ lisens/kostnad i denne proben.
 
 ## Etterkontroll av avvik
 
-OpenAlex-feilen er lokalisert til sort-syntaksen i adapteren. Med seed
+OpenAlex-feilen var lokalisert til sort-syntaksen i adapteren. Med seed
 `W7128841028` gir adapterens `sort=-publication_date` HTTP 400 med meldingen
 `_publication_date is not a valid field`. Ellers identisk kall med
 `sort=publication_date:desc` gir HTTP 200. For denne seed-en rapporterer OpenAlex
@@ -109,8 +109,10 @@ OpenAlex-feilen er lokalisert til sort-syntaksen i adapteren. Med seed
 tidligere 400-feilene som foreldet/ugyldig adapter-syntaks, ikke providerfravaer.
 
 OpenAlex' gjeldende sorteringsveiledning bruker `field:desc`, selv om en annen
-oppskriftside fortsatt viser eldre `-field`-syntaks. En kodeendring bor ha en liten,
-nettverksfri regresjonstest og bor landes separat fra dette resultatnotatet.
+oppskriftside fortsatt viser eldre `-field`-syntaks. Adapteren bruker nå
+`publication_date:desc`, og `tests/test_openalex_adapter.py` låser parameteren med en
+nettverksfri regresjonstest. Det live-diagnostiske resultatet er fortsatt fra den
+separate syntaksproben; den rettede adapteren er ikke brukt i en ny live-grafkjøring.
 
 Semantic Scholar-avviket var pa protokollsiden: adapteren sender ingen `limit` og
 bruker API-standardens forste side pa 100 referanser. Dette er ikke en fullstendig

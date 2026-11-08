@@ -125,6 +125,7 @@ def test_siterende_verk_returnerer_retningskant_og_paginering(tmp_path):
         "source_coverage": result["edges"][0]["source_coverage"],
     }]
     assert get.call_args.kwargs["params"]["filter"] == "cites:WSEED"
+    assert get.call_args.kwargs["params"]["sort"] == "publication_date:desc"
     assert get.call_args.kwargs["params"]["cursor"] == "*"
 
 
