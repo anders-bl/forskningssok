@@ -7,4 +7,3 @@ Den forrige feilmeldingen navnga `-publication_date` som et ugyldig felt. Test e
 enkelt diagnostisk variant med ellers samme innhold som minimumskallet, men sett
 `sort=publication_date:desc`. Bevar status, valideringsmelding ved feil, eller antall
 treff ved suksess. Dette er en syntaksprobe, ikke en retrieval-kvalitetsmaling.
-

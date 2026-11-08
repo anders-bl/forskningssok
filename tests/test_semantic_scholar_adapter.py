@@ -1,13 +1,10 @@
 """Verifiserer Semantic Scholar-adapteren: felt-mapping, TTL-cache, ærlig feil ved
 nedetid — samme disiplin som test_unpaywall_adapter.py.
 
-siteringsgraf()s endepunkt-VALG (to sub-endepunkter, ikke nøstede felt på /paper/{id})
-og topp-nivå felt-navn (contexts/intents/isInfluential) ER live-verifisert 2026-09-14
-(se funksjonens egen docstring — den forrige, aldri-testede versjonen feilet faktisk
-med 400 ved første ekte forsøk). citingPaper/citedPaper-nøstingen for tittel/år under
-er FORTSATT kun dokumentasjonens skjema, ikke bekreftet mot et FYLT svar (anonym
-rate-limit-pool var mettet samme kveld) — disse testene låser koden mot det skjemaet,
-ikke et fullt bekreftet ekte svar."""
+siteringsgraf()s endepunktvalg (to sub-endepunkter, ikke nøstede felt på /paper/{id})
+og toppnivåfeltene (contexts/intents/isInfluential) ble live-verifisert 2026-09-14.
+citingPaper/citedPaper-nøstingen for tittel/år ble også bekreftet mot ikke-tomme
+live-responser 2026-11-08; resultatrapporten for Belegg-proben dokumenterer prøven."""
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -177,6 +174,28 @@ def test_mangler_next_signal_er_ukjent_naar_siden_er_full():
     metadata = semantic_scholar._side_metadata({"data": [{}] * 20}, limit=20, offset=0)
     assert metadata["has_more"] is None
     assert metadata["complete"] is False
+
+
+def test_total_overstyrer_kort_side_uten_next_signal():
+    metadata = semantic_scholar._side_metadata(
+        {"data": [{}] * 3, "offset": 10, "total": 15}, limit=20, offset=10
+    )
+    assert metadata["has_more"] is True
+    assert metadata["complete"] is False
+
+
+def test_total_bekrefter_fullstendighet_uten_next_signal():
+    metadata = semantic_scholar._side_metadata(
+        {"data": [{}] * 3, "offset": 12, "total": 15}, limit=20, offset=12
+    )
+    assert metadata["has_more"] is False
+    assert metadata["complete"] is True
+
+
+def test_kort_side_uten_total_eller_next_er_ukjent():
+    metadata = semantic_scholar._side_metadata({"data": [{}]}, limit=20, offset=0)
+    assert metadata["has_more"] is None
+    assert metadata["complete"] is None
 
 
 def test_ttl_cache_unngaar_nytt_kall(tmp_path):

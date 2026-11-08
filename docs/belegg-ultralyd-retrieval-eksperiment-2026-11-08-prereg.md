@@ -71,4 +71,3 @@ Seks sporringer, topp-10 per kilde og metadata-only klassifisering gir en liten,
 eksplorativ probe. Rangeringsforskjeller, fulltekstdekning, sitasjonsgraf og
 ekspertreview males ikke i denne runden. API-treff kan endres over tid. Cache skrives
 kun i det isolerte worktreets lokale ignored database og er ikke resultatgrunnlag.
-

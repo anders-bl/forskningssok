@@ -29,4 +29,3 @@ som faglig relevansdom uten a kontrollere selve artikkelen.
   laksefisknyre, nefrokalsinose, ultralydskanneomrade og score/validering.
 - Rate-limit, manglende dekning eller feilsvar rapporteres som kunne ikke males for
   den kilden; det omtolkes ikke som null siteringer.
-

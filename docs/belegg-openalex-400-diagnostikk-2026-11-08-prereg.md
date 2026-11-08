@@ -31,4 +31,3 @@ treff og de tre forste ID/tittel-parene. Ikke skriv ut eller lagre API-nokkel.
 - Hvis variant 5 feiler, merk `kunne ikke maales` for adapterdiagnosen; ikke tilskriv
   feilen en bestemt parameter.
 - Ingen variantutfall kan brukes som evidens for at OpenAlex mangler artikler.
-

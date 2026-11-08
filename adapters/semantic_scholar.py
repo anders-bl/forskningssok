@@ -263,15 +263,24 @@ def siteringsgraf(doi_eller_id: str, limit: int = 20, offset: int = 0,
 def _side_metadata(data: dict, limit: int, offset: int) -> dict:
     """Behold leverandørens pagineringssignal så en side ikke ser komplett ut."""
     returned = len(data.get("data") or [])
+    side_offset = data.get("offset", offset)
+    total = data.get("total")
     next_offset = data.get("next")
-    has_more = next_offset is not None if "next" in data else None
-    complete = next_offset is None if "next" in data else (returned < limit)
+    if "next" in data:
+        has_more = next_offset is not None
+        complete = not has_more
+    elif isinstance(total, int) and not isinstance(total, bool):
+        has_more = side_offset + returned < total
+        complete = not has_more
+    else:
+        has_more = None
+        complete = None if returned < limit else False
     return {
         "provider": "semantic_scholar",
         "limit": limit,
-        "offset": data.get("offset", offset),
+        "offset": side_offset,
         "returned": returned,
-        "total": data.get("total"),
+        "total": total,
         "next_offset": next_offset,
         "has_more": has_more,
         "complete": complete,

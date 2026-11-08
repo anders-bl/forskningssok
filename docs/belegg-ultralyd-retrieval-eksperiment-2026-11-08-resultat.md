@@ -131,9 +131,10 @@ en-persons metadata-screening, ikke en blindet relevansfasit.
 
 Adapteren er oppdatert etter forsøket: Semantic Scholar ber nå uttrykkelig om 20
 poster per retning, tar `offset` som parameter og returnerer leverandørens `total`,
-`next` og sideantall. Dermed kan en side med flere poster ikke presenteres som en
-komplett graf. Nettverksfrie adapter-, dossier- og API-tester dekker grense,
-paginering, cache-nøkler og validering.
+`next` og sideantall. Hvis `next` mangler, sammenholdes offset, returnert antall og
+`total`; uten begge signalene oppgis fullstendighet som ukjent. Dermed kan en side med
+flere poster ikke presenteres som en komplett graf. Nettverksfrie adapter-, dossier-
+og API-tester dekker grense, paginering, cache-nøkler og validering.
 
 Ny live-kjøring 2026-11-08, med separat midlertidig cache og uten API-nøkler:
 
@@ -197,4 +198,3 @@ hold resultatene opp mot blindet histologi pa matchede individer. De er ikke nok
 a foresla ett av skanneomradene som beste praksis. Hypotesen er ny fordi den
 kombinerer en lakseradiografiobservasjon med en tverrarts ultralydvalideringsmal; den
 ma merkes som ekstrapolasjon og testes, ikke framstilles som konsensus.
-
