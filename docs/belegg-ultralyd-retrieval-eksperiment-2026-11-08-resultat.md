@@ -98,3 +98,53 @@ fagkyndig-annotert sammenligning mot en godkjent akvakultur-/veterinaerbase, med
 samme frosne sporringene og DOI-dedup. Ingen betalt base er aktivert eller vurdert for
 lisens/kostnad i denne proben.
 
+## Etterkontroll av avvik
+
+OpenAlex-feilen er lokalisert til sort-syntaksen i adapteren. Med seed
+`W7128841028` gir adapterens `sort=-publication_date` HTTP 400 med meldingen
+`_publication_date is not a valid field`. Ellers identisk kall med
+`sort=publication_date:desc` gir HTTP 200. For denne seed-en rapporterer OpenAlex
+0 siterende verk. Syntaksproben og statusene er bevart i
+`docs/belegg-openalex-400-diagnostikk-2026-11-08-result.json`. Dette forklarer de to
+tidligere 400-feilene som foreldet/ugyldig adapter-syntaks, ikke providerfravaer.
+
+OpenAlex' gjeldende sorteringsveiledning bruker `field:desc`, selv om en annen
+oppskriftside fortsatt viser eldre `-field`-syntaks. En kodeendring bor ha en liten,
+nettverksfri regresjonstest og bor landes separat fra dette resultatnotatet.
+
+Semantic Scholar-avviket var pa protokollsiden: adapteren sender ingen `limit` og
+bruker API-standardens forste side pa 100 referanser. Dette er ikke en fullstendig
+bibliografi og heller ikke en kilde som feilaktig returnerte for mange. Adapteren
+trenger enten eksplisitt `limit=20` og paginering/avkorting etter kontrakt, eller
+preregistreringen ma gjore et eksplisitt unntak. Eksperimentet brukte kun de forste
+20 i sin manuelle screening; hele API-responsen er bevart.
+
+Dedupliseringa etter DOI/fallbacktittel ga 116 identiteter, mens normalisert tittel
+alene ga 112 grupper. Fem tittelgrupper hadde flere identiteter. Dermed er 116 et
+svakt overstimat pa verk dersom metadata ikke matcher. Det endrer ikke at ingen av
+treffene ble screenet som direkte ultralydprotokoll for laksefisknyre. Nullen er en
+en-persons metadata-screening, ikke en blindet relevansfasit.
+
+## Hva den tverrfaglige evidensen tillater
+
+Etter den forste proben ble primarartikkelen Klykken et al. (2022), DOI
+`10.1111/jfd.13704`, kontrollert i fulltekst. Den studerte radiografi, ikke ultralyd.
+Histologisnitt ble lagt i rekkefolge fra anterior til posterior for a dekke hele
+nyrelengden; radiografisk modell hadde en egen kategori for lengdeutbredelse. Den
+rapporterer ogsa falske positive/negative og bare moderat samsvar mellom total
+radiografi- og histologisk score. Dette gir en direkte lakseforankret grunn til a
+undersoke om lesjonenes utbredelse langs nyren betyr noe. Det viser ikke at ultralyd
+ma skanne hele nyren eller kan bruke samme score.
+
+Tang et al. (2024), DOI `10.1111/jvim.17011`, sammenlignet ultralyd, mikro-CT og
+histopatologi hos katter. Det er et relevant eksempel pa hvordan en ny modalitet kan
+valideres mot vevsreferanse, men ikke direkte evidens om fisk, smolt eller valgt
+skanneplan.
+
+Disse to kildene er nok til a formulere en testbar metodehypotese: sammenlign
+skanning av hele synlige nyrelengden med et lite sett forhandsdefinerte regioner, og
+hold resultatene opp mot blindet histologi pa matchede individer. De er ikke nok til
+a foresla ett av skanneomradene som beste praksis. Hypotesen er ny fordi den
+kombinerer en lakseradiografiobservasjon med en tverrarts ultralydvalideringsmal; den
+ma merkes som ekstrapolasjon og testes, ikke framstilles som konsensus.
+
