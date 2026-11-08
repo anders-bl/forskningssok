@@ -234,7 +234,7 @@ def siterende_verk(doi: str, limit: int = 20, cursor: str = "*",
         f"{BASE}/works",
         {
             "filter": f"cites:{openalex_short_id}",
-            "sort": "-publication_date",
+            "sort": "publication_date:desc",
             "per_page": limit,
             "cursor": cursor,
             "select": _SELECT_FELTER,

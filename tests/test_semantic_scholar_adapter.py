@@ -1,13 +1,10 @@
 """Verifiserer Semantic Scholar-adapteren: felt-mapping, TTL-cache, ærlig feil ved
 nedetid — samme disiplin som test_unpaywall_adapter.py.
 
-siteringsgraf()s endepunkt-VALG (to sub-endepunkter, ikke nøstede felt på /paper/{id})
-og topp-nivå felt-navn (contexts/intents/isInfluential) ER live-verifisert 2026-09-14
-(se funksjonens egen docstring — den forrige, aldri-testede versjonen feilet faktisk
-med 400 ved første ekte forsøk). citingPaper/citedPaper-nøstingen for tittel/år under
-er FORTSATT kun dokumentasjonens skjema, ikke bekreftet mot et FYLT svar (anonym
-rate-limit-pool var mettet samme kveld) — disse testene låser koden mot det skjemaet,
-ikke et fullt bekreftet ekte svar."""
+siteringsgraf()s endepunktvalg (to sub-endepunkter, ikke nøstede felt på /paper/{id})
+og toppnivåfeltene (contexts/intents/isInfluential) ble live-verifisert 2026-09-14.
+citingPaper/citedPaper-nøstingen for tittel/år ble også bekreftet mot ikke-tomme
+live-responser 2026-11-08; resultatrapporten for Belegg-proben dokumenterer prøven."""
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -70,6 +67,9 @@ SOK_RESPONS = {
 # citations.*/references.*-felt på selve /paper/{id}, slik original koden (og disse
 # testenes forrige fixture) antok.
 CITATIONS_RESPONS = {
+    "total": 121,
+    "offset": 0,
+    "next": 20,
     "data": [
         {"citingPaper": {"title": "A follow-up study", "year": 2024,
                           "externalIds": {"DOI": "10.1111/jfd.11111"}},
@@ -79,6 +79,9 @@ CITATIONS_RESPONS = {
     ],
 }
 REFERENCES_RESPONS = {
+    "total": 22,
+    "offset": 0,
+    "next": None,
     "data": [
         {"citedPaper": {"title": "Earlier foundational work", "year": 2019,
                          "externalIds": {"DOI": "10.1111/jfd.22222"}},
@@ -133,9 +136,66 @@ def test_siteringsgraf_skiller_innflytelsesrik_fra_forbifarten(tmp_path):
     assert graf["siteringer"][0]["innflytelsesrik"] is True
     assert graf["siteringer"][0]["intents"] == ("methodology",)
     assert graf["siteringer"][1]["innflytelsesrik"] is False
+    assert graf["siteringer_dekning"] == {
+        "provider": "semantic_scholar", "limit": 20, "offset": 0,
+        "returned": 2, "total": 121, "next_offset": 20,
+        "has_more": True, "complete": False,
+    }
     assert len(graf["referanser"]) == 1
     assert graf["referanser"][0]["tittel"] == "Earlier foundational work"
     assert graf["referanser"][0]["aar"] == 2019
+    assert graf["referanser_dekning"]["complete"] is True
+    assert all(c.kwargs["params"]["limit"] == 20 for c in m.call_args_list)
+    assert all(c.kwargs["params"]["offset"] == 0 for c in m.call_args_list)
+
+
+def test_siteringsgraf_har_eksplisitt_paginering_og_cache_key(tmp_path):
+    db = tmp_path / "cache.db"
+    citations = {**CITATIONS_RESPONS, "offset": 20, "next": 25}
+    references = {**REFERENCES_RESPONS, "offset": 20}
+    svar = [_mock_get(json_data=citations), _mock_get(json_data=references)]
+    with patch("adapters.semantic_scholar.httpx.get", side_effect=svar) as m:
+        graf = semantic_scholar.siteringsgraf("10.1111/jfd.99999", limit=5, offset=20, db_path=db)
+    assert graf["siteringer_dekning"]["limit"] == 5
+    assert graf["siteringer_dekning"]["offset"] == 20  # responsens posisjon er fasit
+    assert [c.kwargs["params"]["offset"] for c in m.call_args_list] == [20, 20]
+
+
+def test_siteringsgraf_avviser_ugyldig_paginering(tmp_path):
+    import pytest
+
+    with pytest.raises(ValueError, match="limit må være"):
+        semantic_scholar.siteringsgraf("10.1111/jfd.99999", limit=0, db_path=tmp_path / "cache.db")
+    with pytest.raises(ValueError, match="offset kan ikke"):
+        semantic_scholar.siteringsgraf("10.1111/jfd.99999", offset=-1, db_path=tmp_path / "cache.db")
+
+
+def test_mangler_next_signal_er_ukjent_naar_siden_er_full():
+    metadata = semantic_scholar._side_metadata({"data": [{}] * 20}, limit=20, offset=0)
+    assert metadata["has_more"] is None
+    assert metadata["complete"] is False
+
+
+def test_total_overstyrer_kort_side_uten_next_signal():
+    metadata = semantic_scholar._side_metadata(
+        {"data": [{}] * 3, "offset": 10, "total": 15}, limit=20, offset=10
+    )
+    assert metadata["has_more"] is True
+    assert metadata["complete"] is False
+
+
+def test_total_bekrefter_fullstendighet_uten_next_signal():
+    metadata = semantic_scholar._side_metadata(
+        {"data": [{}] * 3, "offset": 12, "total": 15}, limit=20, offset=12
+    )
+    assert metadata["has_more"] is False
+    assert metadata["complete"] is True
+
+
+def test_kort_side_uten_total_eller_next_er_ukjent():
+    metadata = semantic_scholar._side_metadata({"data": [{}]}, limit=20, offset=0)
+    assert metadata["has_more"] is None
+    assert metadata["complete"] is None
 
 
 def test_ttl_cache_unngaar_nytt_kall(tmp_path):

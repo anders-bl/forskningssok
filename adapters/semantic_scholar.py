@@ -8,12 +8,12 @@ gir: OpenAlex sier KUN at A siterer B, Semantic Scholar sier OGSÅ om siteringen
 arbeidet. Det er det [[research-utkast/artikkel-bank-akse]] sitt siteringsgap-spor
 faktisk trenger for å skille «nevnt i forbifarten» fra «bygget videre på».
 
-[OBS] Feltskjemaet under er IKKE live-verifisert mot et ekte 200-svar i denne økten
-(2026-09-08) — Semantic Scholar sin DELTE anonyme rate-limit-pool var mettet (429 på
-gjentatte forsøk). Feltnavnene (paperId, externalIds.DOI, citationCount, isOpenAccess,
-openAccessPdf.url, contexts, intents, isInfluential) er hentet fra Semantic Scholar
-sin offentlige, stabile API-dokumentasjon — IKKE gjettet, men heller ikke bekreftet mot
-et ekte svar herfra ennå. Første reelle live-kall bør kryssjekke denne docstringen.
+Feltskjemaet ble først dokumentert fra Semantic Scholar sin API-dokumentasjon fordi
+den delte anonyme rate-limit-poolen var mettet 2026-09-08. Live-kall 2026-11-08 mot
+to fiskestudier bekreftet at citations/references returnerer `contexts`, `intents`,
+`isInfluential`, nøstet citingPaper/citedPaper med tittel, år og externalIds, samt
+offset/next-paginering. Den separate `/paper/{id}`-søkresponsen er ikke del av denne
+live-verifiseringen.
 
 Retry/backoff-oppførselen ER derimot verifisert mot kilde (semanticscholar.readthedocs.io
 + CASRAI sin målte gjennomgang, begge 2026-09-08): INGEN Retry-After-header på 429 —
@@ -190,16 +190,16 @@ def sok(query: str, limit: int = 10, *, db_path: Path = DB) -> list[dict]:
     return [_paper_dict(p) for p in (data.get("data") or [])]
 
 
-def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
+def siteringsgraf(doi_eller_id: str, limit: int = 20, offset: int = 0,
+                 *, db_path: Path = DB) -> dict:
     """Siteringer MED KONTEKST (contexts/intents/isInfluential) — det Europe PMC/
     OpenAlex sin referanseliste ikke har. `doi_eller_id` kan være et DOI (prefikset
     med DOI: internt, Semantic Scholar sin egen konvensjon for paper-ID-lookup på
     tvers av identifikator-typer) eller et rått Semantic Scholar paperId.
 
-    Returnerer {"siteringer": [...], "referanser": [...]} — hver oppføring har
-    {tittel, aar, doi, intents, innflytelsesrik} slik at api.py kan vise «denne
-    artikkelen ble sitert som METODOLOGI av 4 senere arbeider, hvorav 1
-    innflytelsesrikt» i stedet for et rått tall.
+    Returnerer én eksplisitt paginert side med siteringer og referanser, pluss
+    dekningstall fra leverandøren. Standardgrensen 20 samsvarer med Belegg-proben;
+    neste side hentes ved å sende metadataens next_offset tilbake som offset.
 
     `doi` (lagt til 2026-09-14, se prosjekt/forskningssok-dossier-scivis M4) er
     NØKKELEN en sitasjonsgraf trenger for å matche siterende/siterte papirer TILBAKE
@@ -219,20 +219,26 @@ def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
     finnes KUN på de dedikerte sub-endepunktene `/paper/{id}/citations` og
     `/paper/{id}/references`, verifisert live: samme felt-navn flatt (uten
     "citations."-prefiks) ga 200 der. citingPaper/citedPaper-nøstingen for tittel/år er
-    Semantic Scholar sin egen dokumenterte konvensjon for disse to endepunktene (ikke
-    egen-verifisert mot et FYLT svar ennå — anonym rate-limit-pool var mettet samme
-    kveld, se moduldocstring — neste reelle kall bør bekrefte feltnøstingen)."""
+    Semantic Scholar sin dokumenterte konvensjon. Nøstingen er også bekreftet mot
+    ikke-tomme live-responser 2026-11-08 (se resultatrapporten for Belegg-proben)."""
+    if not 1 <= limit <= 1000:
+        raise ValueError("limit må være mellom 1 og 1000")
+    if offset < 0:
+        raise ValueError("offset kan ikke være negativ")
+
     pid = doi_eller_id if doi_eller_id.upper().startswith("DOI:") else f"DOI:{doi_eller_id}"
     if not doi_eller_id.startswith("10."):
         pid = doi_eller_id  # allerede et rått Semantic Scholar paperId
 
     felter = "contexts,intents,isInfluential"
     sitering_data = _hent(f"{BASE}/paper/{pid}/citations",
-                           {"fields": f"{felter},citingPaper.title,citingPaper.year,citingPaper.externalIds"},
-                           cache_key=f"graf-sit::{pid}", db_path=db_path)
+                           {"fields": f"{felter},citingPaper.title,citingPaper.year,citingPaper.externalIds",
+                            "limit": limit, "offset": offset},
+                           cache_key=f"graf-sit::{pid}::{limit}::{offset}", db_path=db_path)
     referanse_data = _hent(f"{BASE}/paper/{pid}/references",
-                            {"fields": f"{felter},citedPaper.title,citedPaper.year,citedPaper.externalIds"},
-                            cache_key=f"graf-ref::{pid}", db_path=db_path)
+                            {"fields": f"{felter},citedPaper.title,citedPaper.year,citedPaper.externalIds",
+                             "limit": limit, "offset": offset},
+                            cache_key=f"graf-ref::{pid}::{limit}::{offset}", db_path=db_path)
 
     def _rens(rader, papir_noekkel):
         ut = []
@@ -249,4 +255,33 @@ def siteringsgraf(doi_eller_id: str, *, db_path: Path = DB) -> dict:
     return {
         "siteringer": _rens(sitering_data.get("data"), "citingPaper"),
         "referanser": _rens(referanse_data.get("data"), "citedPaper"),
+        "siteringer_dekning": _side_metadata(sitering_data, limit, offset),
+        "referanser_dekning": _side_metadata(referanse_data, limit, offset),
+    }
+
+
+def _side_metadata(data: dict, limit: int, offset: int) -> dict:
+    """Behold leverandørens pagineringssignal så en side ikke ser komplett ut."""
+    returned = len(data.get("data") or [])
+    side_offset = data.get("offset", offset)
+    total = data.get("total")
+    next_offset = data.get("next")
+    if "next" in data:
+        has_more = next_offset is not None
+        complete = not has_more
+    elif isinstance(total, int) and not isinstance(total, bool):
+        has_more = side_offset + returned < total
+        complete = not has_more
+    else:
+        has_more = None
+        complete = None if returned < limit else False
+    return {
+        "provider": "semantic_scholar",
+        "limit": limit,
+        "offset": side_offset,
+        "returned": returned,
+        "total": total,
+        "next_offset": next_offset,
+        "has_more": has_more,
+        "complete": complete,
     }

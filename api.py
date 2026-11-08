@@ -630,7 +630,7 @@ def api_tilgang(paper_id: str):
 
 
 @app.get("/api/siteringsgraf/{paper_id:path}")
-def api_siteringsgraf(paper_id: str):
+def api_siteringsgraf(paper_id: str, limit: int = 20, offset: int = 0):
     """Semantic Scholar sin siteringsgraf MED KONTEKST (intents/isInfluential) — se
     adapters/semantic_scholar.py sin docstring for hvorfor det er noe utover
     OpenAlex sin referanseliste. Kun for papirer med DOI (samme forutsetning som
@@ -639,8 +639,10 @@ def api_siteringsgraf(paper_id: str):
     tomt = {"siteringer": [], "referanser": []}
     if not paper_id.startswith("10."):
         return tomt
+    if not 1 <= limit <= 1000 or offset < 0:
+        raise HTTPException(422, "limit må være 1–1000 og offset kan ikke være negativ")
     try:
-        return semantic_scholar.siteringsgraf(paper_id)
+        return semantic_scholar.siteringsgraf(paper_id, limit=limit, offset=offset)
     except RuntimeError as e:
         raise HTTPException(502, str(e)) from e
 

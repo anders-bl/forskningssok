@@ -33,3 +33,17 @@ def test_siterer_oppslagssvikt_er_502_ikke_tomt_funn():
     with patch("api.openalex.siterende_verk", side_effect=RuntimeError("OpenAlex utilgjengelig")):
         response = client.get("/api/siterer/10.1/seed")
     assert response.status_code == 502
+
+
+def test_semantic_scholar_graf_eksponerer_limit_og_offset():
+    payload = {"siteringer": [], "referanser": [], "siteringer_dekning": {"next_offset": 5}}
+    with patch("api.semantic_scholar.siteringsgraf", return_value=payload) as fetch:
+        response = client.get("/api/siteringsgraf/10.1/seed", params={"limit": 5, "offset": 20})
+    assert response.status_code == 200
+    assert response.json() == payload
+    fetch.assert_called_once_with("10.1/seed", limit=5, offset=20)
+
+
+def test_semantic_scholar_graf_avviser_ugyldig_paginering():
+    assert client.get("/api/siteringsgraf/10.1/seed", params={"limit": 0}).status_code == 422
+    assert client.get("/api/siteringsgraf/10.1/seed", params={"offset": -1}).status_code == 422
