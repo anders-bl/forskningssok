@@ -57,7 +57,7 @@ nefrokalsinose hos atlantisk laks (`10.1111/jfd.13704`).
   syre-base-regulering.
 - OpenAlex: begge grafkall feilet med HTTP 400. Dette er et adapter/API-feilutfall,
   ikke null siteringer.
-- Metodeavvik: preregistreringen satte maks 20 poster per retning. Semantic Scholars
+- Metodeavvik: preregistreringen satte maks 20 poster per retning. Semantic Scholar
   eksisterende adapter har ikke en limit-parameter og returnerte 100 referanser for
   aal-artikkelen. Alle returnerte poster er bevart i JSON; den manuelle kontrollen
   brukte bare de forste 20. Dette siteringssporet skal ikke brukes til dekningsrate.
@@ -126,6 +126,54 @@ alene ga 112 grupper. Fem tittelgrupper hadde flere identiteter. Dermed er 116 e
 svakt overstimat pa verk dersom metadata ikke matcher. Det endrer ikke at ingen av
 treffene ble screenet som direkte ultralydprotokoll for laksefisknyre. Nullen er en
 en-persons metadata-screening, ikke en blindet relevansfasit.
+
+## Etterkontroll: OpenAlex-graf og Semantic Scholar-paginering
+
+Adapteren er oppdatert etter forsøket: Semantic Scholar ber nå uttrykkelig om 20
+poster per retning, tar `offset` som parameter og returnerer leverandørens `total`,
+`next` og sideantall. Dermed kan en side med flere poster ikke presenteres som en
+komplett graf. Nettverksfrie adapter-, dossier- og API-tester dekker grense,
+paginering, cache-nøkler og validering.
+
+Ny live-kjøring 2026-11-08, med separat midlertidig cache og uten API-nøkler:
+
+| Seed | Semantic Scholar sitater | Semantic Scholar referanser | OpenAlex sitater |
+|---|---:|---:|---:|
+| Gonade-ultralyd hos ål, `10.1111/jfb.70361` | 0; ingen neste side | 20; `next=20`, flere finnes | 0, komplett |
+| Nefrokalsinose-radiografi hos laks, `10.1111/jfd.13704` | 2; komplett | 20; `next=20`, flere finnes | 3, komplett |
+
+Semantic Scholar svarte uten `total` i disse responsene; `next` er derfor det målte
+signal for videre sider. Resultatene bekrefter at den nye grensen virker og at
+OpenAlex-rettelsen gir 200-svar. De er metadata-/grafdekning, ikke relevansvurdering
+eller evidens for en ultralydprotokoll. Semantic Scholars neste side ble ikke
+screenet, for å holde den faglige sammenligningen på preregistrert 20 per retning.
+De ikke-tomme responsene bekreftet også de nøstede feltene `citingPaper`/`citedPaper`,
+`externalIds.DOI`, `contexts`, `intents` og `isInfluential` mot ekte data; dette lukker
+den tidligere skjema-usikkerheten i adapterens docstring.
+
+### Kunnskapsbaser og rettighetsgrense
+
+Kildegjennomgangen fant ingen aktiv ProQuest ASFA- eller CABI/EBSCO-lisens i denne
+arbeidsflyten. ASFA har egne akvakultur-abstracts og bred marin/fiskeridekning, men
+tilgang er en ProQuest-salgs-/institusjonslisens. CAB Abstracts with Full Text har
+relevant veterinær- og anvendt-biovitenskapelig innhold, men CABI sine publiserte
+vilkår forbyr AI-behandling, modelltesting og indeksering uten særskilt skriftlig
+avtale. Disse skal ikke kobles inn uten dokumentert rettighet.
+
+Europe PMC kan levere XML-fulltekst for artikler i OA-subsettet når redistribusjons-
+lisensen tillater det; for andre fulltekstindekserte artikler returneres bare metadata.
+COREs gjeldende adapter får abstract og metadata, mens gratis API-responsen oppgir at
+fulltekst ikke er tilgjengelig for public API users. OpenAlex søker i tittel, abstract,
+fulltekst og nøkkelord, men adapteren får bare bibliografiske felt og rekonstruert
+abstract. Unpaywall finner OA-posisjoner/lenker; hver dokumentversjon og lisens må
+fortsatt kontrolleres før tekst hentes og sendes til en modell.
+
+Praktisk prioritet: først bruke eksisterende åpne fulltekstkanaler med lisensfelt og
+proveniens; parallelt vurdere institusjonslisens/API for ASFA. CABI krever skriftlig
+AI-avtale før selv en pilot. Lisenskjøp, scraping og automatisert ingest er ikke del
+av denne endringen.
+
+Offisielle kilder kontrollert 2026-11-08: [Semantic Scholar Graph API](https://api.semanticscholar.org/api-docs/graphs), [ProQuest ASFA](https://about.proquest.com/en/products-services/aquatic-sciences-and-fisheries-abstracts/), [CAB Abstracts with Full Text](https://about.ebsco.com/products/research-databases/cab-abstracts-full-text), [CABI-vilkår for AI-bruk](https://www.cabi.org/terms-and-conditions/), [Europe PMC-utviklerportal](https://europepmc.org/developers), [CORE API](https://core.ac.uk/services/api), [OpenAlex søk](https://help.openalex.org/api/searching/) og [Unpaywall API](https://unpaywall.org/api).
 
 ## Hva den tverrfaglige evidensen tillater
 
