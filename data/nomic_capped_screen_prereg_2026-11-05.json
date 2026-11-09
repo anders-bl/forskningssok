@@ -1,0 +1,121 @@
+{
+  "experiment_id": "R2402-nomic-capped-profile-screen-2026-11-05",
+  "prereg_revision": 1,
+  "decision_ref": "partyline:44111",
+  "registered_before_inference": true,
+  "scope": "Offline retrieval screen only. No production activation, Mistral fallback, 1024-dimension migration, or write to the source database.",
+  "executor_path": "ops/offline_embedding_screen_capped.py",
+  "executor_sha256": "b72e0410579ec97806d84bcda169dc6d356625128084d507f247ce2502fc18e0",
+  "model": {
+    "tag": "nomic-embed-text:latest",
+    "family": "local Ollama nomic-embed-text tag; underlying release not separately resolved",
+    "architecture": "nomic-bert",
+    "parameters": 137000000,
+    "quantization": "F16",
+    "dimensions": 768,
+    "blob_sha256": "970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+    "input_prefixes": {
+      "documents": "search_document: ",
+      "queries": "search_query: "
+    },
+    "normalization": "L2 unit normalization after inference; nearest-neighbor metric is L2 over normalized vectors.",
+    "context": {
+      "ollama_model_reported_tokens": 2048,
+      "ollama_modelfile_default_num_ctx": 8192,
+      "request_num_ctx": 2048,
+      "truncate": false,
+      "prompt_length_measure": "Ollama API prompt_eval_count from one-input-per-request responses; record character and UTF-8 byte lengths as well.",
+      "overlength_handling": "Record an input rejected specifically for context length, omit only that input from the vector index, and continue; do not retry with truncation. Record prompt_eval_count as unavailable for rejected inputs. Abort on any other error."
+    }
+  },
+  "ollama": {
+    "version": "0.30.10",
+    "endpoint_scope": "127.0.0.1 only",
+    "request_pattern": "One POST /api/embed request per input, sequentially; keep_alive=10m."
+  },
+  "corpus": {
+    "path": "/Users/anders/prosjekter/b\u00f8ker/boker.db",
+    "sha256": "8dc42f6f54993d489968e1301155dd54740b3f8ad77a6619353f34b19706590c",
+    "size_bytes": 1505148928,
+    "all_book_chunks": 270498,
+    "all_collections": 88,
+    "profile": "profiler/fiskehelse.toml",
+    "provenance_prefixes": [
+      "epmc:",
+      "core:fiskehelse"
+    ],
+    "filtered_row_count": 4732,
+    "nonempty_row_count": 4732,
+    "distinct_titles": 68,
+    "selection": "All non-empty rows matching the current profile allowlist, ordered by chunk id; this is the existing 4,732-chunk profile slice, not a sample of the full 270,498-chunk database.",
+    "source_mode": "SQLite URI mode=ro; vectors are held in a transient in-memory sqlite-vec index; source database is never modified."
+  },
+  "query_sources": [
+    {
+      "source_id": "nomic-calibration",
+      "path": "data/nomic_bank_kalibrering_2026-09-26.json",
+      "sha256": "fc087895200b731e31a70d3a09ec89360d87967e2f8d75dc55dd0967ed489e52",
+      "items_key": "sporringer",
+      "record_count": 28
+    },
+    {
+      "source_id": "near-control",
+      "path": "data/bank_near_control_experiment_2026-09-26.json",
+      "sha256": "61f9d02551abc3e6a06526499e581f44353ea0ac1a66e89cb8e32c618639e382",
+      "items_key": "nye_nabokontroller",
+      "record_count": 10,
+      "fixed_group": "near_control"
+    },
+    {
+      "source_id": "retrieval-probe",
+      "path": "data/bank_korpus_retrieval_probe_2026-10-03.json",
+      "sha256": "7566a89945eeda33d8e0b30977c7d34fd13d50e073aec54ca49074809ebaa521",
+      "items_key": "sporsmal",
+      "record_count": 10
+    }
+  ],
+  "query_record_count": 48,
+  "unique_query_count": 48,
+  "query_group_counts": {
+    "covered": 10,
+    "far": 10,
+    "neighbor": 8,
+    "near_control": 10,
+    "temadekning": 5,
+    "spesifikt_nabospor": 3,
+    "utenfor_domene": 2
+  },
+  "evaluation": {
+    "top_k": 5,
+    "primary_metric": "Exact normalized expected-title retrieval at ranks 1 and 1-5 after applying the existing maximum of 2 chunks per exact book title.",
+    "secondary_outputs": "Raw chunk top-5 for reproducibility; capped top-5; candidate K used; title hashes; per-input prompt counts; embedding hash match against the previous exact run.",
+    "reproducibility_checks": "Compare all raw embedding hashes and raw top-5 candidate lists with the previous committed screen before interpreting the capped output.",
+    "no_threshold_fitting": true,
+    "no_new_manual_judgment": true,
+    "no_production_or_migration": true
+  },
+  "interpretation_limits": [
+    "The query set and corpus are unchanged from the preceding exploratory screen; the 48 records are hand-authored probes, not blind independent gold labels.",
+    "The corpus is the 4,732-row profile-filtered slice, not the complete 270,498-row library and not a full reindexing trial.",
+    "The installed model is a 768-dimensional local Ollama tag and is distinct from the Nomic Embed v2 MoE run in the historical artifact.",
+    "Capping at two chunks per exact book title matches the local retrieval diversity rule, but no Nomic distance threshold is applied or validated.",
+    "No human relevance adjudication is performed; title recall and ranking concentration do not prove semantic answer quality."
+  ],
+  "references": [
+    "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5",
+    "https://ollama.com/library/nomic-embed-text",
+    "https://github.com/ollama/ollama/blob/main/docs/openapi.yaml"
+  ],
+  "supersedes_experiment_id": "R2402-nomic-profile-screen-2026-11-05",
+  "previous_result_path": "data/nomic_offline_screen_results_2026-11-05.json",
+  "previous_result_sha256": "d69642e1653e5a7314e82ebc62d693083bf842271d0bb0d0c3a9ea10ac6c1885",
+  "live_policy": {
+    "path": "bank_bakgrunn.py",
+    "sha256": "10311f53f5125fe4b33c78683d24cbb7aaab62930d6cfdc8cbb1a7d819e4b4b0",
+    "source_commit": "73a242417a095011141f12e8affcf327ccfbcf28",
+    "max_chunks_per_exact_title": 2,
+    "initial_candidate_k": "max(5*6, 5) = 30",
+    "candidate_k_expansion": "Double until 5 usable candidates or min(index_rows, 4096).",
+    "similarity_threshold": "None; no Nomic threshold is validated. Do not reuse BGE/Mistral thresholds."
+  }
+}
