@@ -1,0 +1,134 @@
+{
+  "experiment_id": "S-19D-Nomic-exact-title-cap-sensitivity-2026-11-09",
+  "registered_before_inference": false,
+  "base_commit": "837637dbc67c8ce00088cf10a9aa6385c56402cf",
+  "executor_path": "ops/nomic_title_cap_sweep.py",
+  "executor_sha256": "2a3f1e16fb2253a1114ed37c9c711bf130ff870dfbda5fc84e0faeb28a647580",
+  "scope": "Offline sensitivity experiment only; no production activation, fallback, threshold fitting, dimension migration, or source database writes.",
+  "model": {
+    "tag": "nomic-embed-text:latest",
+    "family": "local Ollama nomic-embed-text tag; underlying release not separately resolved",
+    "architecture": "nomic-bert",
+    "parameters": 137000000,
+    "quantization": "F16",
+    "dimensions": 768,
+    "blob_sha256": "970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+    "input_prefixes": {
+      "documents": "search_document: ",
+      "queries": "search_query: "
+    },
+    "normalization": "L2 unit normalization after inference; nearest-neighbor metric is L2 over normalized vectors.",
+    "context": {
+      "ollama_model_reported_tokens": 2048,
+      "ollama_modelfile_default_num_ctx": 8192,
+      "request_num_ctx": 2048,
+      "truncate": false,
+      "prompt_length_measure": "Ollama API prompt_eval_count from one-input-per-request responses; record character and UTF-8 byte lengths as well.",
+      "overlength_handling": "Record an input rejected specifically for context length, omit only that input from the vector index, and continue; do not retry with truncation. Record prompt_eval_count as unavailable for rejected inputs. Abort on any other error."
+    }
+  },
+  "ollama": {
+    "version": "0.30.10",
+    "endpoint_scope": "127.0.0.1 only",
+    "request_pattern": "One POST /api/embed request per input, sequentially; keep_alive=10m."
+  },
+  "corpus": {
+    "path": "<withheld; identify by corpus sha256>",
+    "sha256": "8dc42f6f54993d489968e1301155dd54740b3f8ad77a6619353f34b19706590c",
+    "size_bytes": 1505148928,
+    "all_book_chunks": 270498,
+    "all_collections": 88,
+    "profile": "profiler/fiskehelse.toml",
+    "provenance_prefixes": [
+      "epmc:",
+      "core:fiskehelse"
+    ],
+    "filtered_row_count": 4732,
+    "nonempty_row_count": 4732,
+    "distinct_titles": 68,
+    "selection": "All non-empty rows matching the current profile allowlist, ordered by chunk id; this is the existing 4,732-chunk profile slice, not a sample of the full 270,498-chunk database.",
+    "source_mode": "SQLite URI mode=ro; vectors are held in a transient in-memory sqlite-vec index; source database is never modified."
+  },
+  "query_sources": [
+    {
+      "source_id": "source_01",
+      "path": "data/nomic_bank_kalibrering_2026-09-26.json",
+      "sha256": "fc087895200b731e31a70d3a09ec89360d87967e2f8d75dc55dd0967ed489e52",
+      "items_key": "sporringer",
+      "record_count": 28
+    },
+    {
+      "source_id": "source_02",
+      "path": "data/bank_near_control_experiment_2026-09-26.json",
+      "sha256": "61f9d02551abc3e6a06526499e581f44353ea0ac1a66e89cb8e32c618639e382",
+      "items_key": "nye_nabokontroller",
+      "record_count": 10,
+      "fixed_group": "near_control"
+    },
+    {
+      "source_id": "source_03",
+      "path": "data/bank_korpus_retrieval_probe_2026-10-03.json",
+      "sha256": "7566a89945eeda33d8e0b30977c7d34fd13d50e073aec54ca49074809ebaa521",
+      "items_key": "sporsmal",
+      "record_count": 10
+    }
+  ],
+  "query_record_count": 48,
+  "unique_query_count": 48,
+  "query_group_counts": {
+    "covered": 10,
+    "far": 10,
+    "neighbor": 8,
+    "near_control": 10,
+    "temadekning": 5,
+    "spesifikt_nabospor": 3,
+    "utenfor_domene": 2
+  },
+  "previous_screen": {
+    "path": "data/nomic_capped_screen_results_2026-11-05.json",
+    "sha256": "5f07b3af59cb1f71bec3b3c42d6ec968a8499ef01b096f96a41c1b2d74a98337"
+  },
+  "policy_variants": {
+    "max_chunks_per_exact_title": [
+      0,
+      1,
+      2,
+      4
+    ],
+    "zero_means": "uncapped; otherwise exact-title maximum",
+    "initial_candidate_k": 30,
+    "expansion": "double K until five policy-eligible candidates or min(index rows, 4096)",
+    "same_embeddings_and_query_vectors_for_all_variants": true
+  },
+  "evaluation": {
+    "top_k": 5,
+    "primary": "covered-group exact normalized expected-title hit at rank 1 and ranks 1-5 (10 exploratory queries)",
+    "secondary": "title concentration, distinct titles, candidate K, per-query results, input lengths and embedding hashes",
+    "no_threshold_fitting": true,
+    "no_new_manual_judgment": true
+  },
+  "interpretation_limits": [
+    "Same 48 hand-authored exploratory probes and same 4,732-row profile slice; not blind independent gold.",
+    "Only 10 queries have expected titles and are marked covered.",
+    "This isolates retrieval cap sensitivity for one frozen embedding model; it does not establish semantic answer quality or production suitability.",
+    "Embedding pass is recomputed once; policy variants reuse the same in-memory vectors.",
+    "No production activation, threshold fitting, fallback, vector migration, or source database write."
+  ],
+  "prereg_revision": 2,
+  "revision_note": "Executor now records expected context-limit rejections without truncation and continues; first attempt stopped before producing results at the first such input.",
+  "source_run": {
+    "source_prereg_commit": "089ce2d995c064a4907c1511e15248b06db5577e",
+    "source_prereg_sha256": "ccc4303843511396a1ce95078946ac56e65fc796b555f60faa84887af82c5fce",
+    "source_executor_sha256": "b4f2ff5100d6257e6b272b6328f33d074c6bbcb25e92671e80ba12696e86e101",
+    "source_result_commit": "b0c3d3d572379f39aaee605d9ec6956bb6e67a54",
+    "source_result_sha256": "b698acd79a0fc112af1dbc3c049efe9defee290f4f6f648f5611cc330abcf3c9",
+    "registered_before_inference": true,
+    "sanitized_after_inference": true,
+    "independent_review_ref": "partyline:#46935"
+  },
+  "post_run_sanitization": {
+    "reason": "Independent exact-tip review found raw local document/source identifiers and an absolute input path.",
+    "input_selection_and_model_inference_unchanged": true,
+    "identifier_pseudonymization": "one-time HMAC-SHA256; key discarded"
+  }
+}
