@@ -24,5 +24,11 @@
   "post_run_review_correction": {
     "finding": "The executor contained an obsolete comment describing the previous C-label permutation contract.",
     "handling": "Corrected the comment after inference without changing executable behavior. The registered executor hash above remains the exact code hash used for this run."
+  },
+  "historical_transport_evidence_gap": {
+    "finding": "The preregistration and result bind all Ollama endpoint URLs to 127.0.0.1:11434, but the executor used urllib.request.urlopen without recording the proxy environment or forcing a proxy-free opener.",
+    "current_environment_observation": "A later check in the same default tool shell found no upper- or lower-case HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, or NO_PROXY variables and urllib.request.getproxies() was empty.",
+    "retrospective_limit": "The inference process did not snapshot its environment or opener configuration. The later observation is corroborative only and cannot prove the historical transport path; the result must not claim stronger egress evidence than the record contains.",
+    "post_run_hardening": "A successor commit adds an explicit empty ProxyHandler and strict loopback endpoint allowlist for future execution. It does not change or retroactively validate the recorded inference. Any rerun requires a new preregistration and new result."
   }
 }

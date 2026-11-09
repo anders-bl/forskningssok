@@ -17,6 +17,7 @@ import urllib.request
 from importlib import metadata
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import sqlite_vec
 import offline_embedding_screen as base
@@ -35,6 +36,9 @@ INITIAL_K = 30
 MAX_K = 4096
 EXCERPT_CHARS = 420
 CONTEXT_TOKENS = 8192
+LOCAL_API_PATHS = {"/api/version", "/api/tags", "/api/embed", "/api/chat"}
+# Passing an empty mapping prevents urllib from consulting HTTP_PROXY/HTTPS_PROXY.
+LOCAL_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -45,7 +49,26 @@ def pseudonym(key: bytes, kind: str, value: Any) -> str:
     return hmac.new(key, f"{kind}:{value}".encode("utf-8"), hashlib.sha256).hexdigest()
 
 
+def assert_loopback_url(url: str) -> None:
+    parsed = urlsplit(url)
+    try:
+        port = parsed.port
+    except ValueError as error:
+        raise RuntimeError("refusing malformed Ollama endpoint") from error
+    if (parsed.scheme != "http" or parsed.hostname != "127.0.0.1" or port != 11434
+            or parsed.username is not None or parsed.password is not None
+            or parsed.path not in LOCAL_API_PATHS or parsed.query or parsed.fragment):
+        raise RuntimeError("refusing Ollama endpoint outside the registered loopback API")
+
+
+def install_loopback_transport() -> None:
+    # offline_embedding_screen.api_json uses urllib.request.urlopen; set its process-wide opener
+    # before embedding so that no environment or system proxy can receive corpus text.
+    urllib.request.install_opener(LOCAL_OPENER)
+
+
 def verified_json(url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    assert_loopback_url(url)
     data = None if payload is None else json.dumps(payload, ensure_ascii=True).encode("utf-8")
     request = urllib.request.Request(
         url, data=data,
@@ -53,7 +76,7 @@ def verified_json(url: str, payload: dict[str, Any] | None = None) -> dict[str, 
         method="POST" if data is not None else "GET",
     )
     try:
-        with urllib.request.urlopen(request, timeout=300) as response:
+        with LOCAL_OPENER.open(request, timeout=300) as response:
             return json.load(response)
     except urllib.error.HTTPError as error:
         # Persist only an error class/hash; HTTP bodies may echo prompt or corpus data.
@@ -68,6 +91,8 @@ def write_partial(value: dict[str, Any]) -> None:
 
 
 def assert_frozen_inputs(prereg: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    install_loopback_transport()
+    assert_loopback_url(base.EMBED_URL)
     if base.sha256_file(Path(__file__)) != prereg["executor_sha256"]:
         raise RuntimeError("executor changed after preregistration")
     if base.sha256_file(SOURCE_MANIFEST) != prereg["source_manifest_sha256"]:
