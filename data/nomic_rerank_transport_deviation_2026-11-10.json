@@ -1,0 +1,48 @@
+{
+  "record_type": "cross_run_post_run_transport_deviation_note",
+  "recorded_after_inference": true,
+  "date": "2026-11-10",
+  "runs": [
+    {
+      "experiment_id": "S-19D-Nomic-Qwen-rerank-pilot-2026-11-09",
+      "executor_path": "ops/nomic_rerank_pilot.py",
+      "executor_sha256": "5b46d639807a1300319d53746bc200d4693da0f7f4207ddfb81a993335f8f443",
+      "prereg_path": "data/nomic_rerank_pilot_prereg_2026-11-09.json",
+      "prereg_sha256": "897927e6001841900bf8cbac487637af143d22c092a7ef815fbaae892c83357c",
+      "result_path": "data/nomic_rerank_pilot_results_2026-11-09.json",
+      "result_sha256": "2552a2aaf7b7f57477fcf72e798304360092d4b3dcb3fe638524384d1bc38674"
+    },
+    {
+      "experiment_id": "S-19D-Nomic-Qwen-score-rerank-followup-2026-11-09",
+      "executor_path": "ops/nomic_rerank_score_pilot.py",
+      "executor_sha256": "ebd7616298861faaaed5ae9808fc062cfe67d7413d303021c6905025304711a2",
+      "prereg_path": "data/nomic_rerank_score_pilot_prereg_2026-11-09.json",
+      "prereg_sha256": "9b1937c558faa57f09f83ba507eca77253062db4ee2ce9e86bedaf8a0a442372",
+      "result_path": "data/nomic_rerank_score_pilot_results_2026-11-09.json",
+      "result_sha256": "5b510842f3f1079f7007b0da663d2c08f2fbd61b8079b477c287450ec6421a02"
+    },
+    {
+      "experiment_id": "S-19D-Nomic-Qwen-vector-score-rerank-pilot-2026-11-09",
+      "executor_path": "ops/nomic_rerank_vector_pilot.py",
+      "executor_sha256": "64480d02313ee1eb37f9165877921ae79e4e26e6c23bedfaa195732511367a8d",
+      "prereg_path": "data/nomic_rerank_vector_pilot_prereg_2026-11-09.json",
+      "prereg_sha256": "2b3cf93414634a5db6be3cc0892a17b0d81721a7a5615923df3480d2bd64014a",
+      "result_path": "data/nomic_rerank_vector_pilot_results_2026-11-09.json",
+      "result_sha256": "2e36df2684a4c396b3fe142bbdd4d6d1820bc133e69354bbfc60584dca94eb1e"
+    },
+    {
+      "experiment_id": "S-19D-Nomic-Qwen-json-score-rerank-pilot-2026-11-09",
+      "executor_path": "ops/nomic_rerank_json_pilot.py",
+      "executor_sha256": "588e67d09853ae71c90153e81b2820463364660e09b5e132d4860742139f96dd",
+      "prereg_path": "data/nomic_rerank_json_pilot_prereg_2026-11-09.json",
+      "prereg_sha256": "da40c0acc8d15b366db16b397fb8500538810fcfc09306b7fa81778598a94afa",
+      "result_path": "data/nomic_rerank_json_pilot_results_2026-11-09.json",
+      "result_sha256": "2c93506d5ca4e5814070dbd8f8e2f5bba7edca5773620e2b725a4b4bc4abd85c"
+    }
+  ],
+  "finding": "All four recorded reranking pilot executors used urllib.request.urlopen without recording the historical proxy environment or forcing a proxy-free opener. Their shared offline_embedding_screen.api_json embedding calls also used urllib.request.urlopen. Therefore the recorded evidence does not establish whether configured proxy routing was possible or used during inference.",
+  "result_impact": "No evidence in the retained artifacts demonstrates that any query or corpus data was sent through a proxy. The historical transport path cannot be reconstructed from current environment observations; do not claim that these calls were proven direct. This is an evidence gap, not evidence of proxy use.",
+  "current_environment_observation": "A later check in the same default tool shell found no upper- or lower-case HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, or NO_PROXY variables and urllib.request.getproxies() was empty. This observation is corroborative only, not retrospective proof.",
+  "handling": "Preserve all original preregistrations and results unchanged. Do not rerun these pilots under their old preregistrations. The successor hardening routes all four runners and shared embedding calls through an explicit empty ProxyHandler and validates URLs against http://127.0.0.1:11434 and the registered Ollama API paths. Any future inference requires a new preregistration and new result.",
+  "verification_scope": "Code-path/static and local transport smoke checks only; no model inference, external network request, or historical environment reconstruction was performed."
+}

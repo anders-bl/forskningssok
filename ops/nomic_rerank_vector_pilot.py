@@ -13,13 +13,15 @@ import sqlite3
 import subprocess
 import time
 import urllib.error
-import urllib.request
 from importlib import metadata
 from pathlib import Path
 from typing import Any
 
 import sqlite_vec
 import offline_embedding_screen as base
+from local_ollama_transport import assert_loopback_url
+from local_ollama_transport import install as install_loopback_transport
+from local_ollama_transport import request_json as verified_json
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,22 +47,6 @@ def pseudonym(key: bytes, kind: str, value: Any) -> str:
     return hmac.new(key, f"{kind}:{value}".encode("utf-8"), hashlib.sha256).hexdigest()
 
 
-def verified_json(url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-    data = None if payload is None else json.dumps(payload, ensure_ascii=True).encode("utf-8")
-    request = urllib.request.Request(
-        url, data=data,
-        headers={"Content-Type": "application/json"} if data is not None else {},
-        method="POST" if data is not None else "GET",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=300) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as error:
-        # Persist only an error class/hash; HTTP bodies may echo prompt or corpus data.
-        detail = error.read(4096)
-        raise RuntimeError(f"local Ollama HTTP {error.code}; body_sha256={sha256_bytes(detail)}") from error
-
-
 def write_partial(value: dict[str, Any]) -> None:
     temporary = PARTIAL_PATH.with_suffix(".partial.json.tmp")
     temporary.write_text(json.dumps(value, ensure_ascii=True, indent=2) + "\n", encoding="utf-8")
@@ -68,6 +54,8 @@ def write_partial(value: dict[str, Any]) -> None:
 
 
 def assert_frozen_inputs(prereg: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    install_loopback_transport()
+    assert_loopback_url(base.EMBED_URL)
     if base.sha256_file(Path(__file__)) != prereg["executor_sha256"]:
         raise RuntimeError("executor changed after preregistration")
     if base.sha256_file(SOURCE_MANIFEST) != prereg["source_manifest_sha256"]:

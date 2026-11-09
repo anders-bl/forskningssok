@@ -29,6 +29,6 @@
     "finding": "The preregistration and result bind all Ollama endpoint URLs to 127.0.0.1:11434, but the executor used urllib.request.urlopen without recording the proxy environment or forcing a proxy-free opener.",
     "current_environment_observation": "A later check in the same default tool shell found no upper- or lower-case HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, or NO_PROXY variables and urllib.request.getproxies() was empty.",
     "retrospective_limit": "The inference process did not snapshot its environment or opener configuration. The later observation is corroborative only and cannot prove the historical transport path; the result must not claim stronger egress evidence than the record contains.",
-    "post_run_hardening": "A successor commit adds an explicit empty ProxyHandler and strict loopback endpoint allowlist for future execution. It does not change or retroactively validate the recorded inference. Any rerun requires a new preregistration and new result."
+    "post_run_hardening": "The successor branch now routes all four reranking pilot executors and their shared offline_embedding_screen embedding calls through one explicit empty ProxyHandler, with strict URL validation for http://127.0.0.1:11434 and the registered Ollama API paths. This only hardens future execution; it does not alter or retrospectively validate this or the other three recorded runs. See data/nomic_rerank_transport_deviation_2026-11-10.json. Any rerun requires a new preregistration and result."
   }
 }
