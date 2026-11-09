@@ -1,0 +1,34 @@
+{
+  "record_type": "post_run_deviation_note",
+  "experiment_id": "S-19D-Nomic-Qwen-json-score-rerank-pilot-2026-11-09",
+  "recorded_after_inference": true,
+  "prereg_path": "data/nomic_rerank_json_pilot_prereg_2026-11-09.json",
+  "prereg_sha256": "da40c0acc8d15b366db16b397fb8500538810fcfc09306b7fa81778598a94afa",
+  "executor_path": "ops/nomic_rerank_json_pilot.py",
+  "executor_sha256": "588e67d09853ae71c90153e81b2820463364660e09b5e132d4860742139f96dd",
+  "result_path": "data/nomic_rerank_json_pilot_results_2026-11-09.json",
+  "result_sha256": "2c93506d5ca4e5814070dbd8f8e2f5bba7edca5773620e2b725a4b4bc4abd85c",
+  "deviation": {
+    "field": "privacy.raw_model_answer",
+    "registered_text": "Retain only when it is valid JSON containing exactly the supplied C-label permutation; otherwise retain only response hash and validation status.",
+    "executed_behavior": "The JSON-mode executor retained the raw response only when it parsed as exactly one integer score in [0,100] per candidate. The accepted response was a root score array or an object containing only a scores array; no C-label permutation was requested or returned.",
+    "classification": "preregistration wording does not match this follow-up's score-vector response contract",
+    "result_impact": "No metric calculation changed. Retained raw answers consist only of numeric score vectors, with no query, title, excerpt, candidate identifier, or source identifier. Invalid responses were not retained.",
+    "handling": "Preserve the original preregistration and result unchanged. Record this deviation explicitly; independent review must assess whether the numeric-only retention is acceptable and whether the experiment can be considered protocol-compliant."
+  },
+  "diagnostic_gap": {
+    "finding": "The 12 invalid JSON root arrays were recorded with response shape, response length, token counts, and status, but not safe structural details such as score-vector length or element-type/range counts.",
+    "impact": "The exact cause of invalidity cannot be reconstructed from the retained artifact. The observed valid-response rate remains auditable; no metric defect was found by review.",
+    "handling": "Do not rerun or infer missing diagnostics from the discarded responses. Future pilots should preregister and retain only aggregate structural failure counts."
+  },
+  "post_run_review_correction": {
+    "finding": "The executor contained an obsolete comment describing the previous C-label permutation contract.",
+    "handling": "Corrected the comment after inference without changing executable behavior. The registered executor hash above remains the exact code hash used for this run."
+  },
+  "historical_transport_evidence_gap": {
+    "finding": "The preregistration and result bind all Ollama endpoint URLs to 127.0.0.1:11434, but the executor used urllib.request.urlopen without recording the proxy environment or forcing a proxy-free opener.",
+    "current_environment_observation": "A later check in the same default tool shell found no upper- or lower-case HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, or NO_PROXY variables and urllib.request.getproxies() was empty.",
+    "retrospective_limit": "The inference process did not snapshot its environment or opener configuration. The later observation is corroborative only and cannot prove the historical transport path; the result must not claim stronger egress evidence than the record contains.",
+    "post_run_hardening": "The successor branch now routes all four reranking pilot executors and their shared offline_embedding_screen embedding calls through one explicit empty ProxyHandler, with strict URL validation for http://127.0.0.1:11434 and the registered Ollama API paths. This only hardens future execution; it does not alter or retrospectively validate this or the other three recorded runs. See data/nomic_rerank_transport_deviation_2026-11-10.json. Any rerun requires a new preregistration and result."
+  }
+}
