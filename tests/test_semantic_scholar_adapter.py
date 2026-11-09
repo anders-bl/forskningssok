@@ -206,6 +206,29 @@ def test_ttl_cache_unngaar_nytt_kall(tmp_path):
     assert m.call_count == 1
 
 
+def test_siteringsgraf_cacher_hver_side_for_seg(tmp_path):
+    """R2542: offset/limit må inngå i cache-nøkkelen. Ellers får side 2 cache-treffet til
+    side 1, og en paginerende konsument (dossier_siteringsgraf) leser samme side om igjen
+    uten feil. Mutanten uten ::{limit}::{offset} i nøkkelen overlevde exact-tip-reviewet av
+    47487080 (#46242)."""
+    db = tmp_path / "cache.db"
+    side_1 = {**CITATIONS_RESPONS, "offset": 0, "next": 20}
+    side_2 = {"total": 121, "offset": 20, "next": 40, "data": [
+        {"citingPaper": {"title": "Side to", "year": 2025, "externalIds": {"DOI": "10.1111/jfd.33333"}},
+         "contexts": [], "intents": [], "isInfluential": False},
+    ]}
+    svar = [_mock_get(json_data=side_1), _mock_get(json_data=REFERENCES_RESPONS),
+            _mock_get(json_data=side_2), _mock_get(json_data=REFERENCES_RESPONS)]
+    with patch("adapters.semantic_scholar.httpx.get", side_effect=svar) as m:
+        forste = semantic_scholar.siteringsgraf("10.1111/jfd.99999", limit=20, offset=0, db_path=db)
+        andre = semantic_scholar.siteringsgraf("10.1111/jfd.99999", limit=20, offset=20, db_path=db)
+        igjen = semantic_scholar.siteringsgraf("10.1111/jfd.99999", limit=20, offset=0, db_path=db)
+    assert m.call_count == 4  # to sider x (citations + references); tredje kall er cache-treff
+    assert [s["tittel"] for s in andre["siteringer"]] == ["Side to"]
+    assert forste["siteringer"][0]["tittel"] != andre["siteringer"][0]["tittel"]
+    assert igjen == forste
+
+
 def test_vedvarende_429_gir_til_slutt_en_tydelig_feil_ikke_stille_tomt(tmp_path):
     """time.sleep mockes bort — testen skal verifisere BACKOFF-LOGIKKEN (antall forsøk,
     ingen krasj), ikke faktisk sitte og vente i 14 sekunder hver kjøring."""
