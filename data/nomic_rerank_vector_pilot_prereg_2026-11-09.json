@@ -1,0 +1,125 @@
+{
+  "experiment_id": "S-19D-Nomic-Qwen-vector-score-rerank-pilot-2026-11-09",
+  "registered_before_inference": true,
+  "prereg_revision": 1,
+  "base_commit": "0722e12a5fbc24fd2b3750a1c8749bb31b2f1e9c",
+  "executor_path": "ops/nomic_rerank_vector_pilot.py",
+  "executor_sha256": "64480d02313ee1eb37f9165877921ae79e4e26e6c23bedfaa195732511367a8d",
+  "source_manifest_path": "data/nomic_title_cap_sweep_prereg_2026-11-09.json",
+  "source_manifest_sha256": "9e65f8b68ef10e5385d10ef8772c422ba9508a2a0e852e77c15fe39c02102977",
+  "source_result_path": "data/nomic_rerank_score_pilot_results_2026-11-09.json",
+  "source_result_sha256": "5b510842f3f1079f7007b0da663d2c08f2fbd61b8079b477c287450ec6421a02",
+  "followup_rationale": "The preregistered fixed-key score object yielded zero schema-valid responses in 20/20 calls. This separate preregistration uses a fixed-length score vector in candidate order and lowers the output cap; it records Ollama done_reason so output-limit stops are distinguishable.",
+  "scope": "Local-only follow-up reranking pilot. No production activation, fallback, source database writes, reindex, remote inference, or threshold fitting.",
+  "ollama_version": "0.30.10",
+  "endpoint_scope": "127.0.0.1 only",
+  "host_snapshot": {
+    "platform": "macOS arm64",
+    "physical_memory_gib": 24,
+    "ollama_ps_at_initial_inspection": "no active model loaded"
+  },
+  "runtime": {
+    "python": "3.14.7",
+    "sqlite": "3.53.4",
+    "sqlite_vec": "0.1.9"
+  },
+  "embedding_model": {
+    "tag": "nomic-embed-text:latest",
+    "digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+    "blob_sha256": "970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+    "dimensions": 768,
+    "document_prefix": "search_document: ",
+    "query_prefix": "search_query: ",
+    "num_ctx": 2048,
+    "truncate": false,
+    "keep_alive": "10m",
+    "embedding_inputs": "All selected corpus documents and the 10 labeled queries are embedded once, sequentially; context rejections are recorded and never truncated."
+  },
+  "reranker": {
+    "tag": "qwen3.5:4b",
+    "digest": "d8b0f5e9760cd1682034f292d7ef72ec46f432149be0df7574bf2d6e92e38c04",
+    "family": "qwen35",
+    "parameters": "4.2B",
+    "quantization": "Q4_K_M",
+    "reported_native_context": 262144,
+    "options": {
+      "temperature": 0,
+      "top_p": 1,
+      "presence_penalty": 0,
+      "num_ctx": 8192,
+      "num_predict": 128
+    },
+    "think": false,
+    "stream": false,
+    "keep_alive": "10m",
+    "response_format": "JSON Schema: scores array of exactly 20 integers 0..100 in the supplied candidate order. Executor rejects wrong length, non-integer, out-of-range, or extra-field response. Rank descending by score; ties keep Nomic candidate order."
+  },
+  "corpus": {
+    "sha256": "8dc42f6f54993d489968e1301155dd54740b3f8ad77a6619353f34b19706590c",
+    "filtered_row_count": 4732,
+    "nonempty_row_count": 4732,
+    "distinct_titles": 68,
+    "profile": "profiler/fiskehelse.toml",
+    "provenance_prefixes": ["epmc:", "core:fiskehelse"],
+    "source_mode": "SQLite URI mode=ro; vectors are transient in-memory sqlite-vec rows."
+  },
+  "query_sources": [
+    {
+      "source_id": "source_01",
+      "path": "data/nomic_bank_kalibrering_2026-09-26.json",
+      "sha256": "fc087895200b731e31a70d3a09ec89360d87967e2f8d75dc55dd0967ed489e52",
+      "items_key": "sporringer",
+      "record_count": 28
+    },
+    {
+      "source_id": "source_02",
+      "path": "data/bank_near_control_experiment_2026-09-26.json",
+      "sha256": "61f9d02551abc3e6a06526499e581f44353ea0ac1a66e89cb8e32c618639e382",
+      "items_key": "nye_nabokontroller",
+      "record_count": 10,
+      "fixed_group": "near_control"
+    },
+    {
+      "source_id": "source_03",
+      "path": "data/bank_korpus_retrieval_probe_2026-10-03.json",
+      "sha256": "7566a89945eeda33d8e0b30977c7d34fd13d50e073aec54ca49074809ebaa521",
+      "items_key": "sporsmal",
+      "record_count": 10
+    }
+  ],
+  "source_query_count": 48,
+  "scoring_query_count": 10,
+  "selection": "Only the 10 pre-existing queries in group covered with a non-empty expected title; no new human judgments and no changes to query/corpus selection.",
+  "candidate_generation": {
+    "pool_size": 20,
+    "pool_variants": ["uncapped", "one_per_exact_title"],
+    "initial_k": 30,
+    "expansion": "Double K until pool size 20 or min(index rows, 4096).",
+    "distance": "L2 over L2-normalized Nomic vectors.",
+    "reranker_input": "Original query plus candidate exact title and first 420 whitespace-normalized text characters. Candidate text is data, not instruction; no tools are available to the model."
+  },
+  "scoring": {
+    "labeled_query_count": 10,
+    "relevance": "Binary exact normalized title match to the existing expected_title field.",
+    "reported_metrics": ["candidate_recall_at_20", "hit_at_1", "hit_at_5", "mrr_at_20", "ndcg_at_5", "valid_response_count", "prompt token/byte counts", "latency"],
+    "primary_comparison": "Within each candidate pool, compare Nomic distance order against Qwen reranked order on the same 10 labeled queries. Report reranker metrics both end-to-end (invalid responses count as misses) and conditional on valid responses.",
+    "repeats": 1,
+    "no_threshold_fitting": true,
+    "no_manual_label_changes": true
+  },
+  "privacy": {
+    "result_contains_raw_query_text": false,
+    "result_contains_raw_candidate_text_or_titles": false,
+    "result_contains_source_or_chunk_ids": false,
+    "identifiers": "One-time per-run HMAC-SHA256; key discarded.",
+    "raw_model_answer": "Retain only when it is valid JSON containing exactly the supplied C-label permutation; otherwise retain only response hash and validation status."
+  },
+  "interpretation_limits": [
+    "Only 10 exploratory, hand-authored queries have expected titles; this is not a blind independent gold set.",
+    "Exact title match measures retrieval of a known title, not semantic answer quality or citation correctness.",
+    "The source slice contains 4,732 rows from a larger local database; results do not generalize to the full database or other profiles.",
+    "One deterministic decode per query/pool does not measure run-to-run variance.",
+    "Reranking can only reorder candidates present in its pool; candidate recall is reported separately.",
+    "No production activation or inference beyond this local pilot is authorized by the result."
+  ]
+}
