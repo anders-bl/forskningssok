@@ -15,5 +15,14 @@
     "classification": "preregistration wording does not match this follow-up's score-vector response contract",
     "result_impact": "No metric calculation changed. Retained raw answers consist only of numeric score vectors, with no query, title, excerpt, candidate identifier, or source identifier. Invalid responses were not retained.",
     "handling": "Preserve the original preregistration and result unchanged. Record this deviation explicitly; independent review must assess whether the numeric-only retention is acceptable and whether the experiment can be considered protocol-compliant."
+  },
+  "diagnostic_gap": {
+    "finding": "The 12 invalid JSON root arrays were recorded with response shape, response length, token counts, and status, but not safe structural details such as score-vector length or element-type/range counts.",
+    "impact": "The exact cause of invalidity cannot be reconstructed from the retained artifact. The observed valid-response rate remains auditable; no metric defect was found by review.",
+    "handling": "Do not rerun or infer missing diagnostics from the discarded responses. Future pilots should preregister and retain only aggregate structural failure counts."
+  },
+  "post_run_review_correction": {
+    "finding": "The executor contained an obsolete comment describing the previous C-label permutation contract.",
+    "handling": "Corrected the comment after inference without changing executable behavior. The registered executor hash above remains the exact code hash used for this run."
   }
 }

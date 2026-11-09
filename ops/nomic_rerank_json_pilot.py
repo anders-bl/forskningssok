@@ -302,8 +302,8 @@ def rerank_one(query: str, candidates: list[tuple[dict[str, Any], float]],
         "thinking_field_present": bool(response.get("message", {}).get("thinking")),
         "elapsed_seconds": round(time.monotonic() - start, 4),
     }
-    # Only retain a raw answer when it is exactly the schema-constrained ID permutation;
-    # malformed output could echo private query or corpus text.
+    # Only retain a raw answer when it is a valid numeric score vector; malformed output
+    # could echo private query or corpus text.
     if valid:
         result["raw_response"] = raw
         result["scores"] = scores
