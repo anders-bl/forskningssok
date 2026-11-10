@@ -8,9 +8,28 @@ import urllib.request
 from typing import Any
 from urllib.parse import urlsplit
 
-
 LOCAL_API_PATHS = {"/api/version", "/api/tags", "/api/embed", "/api/chat"}
-_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Do not let a loopback response redirect prompts or corpus text elsewhere."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        return None
+
+
+_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    _NoRedirectHandler(),
+)
 
 
 def assert_loopback_url(url: str) -> None:

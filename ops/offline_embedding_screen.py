@@ -14,16 +14,14 @@ import re
 import sqlite3
 import statistics
 import time
-import tomllib
-import urllib.error
-import urllib.request
 import unicodedata
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import sqlite_vec
-
+import tomllib
+from local_ollama_transport import request_json as local_ollama_json
 
 ROOT = Path(__file__).resolve().parents[1]
 PREREG_PATH = ROOT / "data" / "nomic_offline_screen_prereg_2026-11-05.json"
@@ -56,19 +54,7 @@ def normalized_title(value: str) -> str:
 
 
 def api_json(url: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-    data = None if payload is None else json.dumps(payload, ensure_ascii=True).encode("utf-8")
-    request = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json"} if data is not None else {},
-        method="POST" if data is not None else "GET",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=300) as response:
-            return json.load(response)
-    except urllib.error.HTTPError as error:
-        detail = error.read(4096).decode("utf-8", errors="replace")
-        raise RuntimeError(f"local embedding API returned HTTP {error.code}: {detail}") from error
+    return local_ollama_json(url, payload)
 
 
 def load_queries(prereg: dict[str, Any]) -> list[dict[str, Any]]:
