@@ -1,4 +1,5 @@
 """Network-free tests for the loopback-only Ollama transport contract."""
+
 from __future__ import annotations
 
 import hashlib
@@ -48,7 +49,8 @@ def test_non_registered_endpoints_are_rejected(url: str) -> None:
 
 def test_opener_bypasses_proxies_and_installs_redirect_blocker() -> None:
     proxy_handlers = [
-        handler for handler in transport._OPENER.handlers
+        handler
+        for handler in transport._OPENER.handlers
         if isinstance(handler, urllib.request.ProxyHandler)
     ]
     # An empty ProxyHandler has no dispatch methods, so urllib omits it from
@@ -63,18 +65,27 @@ def test_opener_bypasses_proxies_and_installs_redirect_blocker() -> None:
 def test_redirect_handler_refuses_redirect_target() -> None:
     request = urllib.request.Request("http://127.0.0.1:11434/api/chat")
     handler = transport._NoRedirectHandler()
-    assert handler.redirect_request(
-        request, io.BytesIO(), 302, "Found", {}, "https://example.invalid/collect"
-    ) is None
+    assert (
+        handler.redirect_request(
+            request, io.BytesIO(), 302, "Found", {}, "https://example.invalid/collect"
+        )
+        is None
+    )
 
 
-def test_http_error_reports_hash_without_response_body(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_http_error_reports_hash_without_response_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     private_body = b"private prompt and corpus excerpt"
 
     class FailingOpener:
         def open(self, request: urllib.request.Request, timeout: int) -> object:
             raise urllib.error.HTTPError(
-                request.full_url, 500, "Internal Server Error", {}, io.BytesIO(private_body)
+                request.full_url,
+                500,
+                "Internal Server Error",
+                {},
+                io.BytesIO(private_body),
             )
 
     monkeypatch.setattr(transport, "_OPENER", FailingOpener())
