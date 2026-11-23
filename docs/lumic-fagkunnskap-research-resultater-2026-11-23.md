@@ -96,6 +96,10 @@ Veterinaerinstituttets faktaark om teknologi og fiskevelferd framhever at utform
 
 Interne wiki-/repo-dokumenter som ble lest omfatter `prosesser/feltprove-husstandard`, `prosesser/eval-forskning-hjemmene`, `prosesser/åpne-datakilder-og-korpus`, `prosesser/fdr-036-far-ekspert-kunnskapsverktøy`, `prosesser/rfc-007-bok-bank-kunnskap`, `prosjekt/forskningssok-smartsyntese-for-ulven`, `prosjekt/forskningssok-veikart`, samt `lauvasdata/docs/eget-korpus-review-pilot.md` og Belegg Kildepilot-komponenten. Gjeldende deployment, eierskap og enkelte wikistatusser er ikke verifisert pa nytt i denne rapporten.
 
+## Videre utforsking
+
+For mer originale, men avgrensede mulighetsrom (beleggsgraf, kunnskapshullradar, beslutningsverktoy, apen kildekode og testplaner), se [Lumic: uvanlige, testbare muligheter](lumic-uvanlige-muligheter-og-scope-2026-11-23.md). Dette er et separat utforskende scope, ikke nye effektbevis.
+
 ## Kildebegrensninger og referanser
 
 Dette notatet er en beslutningsforberedende kartlegging, ikke evidens for at Lumic har et bestemt markedsproblem. Ulven og Hans Magne ma definere kundesegment, salgsprosess, tilgang til egne data, aktuelle godkjennere og hva de mener med kvalifisert lead. Produktdokumentasjon og paastander ma komme fra Lumic og verifiseres av navngitt fagansvarlig.
