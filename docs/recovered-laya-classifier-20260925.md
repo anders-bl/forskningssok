@@ -67,3 +67,22 @@ forskningspost er å finne eller gjenopprette:
 
 Før dette finnes, skal sammendraget merkes som gjenfunnet rapportering og ikke
 blandes med reproduserte eller blindt vurderte funn.
+
+## Etterrapportert Ollama-spine
+
+En senere arbeidsrestanse (R2933, registrert 2026-11-18) rapporterer følgende
+kjøremetadata for kvelden 2026-09-25:
+
+- Laya-arbeidet gikk via `gpt-oss:agent` med `agent16k`; dette er ikke belegg for
+  at Laya selv var modellen.
+- Det var en kveldsburst omtrent kl. 19-22.
+- De 19 rapporterte konteksttrunkeringene gjaldt `e5-large`-embeddingkjøringer,
+  ikke klassifikatoren.
+
+Dette er kun en tids- og modellspine som peker til mulig Ollama-aktivitet. Kilden
+som bærer disse tre detaljene er R2933s gjenfinningsnotat, som viser til en
+tidligere custody-post (#58601). Fullteksten til den posten og rålogger er ikke
+verifisert i denne gjennomgangen. Tallene og attribusjonen er derfor
+etterrapporterte metadata, ikke uavhengig bekreftede målinger. De gir ingen
+grunnlag for å rekonstruere prompt, svar, enkeltforespørsler eller
+klassifikatorresultater. Hold dem adskilt fra MASSIVE-resultatene over.
