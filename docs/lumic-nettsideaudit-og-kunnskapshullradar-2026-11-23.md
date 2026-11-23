@@ -5,13 +5,15 @@ Sist kontrollert: 2026-11-23.
 Omfang: synlig nettstruktur, produktinformasjon, fagbelegg, buyer journey og mulige eksterne datakilder.
 Beslutningseier: Anders. Interne produktfakta og kundedata er ikke tilgangskontrollert eller verifisert her.
 
+Den sorterbare backloggen ligger i [lumic_kunnskapshullradar_v0_1.csv](../data/lumic_kunnskapshullradar_v0_1.csv). Offentlige produkt- og omdomepastander som bor kontrolleres ligger i [lumic_public_claims_v0_1.csv](../data/lumic_public_claims_v0_1.csv). Markdown-notatet forklarer evidens og prioritering; CSV-filene er arbeidsko for oppdatering.
+
 ## Kort vurdering
 
 Lumic har en tydelig og smal offentlig struktur: hjem, om oss, produkter og kontakt, med seks synlige produktkort og produktsider for manuelle, semi-automatiske, helautomatiske maskiner og bedovelsessystemer. Nettsiden formidler skreddersom, erfaring, leverte systemer/land og overordnede effekt-/velferdsbudskap. De kontrollerte sidene viser lite selvbetjent innhold for kundens beslutningsjobb: valg av oppsett, integrasjonskrav, dokumentert drift, service/vedlikehold, prosessdata, kundecaser eller faglige forklaringer. Dette er en observasjon av sidene som ble lest, ikke en paastand om at informasjonen ikke finnes internt.
 
 Maskons offentlige struktur dekker et bredere systemomfang: vaksinemaskiner, ekstrautstyr, fiskepumper, pumpesystemer, MSKY-datafangst, nyheter, karriere og nettbutikk. MSKY-sidene beskriver datafangst, prosessdokumentasjon, analyse, fiskevektfordeling, bildearkiv og grensesnitt til tredjepart. Dette er Maskons egne produktopplysninger, ikke uavhengig bekreftelse av effekt eller kundeadopsjon. [Lumic hjem](https://www.lumic.no/), [Lumic produkter](https://www.lumic.no/produkter), [Maskon produkter](https://maskon.no/en/products/), [Maskon MSKY](https://maskon.no/en/produkt/data-capture/)
 
-Den raskeste muligheten er ikke a kopiere konkurrentens bredde. Det er a bygge en liten, kildebelagt svarflate rundt de beslutningssporsmalene Lumic faktisk vil eie, med bedre etterprovbarhet og kjoperstotte. Den mest interessante datapiloten er a koble Lumics aggregerte salgs-/service-sporsmal og godkjente produktdata med eksterne, aggregerte bransje- og fiskehelsekilder. Eksterne data kan vise kontekst, men kan ikke i seg selv bevise maskinbehov eller lead-intent.
+En god forste mulighet er a bygge en liten, kildebelagt svarflate rundt de beslutningssporsmalene Lumic faktisk vil eie, med bedre etterprovbarhet og kjoperstotte. Den mest interessante datapiloten er a koble Lumics aggregerte salgs-/service-sporsmal og godkjente produktdata med eksterne, aggregerte bransje- og fiskehelsekilder. Eksterne data kan vise kontekst, men kan ikke i seg selv bevise maskinbehov eller lead-intent.
 
 ## Offentlig informasjonsstruktur
 
@@ -33,9 +35,11 @@ Den tekstbaserte innlesingen av Lumics engelske produktsider viser en mulig ukla
 - V4-beskrivelsen sier opptil 20 000 fisk/time, mens den samme innlastede siden ogsa inneholder en LV24-linje pa 40 000/time.
 - V3-siden oppgir 2 400/time per kanal, men viser ogsa kapasitetsrader for LV4-LV24.
 - V5-beskrivelsen oppgir opptil 20 000/time per kanal, mens samme side inneholder tabeller med samlet kapasitet per variant.
-- Flere kapasitetsblokker ser ut til a gjentas pa engelsk og norsk.
+- Flere kapasitetsblokker ser ut til a gjentas pa engelsk og norsk. Den samme LV4-LV24-blokken forekommer ogsa i tekstuttrekk fra V2- og bedovelsessystemsidene.
 
 Dette kan skyldes skjulte faner, varianttabeller, ulike maskinserier eller svak tekstuttrekking; det er ikke grunnlag her for a kalle det en faktisk produktfeil. Men det er en god Kunnskapshullradar-alarm: en kunde eller en sok-/AI-leser kan misforsta hvilken maskin, kanalmodell, enhet og produksjonsbetingelse hvert tall gjelder. Avklar med produkteier, og publiser en entydig tabell med variant-ID, kapasitet, operatortall, antall kanaler, fiskestorrelse, forbehold og sist faglig kontroll. [Lumic V4](https://www.lumic.no/en/produkter/automatisk-vaksinasjonsmaskin-v4), [Lumic V3](https://www.lumic.no/en/produkter/semi---automatisk-vaksinasjonsmaskin-v3), [Lumic V5](https://www.lumic.no/en/produkter/semi---automatisk-vaksinasjonsmaskin-v5)
+
+En separat proveniensalarm er produkt-/omdomehistorikk: Lumics Om oss-side bruker bade 1990 og 1991 som startar; hjemmesiden teller 229 leverte systemer i 22 land; en 2024-artikkel sier 230 anlegg i 22 land. Dette kan vaere ulike hendelser/telleenheter. Et annet eksempel er Fiskevelferdsprisen: Lumics produkttekst sier 2021, Veterinaerinstituttets 2021-program lister Lumic/Stromme Service blant kandidatene, mens en sekundarkilde fra 2024 sier 2020. Bekreft startmilepaeler, telleenhet, dato og kandidatstatus for publiserte pastander. [Om oss](https://www.lumic.no/om-oss), [Veterinaerinstituttet: kandidater 2021](https://www.vetinst.no/arrangementer/fiskevelferdsseminaret-under-aquanor-2021-med-prisutdeling), [sekundaerkilde, 2024](https://www.norskebransjemagasinet.no/nyheter/artikel/lumic)
 
 ### Posisjonering som hypotese, ikke konklusjon
 
@@ -43,7 +47,7 @@ Den offentlige presentasjonen antyder at Lumic legger vekt pa tilpassede oppsett
 
 ## Kunnskapshullradar v0.1
 
-Radarens gjenstand er ikke «hvilke SEO-sider mangler». Den er sporsmalet: hvor mangler Lumic dokumentert, tilgjengelig og oppdatert informasjon som hjelper en bestemt kjoperrolle med en faktisk oppgave?
+Radaren skal avklare hvor Lumic mangler dokumentert, tilgjengelig og oppdatert informasjon som hjelper en bestemt kjoperrolle med en faktisk oppgave, uavhengig av om svaret bor bli en nettside, intern veiledning eller et produktbevis.
 
 ### Statusetiketter
 
@@ -72,6 +76,9 @@ Radarens gjenstand er ikke «hvilke SEO-sider mangler». Den er sporsmalet: hvor
 | LUM-KH-12 | Hvilke bransjeforhold driver relevante behov? | Offentlige data finnes om lokaliteter, biomasse, lus, sykdom, fiskehelse og handteringsforskning, men dette er indirekte signaler. | EXTERNAL_CONTEXT | Hvilke signaler har dokumentert kobling til investering i akkurat vaksine-/handteringsutstyr? | Koble kun aggregert produksjons-/helsesituasjon til hypoteser; valider med Lumic-CRM og kundesamtaler. | P2 utforskende |
 
 Prioriteringene er kvalitative forslag, ikke beregnede leadscores. En offentlig fravaerende side kan vaere lav verdi, mens en tvetydig kapasitetspastand kan vaere hoy verdi fordi den kan pavirke tillit/tilbudsforstaelse.
+
+| LUM-KH-13 | Proveniens for startar og installasjonstall | Om oss bruker bade 1990 og 1991; hjem viser 229 systemer/22 land, mens en 2024-artikkel sier 230 anlegg/22 land. Ulike milepaeler eller telleenheter kan forklare forskjellen. | PUBLIC_AMBIGUITY | Godkjent startar, definisjon av system/anlegg, datert opptelling og tellemetode. | Avklar med ledelse; lag en datert faktapastand med enhet og kilde. | P1: tillit |
+| LUM-KH-14 | Kandidatstatus og ar for Fiskevelferdsprisen | Produkttekst sier nominert 2021; Veterinaerinstituttets 2021-program lister Lumic/Stromme Service som kandidat; 2024-sekundaerkilde nevner 2020. | PUBLIC_AMBIGUITY | Primarkilde/arrangorarkiv som avklarer ar og nodyaktig status. | Bekreft formulering med Veterinaerinstituttet/Norsk Fiskeoppdrett; skriv kandidatstatus, ikke vinnerstatus. | P1: omdomme |
 
 ## Hvor vi kan finne relevant data
 
@@ -104,6 +111,13 @@ Disse er ikke tilgjengelige i researchmaterialet, men vil sannsynligvis gi best 
 8. Kunnskaps-/dokumenteier, gyldighetsdato, teknisk godkjenner og publiseringsstatus per dokument.
 
 Ikke legg CRM, tilbud eller samtaletranskripsjoner i husets delte forskningskorpus. Start med aggregerte sporsmal/tema og en lokal databehandler-/tilgangsavklaring.
+
+## Arbeidsfiler
+
+- `data/lumic_kunnskapshullradar_v0_1.csv`: 14 startkort med status, kildepeker, neste avklaring, eierrolle og kvalitativ prioritet.
+- `data/lumic_public_claims_v0_1.csv`: 12 offentlige produkt-/erfaringspastander, hver med kontrollbehov og anbefalt beleggstype.
+
+Disse filene er manuelle seed-data, ikke en live crawler, leadscore eller bekreftelse av Lumics interne produktfakta. Oppdater `observed_at` og kildepeker nar et kort endres; la en godkjenner angi `answered` forst nar belegg er kontrollert.
 
 ## Saann kan en lett Kunnskapshullradar fungere
 
