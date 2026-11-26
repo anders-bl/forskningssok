@@ -17,6 +17,8 @@ Dette er en scoping review basert pa de preregistrerte soketemaene, web-sok, utg
 
 Soket var ikke en uttommende databasegjennomgang: ingen dedikert fulltekstscreening av alle treff, ingen to uavhengige screenere og ingen metaanalyse. Enkelte artikler er vurdert fra abstract/utgiversammendrag. Tall og effekter er derfor ikke pool'et. Formelle funn nedenfor er det som ble identifisert i soket etter preregistreringen; tidligere utforskende kilder er ikke brukt som dekningsbevis.
 
+Metodeavvikene er samlet i [avviksnotatet](lumic-fagkunnskap-litteraturreview-avvik-2026-11-26.md). Det finnes ikke en komplett, per-sporring sok- og screeningslogg som kan rekonstrueres fra dette notatet. Resultatene skal derfor leses som en avgrenset scoping review av utvalgte kilder, ikke som dokumentasjon pa uttommende dekning eller som en full systematisk oversikt.
+
 ## Funn etter sporsmal
 
 ### B2B-kjopsreise og informasjonsbehov
